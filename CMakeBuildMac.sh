@@ -1,3 +1,3 @@
 mkdir build_xcode
 cd build_xcode
-cmake -L  ../ -G"Xcode"
+cmake -L -DENABLE_OPT=0 ../ -G"Xcode"
