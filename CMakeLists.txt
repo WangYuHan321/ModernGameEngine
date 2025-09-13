@@ -21,7 +21,7 @@ add_subdirectory(deps/glfw)
 add_subdirectory(deps/glslang)
 
 
-add_subdirectory(Unit_Test)
+add_subdirectory(Unit_Test/draw_triangle)
 
 
 
