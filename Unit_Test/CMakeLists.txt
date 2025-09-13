@@ -7,9 +7,9 @@ file(GLOB INCLUDE_HFILES include/*.h)
 project(Unit_Test)
 
 if(WIN32)
-	set(DEPENDENCY_FILES ${Vulkan_LIBRARY})	
+	set(DEPENDENCY_FILES ${Vulkan_LIBRARY} glfw)	
 elseif(APPLE)
-	set(DEPENDENCY_FILES ${Vulkan_LIBRARY})
+	set(DEPENDENCY_FILES ${Vulkan_LIBRARY} glfw)
 endif(WIN32)
 
 			
@@ -25,6 +25,7 @@ include_directories( BEFORE
 	${CMAKE_CURRENT_SOURCE_DIR}/include
 	${Vulkan_INCLUDE_DIR}
 	${CMAKE_CURRENMT}
+	${GLFW_BINARY_DIR}/include
 )
 
 link_directories(

@@ -160,7 +160,7 @@ void RHIVulkan::PopulateDebugMessagerCreateInfo(VkDebugUtilsMessengerCreateInfoE
 //检查所有的请求验证层是否可用
 bool RHIVulkan::CheckValidationLayerSupport()
 {
-    int32_t layerCount;
+    uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
     std::vector<VkLayerProperties> availableLayers(layerCount);
@@ -171,7 +171,7 @@ bool RHIVulkan::CheckValidationLayerSupport()
         bool layerFound = false;
 
         for (const auto& layerProperties : availableLayers) {
-            if (strcmp(layerName, layerProperties.layerName) == 0) {
+            if (strcmp(layerName, layerProperties.layerName) == 0) {//VK_LAYER_LUNARG_standard_validation
                 layerFound = true;
                 break;
             }
@@ -213,7 +213,7 @@ RHIVulkan::QueueFamilyIndices RHIVulkan::FindQueueFamilies(VkPhysicalDevice devi
 {
     QueueFamilyIndices indices;
 
-    int32_t queueFamilyCount = 0;
+    uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
 
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
@@ -313,8 +313,11 @@ VkShaderModule RHIVulkan::CreateShaderModule(const std::vector<char>& code)
 {
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    createInfo.pNext = nullptr;
+    
     createInfo.codeSize = code.size();
     createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
 
     VkShaderModule shaderModule;
     if (vkCreateShaderModule(m_vkDevice, &createInfo, nullptr, &shaderModule) != VK_SUCCESS)
@@ -343,27 +346,52 @@ void RHIVulkan::CreateInstance()
     appInfo.apiVersion = VK_API_VERSION_1_0;
 
     VkInstanceCreateInfo createInfo{};
-    createInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+    createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
+    
+#ifdef __APPLE__
+    createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+#endif
+    
+    /** Get Required Extensions*/
+    uint32_t glfwExtensionCount = 0;
+    const char** glfwExtensions;
+    glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
-    auto extensions = GetRequiredExtensions();
-    createInfo.enabledExtensionCount = extensions.size();
+    std::vector<const char*> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
+
+    if (enableValidationLayers)
+    {
+        extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+    }
+#ifdef __APPLE__
+    // Fix issue on Mac(m2) "vkCreateInstance: Found no drivers!"
+    extensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+    // Issue on Mac(m2), it's not a error, but a warning, ignore it by this time~
+    // vkCreateDevice():  VK_KHR_portability_subset must be enabled because physical device VkPhysicalDevice 0x600003764f40[] supports it. The Vulkan spec states: If the VK_KHR_portability_subset extension is included in pProperties of vkEnumerateDeviceExtensionProperties, ppEnabledExtensionNames must include "VK_KHR_portability_subset"
+    extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+#endif
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 
-    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo;
-    if (enableValidationLayers) {
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+    if (enableValidationLayers)
+    {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
 
-        PopulateDebugMessagerCreateInfo(debugCreateInfo);
+        populateDebugMessengerCreateInfo(debugCreateInfo);
         createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*)&debugCreateInfo;
     }
-    else {
+    else
+    {
         createInfo.enabledLayerCount = 0;
+
         createInfo.pNext = nullptr;
     }
 
-    if (vkCreateInstance(&createInfo, nullptr, &m_vkInstance) != VK_SUCCESS) {
+    if (vkCreateInstance(&createInfo, nullptr, &m_vkInstance) != VK_SUCCESS)
+    {
         throw std::runtime_error("failed to create instance!");
     }
 }
@@ -391,7 +419,7 @@ void RHIVulkan::CreateSurface()
 
 void RHIVulkan::PickPhysicalDevice()
 {
-    uint32 deviceCount = 0;
+    uint32_t deviceCount = 0;
     vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, nullptr);
 
     if (deviceCount == 0) {
@@ -422,11 +450,12 @@ void RHIVulkan::CreateLogicalDevice()
     QueueFamilyIndices indices = FindQueueFamilies(m_physicalDevice);
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-    std::set<int32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
+    std::set<uint32_t> uniqueQueueFamilies = { indices.graphicsFamily.value(), indices.presentFamily.value() };
 
     float queuePriority = 1.0f;
-    for (int queueFamily : uniqueQueueFamilies) {
-        VkDeviceQueueCreateInfo queueCreateInfo = {};
+    for (uint32_t queueFamily : uniqueQueueFamilies)
+    {
+        VkDeviceQueueCreateInfo queueCreateInfo{};
         queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
         queueCreateInfo.queueFamilyIndex = queueFamily;
         queueCreateInfo.queueCount = 1;
@@ -434,28 +463,31 @@ void RHIVulkan::CreateLogicalDevice()
         queueCreateInfos.push_back(queueCreateInfo);
     }
 
-    VkPhysicalDeviceFeatures deviceFeatures = {};
+    VkPhysicalDeviceFeatures deviceFeatures{};
 
-    VkDeviceCreateInfo createInfo = {};
+    VkDeviceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 
+    createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
     createInfo.pQueueCreateInfos = queueCreateInfos.data();
-    createInfo.queueCreateInfoCount = (uint32_t)queueCreateInfos.size();
 
     createInfo.pEnabledFeatures = &deviceFeatures;
 
-    createInfo.enabledExtensionCount = deviceExtensions.size();
+    createInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
     createInfo.ppEnabledExtensionNames = deviceExtensions.data();
 
-    if (enableValidationLayers) {
+    if (enableValidationLayers)
+    {
         createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
         createInfo.ppEnabledLayerNames = validationLayers.data();
     }
-    else {
+    else
+    {
         createInfo.enabledLayerCount = 0;
     }
 
-    if (vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_vkDevice) != VK_SUCCESS) {
+    if (vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_vkDevice) != VK_SUCCESS)
+    {
         throw std::runtime_error("failed to create logical device!");
     }
 
@@ -589,8 +621,8 @@ void RHIVulkan::CreateRenderPass()
 
 void RHIVulkan::CreateGraphicsPipeline()
 {
-    auto vertShaderCode = readFile("C:/Users/Wang/source/repos/OpenGL/Bin/Data/Editor/Asset/Shader/drawTriangle.vert");
-    auto fragShaderCode = readFile("C:/Users/Wang/source/repos/OpenGL/Bin/Data/Editor/Asset/Shader/drawTriangle.frag");
+    auto vertShaderCode = readFile("./Shader/drawTriangle_v.spv");
+    auto fragShaderCode = readFile("./Shader/drawTriangle_f.spv");
 
     VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);

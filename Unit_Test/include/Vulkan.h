@@ -1,4 +1,5 @@
-#include <vulkan/vulkan.h>
+#define GLFW_INCLUDE_VULKAN
+#include <GLFW/glfw3.h>
 
 #include <iostream>
 #include <fstream>
@@ -32,11 +33,13 @@ const bool enableValidationLayers = true;
 #endif
 
 const std::vector<const char*> validationLayers = {
-    "VK_LAYER_LUNARG_standard_validation"
+    "VK_LAYER_KHRONOS_validation" //  VK_LAYER_LUNARG_standard_validation
 };
 
 const std::vector<const char*> deviceExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    //"VK_KHR_portability_subset"
+    //VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
 private:
@@ -69,8 +72,8 @@ private:
     std::vector<VkCommandBuffer> m_vkCommandBuffer;
     VkCommandPool m_vkCommandPool;
 
-    int32_t m_windowWidth = 800;
-    int32_t m_windowHeight = 600;
+    uint32_t m_windowWidth = 800;
+    uint32_t m_windowHeight = 600;
 
 private:
 
