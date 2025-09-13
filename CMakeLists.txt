@@ -17,6 +17,7 @@ endif(WIN32)
 
 include(cmake/FindVulkan.cmake)
 
+add_subdirectory(deps/glfw)
 add_subdirectory(Unit_Test)
 
 

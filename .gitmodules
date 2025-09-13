@@ -1,3 +1,6 @@
 [submodule "deps/glslang"]
 	path = deps/glslang
 	url = https://github.com/KhronosGroup/glslang.git
+[submodule "deps/glfw"]
+	path = deps/glfw
+	url = https://github.com/glfw/glfw.git

@@ -22,7 +22,9 @@ set(SRC_FILES
 	)
 
 include_directories( BEFORE
+	${CMAKE_CURRENT_SOURCE_DIR}/include
 	${Vulkan_INCLUDE_DIR}
+	${CMAKE_CURRENMT}
 )
 
 link_directories(
