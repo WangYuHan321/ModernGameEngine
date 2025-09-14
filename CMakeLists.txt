@@ -26,8 +26,9 @@ add_subdirectory(deps/glslang)
 add_subdirectory(deps/tinygltf)
 #add_subdirectory(deps/taskflow)
 
-
-add_subdirectory(Unit_Test/draw_triangle)
 add_subdirectory(Unit_Test/draw_mesh)
+add_subdirectory(Unit_Test/draw_texture)
+add_subdirectory(Unit_Test/draw_triangle)
+
 
 

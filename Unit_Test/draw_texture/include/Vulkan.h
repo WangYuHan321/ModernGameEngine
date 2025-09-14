@@ -59,16 +59,8 @@ struct Vertex {
     }
 };
 
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-};
 
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 0, 2, 3
-};
+const int MAX_FRAMES_IN_FLIGHT = 2;
 
 class RHIVulkan
 {
@@ -102,11 +94,12 @@ const std::vector<const char*> deviceExtensions = {
 private:
     VkInstance m_vkInstance;
     VkDevice m_vkDevice;
-    VkDebugUtilsMessengerEXT m_debugMessenger;//Debug
+    VkDebugUtilsMessengerEXT m_debugMessenger; //Debug
 
-    VkSemaphore m_vkImageAvailableSemaphore;
-    VkSemaphore m_vkRenderFinishedSemaphore;
-    VkFence m_vkInFlightFence;
+    std::vector<VkCommandBuffer> m_commandBuffers;
+    std::vector<VkSemaphore> m_vkImageAvailableSemaphores;    // 图像是否完成的信号
+    std::vector<VkSemaphore> m_vkRenderFinishedSemaphores;    // 渲染是否结束的信号
+    std::vector<VkFence> m_vkInFlightFences;                // 围栏，下一帧渲染前等待上一帧全部渲染完成
     
     VkSwapchainKHR m_vkSwapChain;
     std::vector<VkImage> m_vkSwapChainImages;
@@ -131,12 +124,13 @@ private:
 
     uint32_t m_windowWidth = 800;
     uint32_t m_windowHeight = 600;
+    uint32_t m_currentFrame = 0;
     
-    std::vector<VkBuffer> m_uniformBuffers;
-    std::vector<VkDeviceMemory> m_uniformBufferMemory;
+    VkBuffer m_vertBuffers;
+    VkDeviceMemory m_vertBufferMemory;
     
-    std::vector<VkBuffer> m_viewUniformBuffers;
-    std::vector<VkDeviceMemory> m_viewUniformBufferMemory;
+    VkBuffer m_indexBuffers;
+    VkDeviceMemory m_indexBufferMemory;
 
 private:
 
@@ -171,6 +165,7 @@ private:
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
+    void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
     
     void CreateInstance();
     void SetupDebugMessage();
@@ -183,13 +178,22 @@ private:
     void CreateGraphicsPipeline();
     void CreateFrameBuffer();
     void CreateCommandPool();
+    
+    VkCommandBuffer BeginSingleTimeCommands();
+    void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
+    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+    
+    
+    void CreateVertexBuffer(VkBuffer& outBuffer, VkDeviceMemory& outMemory, const std::vector<Vertex>& inVertex);
+    void CreateIndexBuffer(VkBuffer& outBuffer, VkDeviceMemory& outMemory, const std::vector<uint32_t>& inIndices);
+    
+    VkFormat FindDepthFormat();
+    VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory&bufferMemory);
     void CreateCommandBuffers();
     void CreateUniformBuffer();
     void CreateSyncObjects();
-    void UpdateUniformBuffer(uint32_t curImg);
-    VkFormat FindDepthFormat();
     void DrawFrame();
     void Cleanup();
 };
