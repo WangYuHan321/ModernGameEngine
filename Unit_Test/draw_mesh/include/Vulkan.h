@@ -1,7 +1,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
-#include "glm/glm.hpp"
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -13,6 +12,16 @@
 #include <limits>
 #include <optional>
 #include <set>
+
+#include "stb_image.h"
+#include "glm/gtc/matrix_transform.hpp"
+#include "glm/gtc/type_ptr.hpp"
+
+struct UniformBufferObject{
+    glm::mat4 model;
+    glm::mat4 view;
+    glm::mat4 proj;
+}
 
 class RHIVulkan
 {
@@ -75,6 +84,12 @@ private:
 
     uint32_t m_windowWidth = 800;
     uint32_t m_windowHeight = 600;
+    
+    std::vector<VkBuffer> m_uniformBuffers;
+    std::vector<VkDeviceMemory> m_uniformBufferMemory;
+    
+    std::vector<VkBuffer> m_viewUniformBuffers;
+    std::vector<VkDeviceMemory> m_viewUniformBufferMemory;
 
 private:
 
@@ -121,8 +136,12 @@ private:
     void CreateGraphicsPipeline();
     void CreateFrameBuffer();
     void CreateCommandPool();
+    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+    void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory&bufferMemory);
     void CreateCommandBuffers();
+    void CreateUniformBuffer();
     void CreateSyncObjects();
+    void UpdateUniformBuffer(uint32_t curImg);
     void DrawFrame();
     void Cleanup();
 };

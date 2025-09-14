@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 20) # this does nothing for MSVC, use target_compile_opti
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS ON)
 
+set(STB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/stb) 
+
 if(WIN32)
     message(STATUS "current platform is Window Os !!!")
 elseif(UNIX AND NOT APPLE)
@@ -17,11 +19,15 @@ endif(WIN32)
 
 include(cmake/FindVulkan.cmake)
 
+add_subdirectory(deps/glm)
 add_subdirectory(deps/glfw)
+#add_subdirectory(deps/stb)
 add_subdirectory(deps/glslang)
+add_subdirectory(deps/tinygltf)
+#add_subdirectory(deps/taskflow)
 
 
 add_subdirectory(Unit_Test/draw_triangle)
-
+add_subdirectory(Unit_Test/draw_mesh)
 
 

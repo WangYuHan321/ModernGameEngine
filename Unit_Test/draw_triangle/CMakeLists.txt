@@ -23,6 +23,7 @@ set(SRC_FILES
 
 include_directories( BEFORE
 	${CMAKE_CURRENT_SOURCE_DIR}/include
+	${STB_INCLUDE_DIR}
 	${Vulkan_INCLUDE_DIR}
 	${CMAKE_CURRENMT}
 	${GLFW_BINARY_DIR}/include
