@@ -1,5 +1,11 @@
+﻿#pragma once
 #define GLFW_INCLUDE_VULKAN
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE // 深度缓存区，OpenGL默认是（-1， 1）Vulakn为（0.0， 1.0）
+#define STB_IMAGE_IMPLEMENTATION
 #include <GLFW/glfw3.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include <iostream>
 #include <fstream>
@@ -12,10 +18,7 @@
 #include <limits>
 #include <optional>
 #include <set>
-
-#include "stb_image.h"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
+#include <array>
 
 struct UniformBufferObject{
     glm::mat4 model;
@@ -132,6 +135,15 @@ private:
     VkBuffer m_indexBuffers;
     VkDeviceMemory m_indexBufferMemory;
 
+	VkImage m_textureImage;
+    VkDeviceMemory m_textureImageMemory;
+    VkImageView m_textureImageView;
+    VkSampler m_textureSampler;
+
+    VkDescriptorSetLayout m_vkDescriptorSetLayout;			// 描述符集合配置，在渲染管线创建时指定
+    VkDescriptorPool m_vkDescriptorPool;					// 描述符池，存放描述符
+    std::vector<VkDescriptorSet> m_vkDescriptorSets;		// 描述符集合，描述符使得着色器可以自由的访问缓存和图片
+
 private:
 
     struct QueueFamilyIndices {
@@ -173,11 +185,23 @@ private:
     void PickPhysicalDevice();
     void CreateLogicalDevice();
     void CreateSwapChain();
-    void CreateImageView();
+    void CreateImageViews();
+	void CreateDescriptorSets();
+	void CreateDescriptorPool();
     void CreateRenderPass();
     void CreateGraphicsPipeline();
     void CreateFrameBuffer();
     void CreateCommandPool();
+	void CreateDescriptorSetLayout();
+
+
+    void CreateTextureImage();
+    void CreateTextureImageView();
+	void CreateTextureSampler();
+	void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+	void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+	VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
     
     VkCommandBuffer BeginSingleTimeCommands();
     void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
@@ -197,9 +221,3 @@ private:
     void DrawFrame();
     void Cleanup();
 };
-
-
-
-
-
-
