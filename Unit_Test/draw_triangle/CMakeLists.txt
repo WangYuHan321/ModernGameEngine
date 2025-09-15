@@ -43,13 +43,6 @@ if(APPLE)
 	target_link_libraries(draw_triangle PRIVATE  ${DEPENDENCY_FILES})
 endif(APPLE)
 
-set_target_properties(draw_triangle PROPERTIES CMAKE_WORKING_DIRECTORY "${EXECUTABLE_OUTPUT_PATH}")
-
-set_target_properties(draw_triangle PROPERTIES RUNTIME_WORKING_DIRECTORY_DEBUG "${EXECUTABLE_OUTPUT_PATH}")
-set_target_properties(draw_triangle PROPERTIES RUNTIME_WORKING_DIRECTORY_RELEASE "${EXECUTABLE_OUTPUT_PATH}")
-set_target_properties(draw_triangle PROPERTIES RUNTIME_OUTPUT_DIRECTORY_DEBUG "${EXECUTABLE_OUTPUT_PATH}")
-set_target_properties(draw_triangle PROPERTIES RUNTIME_OUTPUT_DIRECTORY_RELEASE "${EXECUTABLE_OUTPUT_PATH}")
-set_target_properties(draw_triangle PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY "${EXECUTABLE_OUTPUT_PATH}")
 
 
 
