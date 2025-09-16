@@ -1,5 +1,12 @@
+#pragma once
 #define GLFW_INCLUDE_VULKAN
+#define GLM_FORCE_RADIANS
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE // 深度缓存区，OpenGL默认是（-1， 1）Vulakn为（0.0， 1.0）
+#define STB_IMAGE_IMPLEMENTATION
 #include <GLFW/glfw3.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <chrono>
 
 #include <iostream>
 #include <fstream>
@@ -12,12 +19,9 @@
 #include <limits>
 #include <optional>
 #include <set>
+#include <array>
 
-#include "stb_image.h"
-#include "glm/gtc/matrix_transform.hpp"
-#include "glm/gtc/type_ptr.hpp"
-
-struct UniformBufferObject{
+struct UniformBufferObject {
     glm::mat4 model;
     glm::mat4 view;
     glm::mat4 proj;
@@ -59,16 +63,8 @@ struct Vertex {
     }
 };
 
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}}
-};
 
-const std::vector<uint16_t> indices = {
-    0, 1, 2, 0, 2, 3
-};
+const int MAX_FRAMES_IN_FLIGHT = 2;
 
 class RHIVulkan
 {
@@ -84,30 +80,31 @@ public:
 private:
 
 #ifdef NDEBUG
-const bool enableValidationLayers = false;
+    const bool enableValidationLayers = false;
 #else
-const bool enableValidationLayers = true;
+    const bool enableValidationLayers = true;
 #endif
 
-const std::vector<const char*> validationLayers = {
-    "VK_LAYER_KHRONOS_validation" //  VK_LAYER_LUNARG_standard_validation
-};
+    const std::vector<const char*> validationLayers = {
+        "VK_LAYER_KHRONOS_validation" //  VK_LAYER_LUNARG_standard_validation
+    };
 
-const std::vector<const char*> deviceExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
-    //"VK_KHR_portability_subset"
-    //VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
+    const std::vector<const char*> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
+        //"VK_KHR_portability_subset"
+        //VK_KHR_SWAPCHAIN_EXTENSION_NAME
+    };
 
 private:
     VkInstance m_vkInstance;
     VkDevice m_vkDevice;
-    VkDebugUtilsMessengerEXT m_debugMessenger;//Debug
+    VkDebugUtilsMessengerEXT m_debugMessenger; //Debug
 
-    VkSemaphore m_vkImageAvailableSemaphore;
-    VkSemaphore m_vkRenderFinishedSemaphore;
-    VkFence m_vkInFlightFence;
-    
+    std::vector<VkCommandBuffer> m_commandBuffers;
+    std::vector<VkSemaphore> m_vkImageAvailableSemaphores;    // 图像是否完成的信号
+    std::vector<VkSemaphore> m_vkRenderFinishedSemaphores;    // 渲染是否结束的信号
+    std::vector<VkFence> m_vkInFlightFences;                // 围栏，下一帧渲染前等待上一帧全部渲染完成
+
     VkSwapchainKHR m_vkSwapChain;
     std::vector<VkImage> m_vkSwapChainImages;
     VkFormat m_vkSwapChainImageFormat;
@@ -131,13 +128,25 @@ private:
 
     uint32_t m_windowWidth = 800;
     uint32_t m_windowHeight = 600;
-    
-    std::vector<VkBuffer> m_uniformBuffers;
-    std::vector<VkDeviceMemory> m_uniformBufferMemory;
-    
-    std::vector<VkBuffer> m_viewUniformBuffers;
-    std::vector<VkDeviceMemory> m_viewUniformBufferMemory;
+    uint32_t m_currentFrame = 0;
 
+    VkBuffer m_vertBuffers;
+    VkDeviceMemory m_vertBufferMemory;
+
+    VkBuffer m_indexBuffers;
+    VkDeviceMemory m_indexBufferMemory;
+
+    VkImage m_textureImage;
+    VkDeviceMemory m_textureImageMemory;
+    VkImageView m_textureImageView;
+    VkSampler m_textureSampler;
+
+    VkDescriptorSetLayout m_vkDescriptorSetLayout;			// 描述符集合配置，在渲染管线创建时指定
+    VkDescriptorPool m_vkDescriptorPool;					// 描述符池，存放描述符
+    std::vector<VkDescriptorSet> m_vkDescriptorSets;		// 描述符集合，描述符使得着色器可以自由的访问缓存和图片
+
+    std::vector<VkBuffer> m_vkUniformBuffers;				// 统一缓存区
+    std::vector<VkDeviceMemory> m_vkUniformBuffersMemory;	// 统一缓存区内存地址
 private:
 
     struct QueueFamilyIndices {
@@ -162,7 +171,7 @@ private:
     SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice device);
 
     bool CheckDeviceExtensionSupport(VkPhysicalDevice device);
-    
+
     QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice device);
     bool IsDeviceSuitable(VkPhysicalDevice device);
 
@@ -171,31 +180,48 @@ private:
     VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR> availablePresentModes);
     VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
     VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
-    
+    void RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex);
+
     void CreateInstance();
     void SetupDebugMessage();
     void CreateSurface();
     void PickPhysicalDevice();
     void CreateLogicalDevice();
     void CreateSwapChain();
-    void CreateImageView();
+    void CreateImageViews();
+    void CreateUniformBuffer();
+    void CreateDescriptorSets();
+    void CreateDescriptorPool();
     void CreateRenderPass();
     void CreateGraphicsPipeline();
     void CreateFrameBuffer();
     void CreateCommandPool();
-    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
-    void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory&bufferMemory);
-    void CreateCommandBuffers();
-    void CreateUniformBuffer();
-    void CreateSyncObjects();
-    void UpdateUniformBuffer(uint32_t curImg);
+    void CreateDescriptorSetLayout();
+
+    void UpdateUniformBuffer(uint32_t currentImage);
+
+    void CreateTextureImage();
+    void CreateTextureImageView();
+    void CreateTextureSampler();
+    void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
+    void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
+    VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);
+    void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory);
+
+    VkCommandBuffer BeginSingleTimeCommands();
+    void EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer);
+    void CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size);
+
+
+    void CreateVertexBuffer(VkBuffer& outBuffer, VkDeviceMemory& outMemory, const std::vector<Vertex>& inVertex);
+    void CreateIndexBuffer(VkBuffer& outBuffer, VkDeviceMemory& outMemory, const std::vector<uint32_t>& inIndices);
+
     VkFormat FindDepthFormat();
+    VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
+    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
+    void CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory);
+    void CreateCommandBuffers();
+    void CreateSyncObjects();
     void DrawFrame();
     void Cleanup();
 };
-
-
-
-
-
-

@@ -1,4 +1,18 @@
-#include "Vulkan.h"
+﻿#include "Vulkan.h"
+#include <stb_image.h>
+
+/** 顶点数据positions和colors*/
+const std::vector<Vertex> vertices = {
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
+};
+
+/** 顶点点序数据indices*/
+const std::vector<uint32_t> indices = {
+    0, 1, 2, 2, 3, 0,
+};
 
 // 接收调试信息的回调函数：必须加上那两个宏定义，才能确保被Vulkan库调用
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -70,12 +84,38 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
     }
 }
 
+VkFormat RHIVulkan::FindDepthFormat()
+{
+    return FindSupportedFormat(
+        { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+    );
+}
+
 RHIVulkan::RHIVulkan()
 {
 }
 
 RHIVulkan::~RHIVulkan()
 {
+}
+
+/** 找到物理硬件支持的图片格式*/
+VkFormat RHIVulkan::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) {
+    for (VkFormat format : candidates) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(m_physicalDevice, format, &props);
+
+        if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+            return format;
+        }
+        else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+            return format;
+        }
+    }
+
+    throw std::runtime_error("failed to find supported format!");
 }
 
 void RHIVulkan::InitWindow()
@@ -97,13 +137,21 @@ void RHIVulkan::InitVulkan()
     PickPhysicalDevice();
     CreateLogicalDevice();
     CreateSwapChain();
-    CreateImageView();
+    CreateImageViews();
     CreateRenderPass();
+    CreateUniformBuffer();
+    CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateFrameBuffer();
-    CreateUniformBuffer();
     CreateCommandPool();
     CreateCommandBuffers();
+    CreateTextureImage();
+    CreateTextureImageView();
+    CreateTextureSampler();
+    CreateVertexBuffer(m_vertBuffers, m_vertBufferMemory, vertices);
+    CreateIndexBuffer(m_indexBuffers, m_indexBufferMemory, indices);
+    CreateDescriptorPool();
+    CreateDescriptorSets();
     CreateSyncObjects();
 }
 
@@ -299,7 +347,7 @@ bool RHIVulkan::IsDeviceSuitable(VkPhysicalDevice device)
 {
     QueueFamilyIndices indices = FindQueueFamilies(device);
 
-   bool extensionsSupported = CheckDeviceExtensionSupport(device);
+    bool extensionsSupported = CheckDeviceExtensionSupport(device);
 
     bool swapChainAdequate = false;
     if (extensionsSupported) {
@@ -315,7 +363,7 @@ VkShaderModule RHIVulkan::CreateShaderModule(const std::vector<char>& code)
     VkShaderModuleCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
     createInfo.pNext = nullptr;
-    
+
     createInfo.codeSize = code.size();
     createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
 
@@ -349,11 +397,11 @@ void RHIVulkan::CreateInstance()
     VkInstanceCreateInfo createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     createInfo.pApplicationInfo = &appInfo;
-    
+
 #ifdef __APPLE__
     createInfo.flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
 #endif
-    
+
     /** Get Required Extensions*/
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions;
@@ -427,9 +475,9 @@ void RHIVulkan::PickPhysicalDevice()
         throw std::runtime_error("failed to find GPUs with Vulkan support!");
     }
 
-  /*  VkPhysicalDevice* physical_devices = (VkPhysicalDevice*)malloc(sizeof(VkPhysicalDevice) * deviceCount);
-    vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, physical_devices);
-    m_physicalDevice = *physical_devices;*/
+    /*  VkPhysicalDevice* physical_devices = (VkPhysicalDevice*)malloc(sizeof(VkPhysicalDevice) * deviceCount);
+      vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, physical_devices);
+      m_physicalDevice = *physical_devices;*/
 
     std::vector<VkPhysicalDevice> devices(deviceCount);
     vkEnumeratePhysicalDevices(m_vkInstance, &deviceCount, devices.data());
@@ -550,7 +598,7 @@ void RHIVulkan::CreateSwapChain()
     m_vkSwapChainExtent = extent;
 }
 
-void RHIVulkan::CreateImageView()
+void RHIVulkan::CreateImageViews()
 {
     m_vkSwapChainImageViews.resize(m_vkSwapChainImages.size());
 
@@ -576,6 +624,89 @@ void RHIVulkan::CreateImageView()
     }
 }
 
+void RHIVulkan::CreateUniformBuffer()
+{
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    m_vkUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    m_vkUniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0;i < MAX_FRAMES_IN_FLIGHT;i++)
+    {
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_vkUniformBuffers[i], m_vkUniformBuffersMemory[i]);
+    
+        // 这里会导致 memory stack overflow，不应该在这里 vkMapMemory
+        //vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+    }
+}
+
+void RHIVulkan::CreateDescriptorSets()
+{
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_vkDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = m_vkDescriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+
+    m_vkDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(m_vkDevice, &allocInfo, m_vkDescriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = m_vkUniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
+        // 写入 Textures
+        VkDescriptorImageInfo imageInfo{};
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = m_textureImageView;
+        imageInfo.sampler = m_textureSampler;
+
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = m_vkDescriptorSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;                ;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pBufferInfo = &bufferInfo;//
+
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = m_vkDescriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &imageInfo;
+
+        vkUpdateDescriptorSets(m_vkDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    }
+}
+
+void RHIVulkan::CreateDescriptorPool()
+{
+    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &m_vkDescriptorPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+}
+
 void RHIVulkan::CreateRenderPass()
 {
     //颜色缓冲区附件的格式应该和对应的 swap chain中的图像匹配，我们也不需要多重采样，因此我们将采样数设置为1。
@@ -588,46 +719,28 @@ void RHIVulkan::CreateRenderPass()
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    
-    VkAttachmentDescription depthAttachment{};
-    depthAttachment.format = FindDepthFormat();
-    depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    
 
     VkAttachmentReference colorAttachmentRef = {};
     colorAttachmentRef.attachment = 0;
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    
-    VkAttachmentReference depthAttachmentRef = {};
-    depthAttachmentRef.attachment = 1;
-    depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    
 
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
-    subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
     VkSubpassDependency dependency = {};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
-    std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
     VkRenderPassCreateInfo renderPassInfo = {};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
-    renderPassInfo.pAttachments = attachments.data();
+    renderPassInfo.attachmentCount = 1;
+    renderPassInfo.pAttachments = &colorAttachment;
     renderPassInfo.subpassCount = 1;
     renderPassInfo.pSubpasses = &subpass;
     renderPassInfo.dependencyCount = 1;
@@ -640,8 +753,8 @@ void RHIVulkan::CreateRenderPass()
 
 void RHIVulkan::CreateGraphicsPipeline()
 {
-    auto vertShaderCode = readFile("./Shader/drawTriangle_v.spv");
-    auto fragShaderCode = readFile("./Shader/drawTriangle_f.spv");
+    auto vertShaderCode = readFile("./shader/draw_texture_v.spv");
+    auto fragShaderCode = readFile("./shader/draw_texture_f.spv");
 
     VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
@@ -661,14 +774,14 @@ void RHIVulkan::CreateGraphicsPipeline()
     VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
     auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescription = Vertex::getAttributeDescriptions()();
-    
+    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescription.size());
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
-    vertexInputInfo.pVertexAttributeDescriptions = attributeDescription.data();
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -700,8 +813,7 @@ void RHIVulkan::CreateGraphicsPipeline()
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    
-    rasterizer.cullMode = VK_CULL_MODE_NONE;
+    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -709,20 +821,6 @@ void RHIVulkan::CreateGraphicsPipeline()
     multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
     multisampling.sampleShadingEnable = VK_FALSE;
     multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    
-    // 打开深度测试
-    VkPipelineDepthStencilStateCreateInfo depthStencil{};
-    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = VK_TRUE;
-    depthStencil.depthWriteEnable = VK_TRUE;
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
-    depthStencil.minDepthBounds = 0.0f; // Optional
-    depthStencil.maxDepthBounds = 1.0f; // Optional
-    depthStencil.stencilTestEnable = VK_FALSE; // 没有写轮廓信息，所以跳过轮廓测试
-    depthStencil.front = {}; // Optional
-    depthStencil.back = {}; // Optional
-    
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
     colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -741,8 +839,8 @@ void RHIVulkan::CreateGraphicsPipeline()
 
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    pipelineLayoutInfo.setLayoutCount = 0;
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &m_vkDescriptorSetLayout;
 
     if (vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &m_vkPipeLineLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create pipeline layout!");
@@ -757,7 +855,6 @@ void RHIVulkan::CreateGraphicsPipeline()
     pipelineInfo.pViewportState = &viewportState;
     pipelineInfo.pRasterizationState = &rasterizer;
     pipelineInfo.pMultisampleState = &multisampling;
-    pipelineInfo.pDepthStencilState = &depthStencil;
     pipelineInfo.pColorBlendState = &colorBlending;
     pipelineInfo.layout = m_vkPipeLineLayout;
     pipelineInfo.renderPass = m_vkRenderPass;
@@ -783,7 +880,7 @@ void RHIVulkan::CreateFrameBuffer()
         };
 
         VkFramebufferCreateInfo frameBufferInfo{};
-        
+
         frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         frameBufferInfo.renderPass = m_vkRenderPass;
         frameBufferInfo.attachmentCount = 1;
@@ -813,11 +910,405 @@ void RHIVulkan::CreateCommandPool()
     }
 }
 
+void RHIVulkan::CreateDescriptorSetLayout()
+{
+    VkDescriptorSetLayoutBinding uniformLayoutBingding{};
+    uniformLayoutBingding.binding = 0;
+    uniformLayoutBingding.descriptorCount = 1;
+    uniformLayoutBingding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uniformLayoutBingding.pImmutableSamplers = nullptr;
+    uniformLayoutBingding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+    samplerLayoutBinding.binding = 1;
+    samplerLayoutBinding.descriptorCount = 1;
+    samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    samplerLayoutBinding.pImmutableSamplers = nullptr;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; //VK_SHADER_STAGE_VERTEX_BIT
+
+    // 将UnifromBufferObject和贴图采样器绑定到DescriptorSetLayout上
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uniformLayoutBingding, samplerLayoutBinding };
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+
+    if (vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_vkDescriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+}
+
+void RHIVulkan::UpdateUniformBuffer(uint32_t currentImage)
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    UniformBufferObject ubo{};
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f), m_vkSwapChainExtent.width / (float)m_vkSwapChainExtent.height, 0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;
+
+    void* data;
+    vkMapMemory(m_vkDevice, m_vkUniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+    memcpy(data, &ubo, sizeof(ubo));
+    vkUnmapMemory(m_vkDevice, m_vkUniformBuffersMemory[currentImage]);
+}
+
+VkImageView RHIVulkan::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
+{
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = aspectFlags;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkImageView imageView;
+    if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create texture image view!");
+    }
+
+    return imageView;
+}
+
+void RHIVulkan::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory)
+{
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = format;
+    imageInfo.tiling = tiling;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = usage;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (vkCreateImage(m_vkDevice, &imageInfo, nullptr, &image) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create image!");
+    }
+
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(m_vkDevice, image, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+
+    if (vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate image memory!");
+    }
+
+    vkBindImageMemory(m_vkDevice, image, imageMemory, 0);
+}
+
+void RHIVulkan::CreateTextureImage()
+{
+    int texWidth, texHeight, texChannels;
+    stbi_uc* pixels = stbi_load("textures/botw_mifa.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+    if (!pixels)
+    {
+        throw std::runtime_error("failed to load texture image!");
+    }
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(m_vkDevice, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+    // 清理pixels数据结构
+    stbi_image_free(pixels);
+
+    CreateImage(texWidth, texHeight, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_textureImage, m_textureImageMemory);
+
+    TransitionImageLayout(m_textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    CopyBufferToImage(stagingBuffer, m_textureImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    TransitionImageLayout(m_textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+    vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
+
+}
+
+void RHIVulkan::CreateTextureImageView()
+{
+    m_textureImageView = CreateImageView(m_textureImage, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_ASPECT_COLOR_BIT);
+}
+
+void RHIVulkan::CreateTextureSampler()
+{
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
+
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+
+    if (vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &m_textureSampler) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create texture sampler!");
+    }
+}
+
+void RHIVulkan::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
+    {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
+    {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else
+    {
+        throw std::invalid_argument("unsupported layout transition!");
+    }
+
+    vkCmdPipelineBarrier(
+        commandBuffer,
+        sourceStage, destinationStage,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+    );
+
+    EndSingleTimeCommandBuffer(commandBuffer);
+}
+
+void RHIVulkan::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+    VkBufferImageCopy region{};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+
+    region.imageOffset = { 0, 0, 0 };
+    region.imageExtent = { width, height, 1 };
+
+    vkCmdCopyBufferToImage(commandBuffer, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &region);
+    EndSingleTimeCommandBuffer(commandBuffer);
+}
+
+void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
+{
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+
+    if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to begin record command buffer !");
+    }
+
+    VkRenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    renderPassInfo.renderPass = m_vkRenderPass;
+    renderPassInfo.framebuffer = m_vkSwapChainFrameBuffers[imageIndex];
+    renderPassInfo.renderArea.offset = { 0, 0 };
+    renderPassInfo.renderArea.extent = m_vkSwapChainExtent;
+
+    std::array<VkClearValue, 2> clearValues{};
+    clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+    clearValues[1].depthStencil = { 1.0f, 0 };
+
+    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+    renderPassInfo.pClearValues = clearValues.data();
+
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vkGraphicsPipeline);
+
+    VkBuffer vertexBuffers[] = { m_vertBuffers };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, m_indexBuffers, 0, VK_INDEX_TYPE_UINT32);
+
+    VkViewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = (float)m_vkSwapChainExtent.width;
+    viewport.height = (float)m_vkSwapChainExtent.height;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+    VkRect2D scissor{};
+    scissor.offset = { 0, 0 };
+    scissor.extent = m_vkSwapChainExtent;
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vkPipeLineLayout, 0, 1, &m_vkDescriptorSets[m_currentFrame], 0, nullptr);
+
+    // 如果顶点就按照传入的顶点渲染，使用vkCmdDraw
+    // vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
+    // 如果顶点需要按照点序渲染，使用vkCmdDrawIndexed
+    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+    vkCmdEndRenderPass(commandBuffer);
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to record command buffer!");
+    }
+
+
+}
+
+VkCommandBuffer RHIVulkan::BeginSingleTimeCommands()
+{
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = m_vkCommandPool;
+    allocInfo.commandBufferCount = 1;
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(m_vkDevice, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;//执行一次立即刷新
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    return commandBuffer;
+}
+
+void RHIVulkan::EndSingleTimeCommandBuffer(VkCommandBuffer commandBuffer)
+{
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+
+    vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(m_graphicsQueue);
+
+    vkFreeCommandBuffers(m_vkDevice, m_vkCommandPool, 1, &commandBuffer);
+}
+
+void RHIVulkan::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size)
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+    VkBufferCopy copyRegion{};
+    copyRegion.size = size;
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+    EndSingleTimeCommandBuffer(commandBuffer);
+}
+
+void RHIVulkan::CreateVertexBuffer(VkBuffer& outBuffer, VkDeviceMemory& outMemory, const std::vector<Vertex>& inVertex)
+{
+    VkDeviceSize bufferSize = sizeof(inVertex[0]) * inVertex.size();
+
+    // 为什么需要stagingBuffer，因为直接创建VertexBuffer，CPU端可以直接通过vertexBufferMemory范围GPU使用的内存，这样太危险了，
+    // 所以我们先创建一个临时的Buffer写入数据，然后将这个Buffer拷贝给最终的VertexBuffer，
+    // VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT标签，使得最终的VertexBuffer位于硬件本地内存中，比如显卡的显存。
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, inVertex.data(), size_t(bufferSize));
+    vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outBuffer, outMemory);
+    CopyBuffer(stagingBuffer, outBuffer, bufferSize);
+
+    vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+    vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
+}
+
+void RHIVulkan::CreateIndexBuffer(VkBuffer& outBuffer, VkDeviceMemory& outMemory, const std::vector<uint32_t>& inIndices)
+{
+    VkDeviceSize bufferSize = sizeof(inIndices[0]) * inIndices.size();
+
+    // 为什么需要stagingBuffer，因为直接创建VertexBuffer，CPU端可以直接通过vertexBufferMemory范围GPU使用的内存，这样太危险了，
+    // 所以我们先创建一个临时的Buffer写入数据，然后将这个Buffer拷贝给最终的VertexBuffer，
+    // VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT标签，使得最终的VertexBuffer位于硬件本地内存中，比如显卡的显存。
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_CACHED_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(m_vkDevice, stagingBufferMemory, 0, bufferSize, 0, &data);
+    memcpy(data, inIndices.data(), (size_t)bufferSize);
+    vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+    CreateBuffer(bufferSize, VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, outBuffer, outMemory);
+    CopyBuffer(stagingBuffer, outBuffer, bufferSize);
+
+    vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+    vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
+}
+
 uint32_t RHIVulkan::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
 {
     VkPhysicalDeviceMemoryProperties memProperties;
     vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memProperties);
-    
+
     // 自动寻找适合的内存类型
     for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
         if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
@@ -828,29 +1319,29 @@ uint32_t RHIVulkan::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags pr
     throw std::runtime_error("failed to find suitable memory type!");
 }
 
-void RHIVulkan::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory&bufferMemory)
+void RHIVulkan::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& bufferMemory)
 {
     VkBufferCreateInfo bufferInfo{};
-    
+
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = size;
     bufferInfo.usage = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    
-    if(vkCreateBuffer(m_vkDevice, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
+
+    if (vkCreateBuffer(m_vkDevice, &bufferInfo, nullptr, &buffer) != VK_SUCCESS)
     {
         throw  std::runtime_error("failed to create buffer!!!!");
     }
-    
+
     VkMemoryRequirements memRequirements;
     vkGetBufferMemoryRequirements(m_vkDevice, buffer, &memRequirements);
-    
+
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memRequirements.size;
-    
+
     allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
-    if(vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
+    if (vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &bufferMemory) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to allocate buffer memory");
     }
@@ -859,7 +1350,7 @@ void RHIVulkan::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemo
 
 void RHIVulkan::CreateCommandBuffers()
 {
-    m_vkCommandBuffer.resize(m_vkSwapChainFrameBuffers.size());
+    m_vkCommandBuffer.resize(MAX_FRAMES_IN_FLIGHT);
 
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -871,7 +1362,7 @@ void RHIVulkan::CreateCommandBuffers()
         throw std::runtime_error("failed to allocate command buffers!");
     }
 
-    for (size_t i = 0; i < m_vkCommandBuffer.size(); i++) {
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
@@ -904,21 +1395,13 @@ void RHIVulkan::CreateCommandBuffers()
     }
 }
 
-void RHIVulkan::CreateUniformBuffer()
-{
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-    
-    m_uniformBuffers.resize(m_vkCommandBuffer.size());
-    m_uniformBufferMemory.resize(m_vkCommandBuffer.size());
-    
-    for(size_t i= 0; i < m_vkCommandBuffer.size(); i++)
-    {
-        CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_uniformBuffers[i], m_uniformBuffersMemory[i]);
-    }
-}
-
 void RHIVulkan::CreateSyncObjects()
 {
+
+    m_vkImageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    m_vkRenderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
+    m_vkInFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
+
     VkSemaphoreCreateInfo semaphoreInfo{};
     semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
@@ -926,61 +1409,49 @@ void RHIVulkan::CreateSyncObjects()
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
-    if (vkCreateSemaphore(m_vkDevice, &semaphoreInfo, nullptr, &m_vkImageAvailableSemaphore) != VK_SUCCESS ||
-        vkCreateSemaphore(m_vkDevice, &semaphoreInfo, nullptr, &m_vkRenderFinishedSemaphore) != VK_SUCCESS ||
-        vkCreateFence(m_vkDevice, &fenceInfo, nullptr, &m_vkInFlightFence) != VK_SUCCESS) {
-        throw std::runtime_error("failed to create synchronization objects for a frame!");
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        if (vkCreateSemaphore(m_vkDevice, &semaphoreInfo, nullptr, &m_vkImageAvailableSemaphores[i]) != VK_SUCCESS ||
+            vkCreateSemaphore(m_vkDevice, &semaphoreInfo, nullptr, &m_vkRenderFinishedSemaphores[i]) != VK_SUCCESS ||
+            vkCreateFence(m_vkDevice, &fenceInfo, nullptr, &m_vkInFlightFences[i]) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create synchronization objects for a frame!");
+        }
     }
-}
 
-void RHIVulkan::UpdateUniformBuffer(uint32_t curImg)
-{
-    
-    static auto startTime = std::chrono::high_resolution_clock::now();
-
-    auto currentTime = std::chrono::high_resolution_clock::now();
-    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
-    
-    UniformBufferObject ubo{};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), m_vkSwapChainExtent.width / (float)m_vkSwapChainExtent.height, 0.1f, 10.0f);
-    ubo.proj[1][1] *= -1;
-    
-    void* data;
-    vkMapMemory(m_vkDevice, m_uniformBufferMemory[curImg], 0, sizeof(ubo), 0, &data);
-    memcpy(data, &ubo, sizeof(ubo));
-    vkUnmapMemory(m_vkDevice, m_uniformBufferMemory[curImg]);
 }
 
 void RHIVulkan::DrawFrame() {
-    vkWaitForFences(m_vkDevice, 1, &m_vkInFlightFence, VK_TRUE, UINT64_MAX);
-    vkResetFences(m_vkDevice, 1, &m_vkInFlightFence);
+    vkWaitForFences(m_vkDevice, 1, &m_vkInFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
+    vkResetFences(m_vkDevice, 1, &m_vkInFlightFences[m_currentFrame]);
 
     uint32_t imageIndex;
     vkAcquireNextImageKHR(
-        m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex
+        m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex
     );
 
-    UpdateUniformBuffer(imageIndex);
+    UpdateUniformBuffer(m_currentFrame);
+
+    vkResetCommandBuffer(m_vkCommandBuffer[m_currentFrame], 0);
+    RecordCommandBuffer(m_vkCommandBuffer[m_currentFrame], imageIndex);
 
     VkSubmitInfo submitInfo{};
     submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 
-    VkSemaphore waitSemaphores[] = { m_vkImageAvailableSemaphore };
+    VkSemaphore waitSemaphores[] = { m_vkImageAvailableSemaphores[m_currentFrame] };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     submitInfo.waitSemaphoreCount = 1;
     submitInfo.pWaitSemaphores = waitSemaphores;
     submitInfo.pWaitDstStageMask = waitStages;
 
     submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &m_vkCommandBuffer[imageIndex];
+    submitInfo.pCommandBuffers = &m_vkCommandBuffer[m_currentFrame];
 
-    VkSemaphore signalSemaphores[] = { m_vkRenderFinishedSemaphore };
+    VkSemaphore signalSemaphores[] = { m_vkRenderFinishedSemaphores[m_currentFrame] };
     submitInfo.signalSemaphoreCount = 1;
     submitInfo.pSignalSemaphores = signalSemaphores;
 
-    if (vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_vkInFlightFence) != VK_SUCCESS) {
+
+    if (vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, m_vkInFlightFences[m_currentFrame]) != VK_SUCCESS) {
         throw std::runtime_error("failed to submit draw command buffer!");
     }
 
@@ -997,13 +1468,19 @@ void RHIVulkan::DrawFrame() {
     presentInfo.pImageIndices = &imageIndex;
 
     vkQueuePresentKHR(m_presentQueue, &presentInfo);
+
+    m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void RHIVulkan::Cleanup() {
-    // 先创建的东西后销毁
-    vkDestroySemaphore(m_vkDevice, m_vkImageAvailableSemaphore, nullptr);
-    vkDestroySemaphore(m_vkDevice, m_vkImageAvailableSemaphore, nullptr);
-    vkDestroyFence(m_vkDevice, m_vkInFlightFence, nullptr);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT;i++)
+    {
+        // 先创建的东西后销毁
+        vkDestroySemaphore(m_vkDevice, m_vkImageAvailableSemaphores[i], nullptr);
+        vkDestroySemaphore(m_vkDevice, m_vkImageAvailableSemaphores[i], nullptr);
+        vkDestroyFence(m_vkDevice, m_vkInFlightFences[i], nullptr);
+    }
 
     vkDestroyCommandPool(m_vkDevice, m_vkCommandPool, nullptr);
 
@@ -1014,9 +1491,16 @@ void RHIVulkan::Cleanup() {
     vkDestroyPipeline(m_vkDevice, m_vkGraphicsPipeline, nullptr);
     vkDestroyPipelineLayout(m_vkDevice, m_vkPipeLineLayout, nullptr);
     vkDestroyRenderPass(m_vkDevice, m_vkRenderPass, nullptr);
+
+    vkDestroyBuffer(m_vkDevice, m_vertBuffers, nullptr);
+    vkFreeMemory(m_vkDevice, m_vertBufferMemory, nullptr);
+    vkDestroyBuffer(m_vkDevice, m_indexBuffers, nullptr);
+    vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
+
     for (auto imageView : m_vkSwapChainImageViews) {
         vkDestroyImageView(m_vkDevice, imageView, nullptr);
     }
+
     vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
     vkDestroyDevice(m_vkDevice, nullptr);
 
@@ -1029,5 +1513,3 @@ void RHIVulkan::Cleanup() {
     glfwDestroyWindow(m_glfwWindow);
     glfwTerminate();
 }
-
-
