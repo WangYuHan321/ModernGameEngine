@@ -1,4 +1,4 @@
-﻿#include "Vulkan.h"
+#include "Vulkan.h"
 #include <stb_image.h>
 
 /** 顶点数据positions和colors*/
@@ -139,12 +139,19 @@ void RHIVulkan::InitVulkan()
     CreateSwapChain();
     CreateImageViews();
     CreateRenderPass();
+    CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
+    CreateDescriptorSetLayout();
     CreateFrameBuffer();
     CreateCommandPool();
     CreateCommandBuffers();
+    CreateTextureImage();
+    CreateTextureImageView();
+    CreateTextureImageView();
     CreateVertexBuffer(m_vertBuffers, m_vertBufferMemory, vertices);
     CreateIndexBuffer(m_indexBuffers, m_indexBufferMemory, indices);
+    CreateDescriptorPool();
+    CreateDescriptorSets();
     CreateSyncObjects();
 }
 
@@ -640,13 +647,13 @@ void RHIVulkan::CreateDescriptorSets()
 
         std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
 
-        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrites[1].dstSet = m_vkDescriptorSets[i];
-        descriptorWrites[1].dstBinding = 0;
-        descriptorWrites[1].dstArrayElement = 0;
-        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        descriptorWrites[1].descriptorCount = 1;
-        descriptorWrites[1].pImageInfo = &imageInfo;
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = m_vkDescriptorSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pImageInfo = &imageInfo;
 
         vkUpdateDescriptorSets(m_vkDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
@@ -881,7 +888,7 @@ void RHIVulkan::CreateDescriptorSetLayout()
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; //VK_SHADER_STAGE_VERTEX_BIT
 
     // 将UnifromBufferObject和贴图采样器绑定到DescriptorSetLayout上
     std::array<VkDescriptorSetLayoutBinding, 1> bindings = { samplerLayoutBinding };
@@ -956,7 +963,7 @@ void RHIVulkan::CreateImage(uint32_t width, uint32_t height, VkFormat format, Vk
 void RHIVulkan::CreateTextureImage()
 {
 	int texWidth, texHeight, texChannels;
-	stbi_uc* pixels = stbi_load("textures/texture.jpg", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+	stbi_uc* pixels = stbi_load("textures/botw_mifa.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels)
