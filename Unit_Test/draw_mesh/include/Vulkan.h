@@ -189,6 +189,7 @@ private:
     void CreateLogicalDevice();
     void CreateSwapChain();
     void CreateImageViews();
+    void ReadModelResource();
     void CreateUniformBuffer();
     void CreateDescriptorSets();
     void CreateDescriptorPool();

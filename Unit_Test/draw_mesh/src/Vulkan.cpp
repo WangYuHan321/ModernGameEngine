@@ -1,5 +1,9 @@
-﻿#include "Vulkan.h"
+#include "Vulkan.h"
+
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
+#include <tiny_gltf.h>
 
 /** 顶点数据positions和colors*/
 const std::vector<Vertex> vertices = {
@@ -624,6 +628,14 @@ void RHIVulkan::CreateImageViews()
     }
 }
 
+void RHIVulkan::ReadModelResource()
+{
+    tinygltf::Model model;
+    
+    
+    
+}
+
 void RHIVulkan::CreateUniformBuffer()
 {
     VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -813,7 +825,7 @@ void RHIVulkan::CreateGraphicsPipeline()
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.cullMode = VK_FALSE;// VK_CULL_MODE_BACK_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -1496,6 +1508,13 @@ void RHIVulkan::Cleanup() {
     vkFreeMemory(m_vkDevice, m_vertBufferMemory, nullptr);
     vkDestroyBuffer(m_vkDevice, m_indexBuffers, nullptr);
     vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
+    
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyBuffer(m_vkDevice, m_vkUniformBuffers[i], nullptr);
+        vkFreeMemory(m_vkDevice, m_vkUniformBuffersMemory[i], nullptr);
+    }
+    vkDestroyDescriptorSetLayout(m_vkDevice, m_vkDescriptorSetLayout, nullptr);
+    vkDestroyDescriptorPool(m_vkDevice, m_vkDescriptorPool, nullptr);
 
     for (auto imageView : m_vkSwapChainImageViews) {
         vkDestroyImageView(m_vkDevice, imageView, nullptr);

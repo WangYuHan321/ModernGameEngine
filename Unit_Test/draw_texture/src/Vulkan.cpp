@@ -1,4 +1,4 @@
-﻿#include "Vulkan.h"
+#include "Vulkan.h"
 #include <stb_image.h>
 
 /** 顶点数据positions和colors*/
@@ -139,6 +139,7 @@ void RHIVulkan::InitVulkan()
     CreateSwapChain();
     CreateImageViews();
     CreateRenderPass();
+    CreateUniformBuffer();
     CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateFrameBuffer();
@@ -623,6 +624,22 @@ void RHIVulkan::CreateImageViews()
     }
 }
 
+void RHIVulkan::CreateUniformBuffer()
+{
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+
+    m_vkUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    m_vkUniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0;i < MAX_FRAMES_IN_FLIGHT;i++)
+    {
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_vkUniformBuffers[i], m_vkUniformBuffersMemory[i]);
+    
+        // 这里会导致 memory stack overflow，不应该在这里 vkMapMemory
+        //vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+    }
+}
+
 void RHIVulkan::CreateDescriptorSets()
 {
     std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_vkDescriptorSetLayout);
@@ -638,21 +655,34 @@ void RHIVulkan::CreateDescriptorSets()
     }
 
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = m_vkUniformBuffers[i];
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+
         // 写入 Textures
         VkDescriptorImageInfo imageInfo{};
         imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
         imageInfo.imageView = m_textureImageView;
         imageInfo.sampler = m_textureSampler;
 
-        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
+        std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
 
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = m_vkDescriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;                ;
         descriptorWrites[0].descriptorCount = 1;
-        descriptorWrites[0].pImageInfo = &imageInfo;
+        descriptorWrites[0].pBufferInfo = &bufferInfo;//
+
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = m_vkDescriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pImageInfo = &imageInfo;
 
         vkUpdateDescriptorSets(m_vkDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
@@ -783,7 +813,7 @@ void RHIVulkan::CreateGraphicsPipeline()
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
-    rasterizer.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizer.cullMode = VK_FALSE;// VK_CULL_MODE_BACK_BIT;
     rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE;
     rasterizer.depthBiasEnable = VK_FALSE;
 
@@ -882,15 +912,22 @@ void RHIVulkan::CreateCommandPool()
 
 void RHIVulkan::CreateDescriptorSetLayout()
 {
+    VkDescriptorSetLayoutBinding uniformLayoutBingding{};
+    uniformLayoutBingding.binding = 0;
+    uniformLayoutBingding.descriptorCount = 1;
+    uniformLayoutBingding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uniformLayoutBingding.pImmutableSamplers = nullptr;
+    uniformLayoutBingding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
     VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-    samplerLayoutBinding.binding = 0;
+    samplerLayoutBinding.binding = 1;
     samplerLayoutBinding.descriptorCount = 1;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
     samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; //VK_SHADER_STAGE_VERTEX_BIT
 
     // 将UnifromBufferObject和贴图采样器绑定到DescriptorSetLayout上
-    std::array<VkDescriptorSetLayoutBinding, 1> bindings = { samplerLayoutBinding };
+    std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uniformLayoutBingding, samplerLayoutBinding };
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -899,6 +936,25 @@ void RHIVulkan::CreateDescriptorSetLayout()
     if (vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_vkDescriptorSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
+}
+
+void RHIVulkan::UpdateUniformBuffer(uint32_t currentImage)
+{
+    static auto startTime = std::chrono::high_resolution_clock::now();
+
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
+
+    UniformBufferObject ubo{};
+    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.proj = glm::perspective(glm::radians(45.0f), m_vkSwapChainExtent.width / (float)m_vkSwapChainExtent.height, 0.1f, 10.0f);
+    ubo.proj[1][1] *= -1;
+
+    void* data;
+    vkMapMemory(m_vkDevice, m_vkUniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
+    memcpy(data, &ubo, sizeof(ubo));
+    vkUnmapMemory(m_vkDevice, m_vkUniformBuffersMemory[currentImage]);
 }
 
 VkImageView RHIVulkan::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
@@ -1373,6 +1429,8 @@ void RHIVulkan::DrawFrame() {
         m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex
     );
 
+    UpdateUniformBuffer(m_currentFrame);
+
     vkResetCommandBuffer(m_vkCommandBuffer[m_currentFrame], 0);
     RecordCommandBuffer(m_vkCommandBuffer[m_currentFrame], imageIndex);
 
@@ -1438,6 +1496,13 @@ void RHIVulkan::Cleanup() {
     vkFreeMemory(m_vkDevice, m_vertBufferMemory, nullptr);
     vkDestroyBuffer(m_vkDevice, m_indexBuffers, nullptr);
     vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
+    
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        vkDestroyBuffer(m_vkDevice, m_vkUniformBuffers[i], nullptr);
+        vkFreeMemory(m_vkDevice, m_vkUniformBuffersMemory[i], nullptr);
+    }
+    vkDestroyDescriptorSetLayout(m_vkDevice, m_vkDescriptorSetLayout, nullptr);
+    vkDestroyDescriptorPool(m_vkDevice, m_vkDescriptorPool, nullptr);
 
     for (auto imageView : m_vkSwapChainImageViews) {
         vkDestroyImageView(m_vkDevice, imageView, nullptr);
