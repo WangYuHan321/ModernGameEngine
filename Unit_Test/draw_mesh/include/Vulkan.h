@@ -140,6 +140,10 @@ private:
     VkDeviceMemory m_textureImageMemory;
     VkImageView m_textureImageView;
     VkSampler m_textureSampler;
+    
+    VkImage m_depthImage;
+    VkDeviceMemory m_depthImageMemory;
+    VkImageView m_depthImageView;
 
     VkDescriptorSetLayout m_vkDescriptorSetLayout;			// 描述符集合配置，在渲染管线创建时指定
     VkDescriptorPool m_vkDescriptorPool;					// 描述符池，存放描述符
@@ -194,6 +198,7 @@ private:
     void CreateDescriptorSets();
     void CreateDescriptorPool();
     void CreateRenderPass();
+    void CreateDepthResource();
     void CreateGraphicsPipeline();
     void CreateFrameBuffer();
     void CreateCommandPool();
