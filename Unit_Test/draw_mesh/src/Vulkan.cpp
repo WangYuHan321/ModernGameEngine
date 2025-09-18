@@ -2,13 +2,14 @@
 
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_image.h>
+#include <tiny_gltf.h>
+
 
 /** 顶点数据positions和colors*/
 const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {0.0f, 0.0f, 1.0f}, {0.0f, 1.0f}},
+    {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
+    {{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
+    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
     {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
 };
 
@@ -126,7 +127,7 @@ void RHIVulkan::InitWindow()
     glfwInit();
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     m_glfwWindow = glfwCreateWindow(1024, 1080, "Learn Vulkan", nullptr, nullptr);
 }
@@ -137,6 +138,7 @@ void RHIVulkan::InitVulkan()
     CreateInstance();//创建Vulkan实例
     SetupDebugMessage();//设置debug
     CreateSurface();//创建Window
+    ReadModelResource();
     PickPhysicalDevice();
     CreateLogicalDevice();
     CreateSwapChain();
@@ -602,6 +604,38 @@ void RHIVulkan::CreateSwapChain()
     m_vkSwapChainExtent = extent;
 }
 
+void RHIVulkan::ReCreateSwapChain()
+{
+    int width = 0, height = 0;
+    glfwGetFramebufferSize(m_glfwWindow, &width, &height);
+    
+    
+    vkDeviceWaitIdle(m_vkDevice);
+    CleanSwapChain();
+    
+    CreateSwapChain();
+    CreateImageViews();
+    CreateFrameBuffer();
+    
+}
+
+void RHIVulkan::CleanSwapChain()
+{
+    vkDestroyImageView(m_vkDevice, m_depthImageView, nullptr);
+    vkDestroyImage(m_vkDevice, m_depthImage, nullptr);
+    vkFreeMemory(m_vkDevice, m_depthImageMemory, nullptr);
+
+    for (auto framebuffer : m_vkSwapChainFrameBuffers) {
+        vkDestroyFramebuffer(m_vkDevice, framebuffer, nullptr);
+    }
+
+    for (auto imageView : m_vkSwapChainImageViews) {
+        vkDestroyImageView(m_vkDevice, imageView, nullptr);
+    }
+
+    vkDestroySwapchainKHR(m_vkDevice, m_vkSwapChain, nullptr);
+}
+
 void RHIVulkan::CreateImageViews()
 {
     m_vkSwapChainImageViews.resize(m_vkSwapChainImages.size());
@@ -628,12 +662,69 @@ void RHIVulkan::CreateImageViews()
     }
 }
 
+static void PrintNodes(const tinygltf::Scene &scene) {
+  for (size_t i = 0; i < scene.nodes.size(); i++) {
+    std::cout << "node.name : " << scene.nodes[i] << std::endl;
+  }
+}
+
+
 void RHIVulkan::ReadModelResource()
 {
-    //tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    tinygltf::Model model;
+    std::string error;
+    std::string warning;
+    loader.LoadASCIIFromFile(&model, &error, &warning, "./mesh/scene.gltf");
     
-    
-    
+    for (const auto& mesh : model.meshes) {
+            for (const auto& primitive : mesh.primitives) {
+                // --- LOAD VERTEX POSITIONS ---
+                if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
+                    const tinygltf::Accessor& accessor = model.accessors[primitive.attributes.at("POSITION")];
+                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+
+                    const float* positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+
+                    std::cout << "Loading " << accessor.count << " vertices..." << std::endl;
+                    for (size_t i = 0; i < accessor.count; i++) {
+                        // Positions are 3-component vectors (x, y, z)
+                        size_t stride = accessor.ByteStride(bufferView);
+                        const float* pos = (const float*)((const char*)positions + i * stride);
+                        //std::cout << "  Vertex " << i << ": (" << pos[0] << ", " << pos[1] << ", " << pos[2] << ")" << std::endl;
+                    }
+                }
+
+                // --- LOAD INDICES ---
+                if (primitive.indices >= 0) {
+                    const tinygltf::Accessor& accessor = model.accessors[primitive.indices];
+                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+
+                    std::cout << "Loading " << accessor.count << " indices..." << std::endl;
+                    
+                    // Get the base pointer to the index data
+                    const uint8_t* indexData = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
+
+                    for (size_t i = 0; i < accessor.count; i++) {
+                        int index = -1;
+                        // Determine the index data type
+                        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+                            index = static_cast<int>(reinterpret_cast<const uint8_t*>(indexData)[i]);
+                        } else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+                            index = static_cast<int>(reinterpret_cast<const uint16_t*>(indexData)[i]);
+                        } else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+                            index = static_cast<int>(reinterpret_cast<const uint32_t*>(indexData)[i]);
+                        }
+
+                        if (index != -1) {
+                           // std::cout << "  Index " << i << ": " << index << std::endl;
+                        }
+                    }
+                }
+            }
+        }
 }
 
 void RHIVulkan::CreateUniformBuffer()
@@ -1039,7 +1130,7 @@ void RHIVulkan::CreateImage(uint32_t width, uint32_t height, VkFormat format, Vk
 void RHIVulkan::CreateTextureImage()
 {
     int texWidth, texHeight, texChannels;
-    stbi_uc* pixels = stbi_load("textures/botw_mifa.png", &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    unsigned char *pixels = stbi_load("textures/screen1.jpg", &texWidth, &texHeight, 0, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels)
@@ -1190,7 +1281,7 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
     renderPassInfo.renderArea.extent = m_vkSwapChainExtent;
 
     std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = { {0.0f, 0.0f, 0.0f, 1.0f} };
+    clearValues[0].color = { {0.2f, 0.3f, 0.5f, 1.0f} };
     clearValues[1].depthStencil = { 1.0f, 0 };
 
     renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
@@ -1446,9 +1537,15 @@ void RHIVulkan::DrawFrame() {
     vkResetFences(m_vkDevice, 1, &m_vkInFlightFences[m_currentFrame]);
 
     uint32_t imageIndex;
-    vkAcquireNextImageKHR(
+    VkResult result =vkAcquireNextImageKHR(
         m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex
     );
+    
+    if(result == VK_ERROR_OUT_OF_DATE_KHR)
+    {
+        ReCreateSwapChain();
+        return;
+    }
 
     UpdateUniformBuffer(m_currentFrame);
 

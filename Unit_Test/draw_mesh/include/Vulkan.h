@@ -192,6 +192,8 @@ private:
     void PickPhysicalDevice();
     void CreateLogicalDevice();
     void CreateSwapChain();
+    void ReCreateSwapChain();
+    void CleanSwapChain();
     void CreateImageViews();
     void ReadModelResource();
     void CreateUniformBuffer();

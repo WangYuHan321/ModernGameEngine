@@ -1,4 +1,7 @@
 #include "Vulkan.h"
+
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
 
 /** 顶点数据positions和colors*/
@@ -138,6 +141,7 @@ void RHIVulkan::InitVulkan()
     CreateLogicalDevice();
     CreateSwapChain();
     CreateImageViews();
+    CreateDepthResource();
     CreateRenderPass();
     CreateUniformBuffer();
     CreateDescriptorSetLayout();
@@ -624,6 +628,14 @@ void RHIVulkan::CreateImageViews()
     }
 }
 
+void RHIVulkan::ReadModelResource()
+{
+    //tinygltf::Model model;
+    
+    
+    
+}
+
 void RHIVulkan::CreateUniformBuffer()
 {
     VkDeviceSize bufferSize = sizeof(UniformBufferObject);
@@ -705,6 +717,14 @@ void RHIVulkan::CreateDescriptorPool()
     if (vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &m_vkDescriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
     }
+}
+
+void RHIVulkan::CreateDepthResource()
+{
+    VkFormat depthFormat = FindDepthFormat();
+    
+    CreateImage(m_vkSwapChainExtent.width, m_vkSwapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_depthImage, m_depthImageMemory);
+    m_depthImageView = CreateImageView(m_depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 void RHIVulkan::CreateRenderPass()
@@ -875,16 +895,17 @@ void RHIVulkan::CreateFrameBuffer()
 
     for (size_t i = 0; i < m_vkSwapChainImageViews.size(); i++)
     {
-        VkImageView attachment[] = {
-            m_vkSwapChainImageViews[i]
+        std::array<VkImageView, 2> attachments = {
+            m_vkSwapChainImageViews[i],
+            m_depthImageView
         };
 
         VkFramebufferCreateInfo frameBufferInfo{};
 
         frameBufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         frameBufferInfo.renderPass = m_vkRenderPass;
-        frameBufferInfo.attachmentCount = 1;
-        frameBufferInfo.pAttachments = attachment;
+        frameBufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        frameBufferInfo.pAttachments = attachments.data();
         frameBufferInfo.width = m_vkSwapChainExtent.width;
         frameBufferInfo.height = m_vkSwapChainExtent.height;
         frameBufferInfo.layers = 1;
@@ -1496,6 +1517,10 @@ void RHIVulkan::Cleanup() {
     vkFreeMemory(m_vkDevice, m_vertBufferMemory, nullptr);
     vkDestroyBuffer(m_vkDevice, m_indexBuffers, nullptr);
     vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
+    
+    vkDestroyImageView(m_vkDevice, m_depthImageView, nullptr);
+    vkDestroyImage(m_vkDevice, m_depthImage, nullptr);
+    vkFreeMemory(m_vkDevice, m_depthImageMemory, nullptr);
     
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyBuffer(m_vkDevice, m_vkUniformBuffers[i], nullptr);

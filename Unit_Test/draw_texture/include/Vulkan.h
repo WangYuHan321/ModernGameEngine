@@ -140,6 +140,10 @@ private:
     VkDeviceMemory m_textureImageMemory;
     VkImageView m_textureImageView;
     VkSampler m_textureSampler;
+    
+    VkImage m_depthImage;
+    VkDeviceMemory m_depthImageMemory;
+    VkImageView m_depthImageView;
 
     VkDescriptorSetLayout m_vkDescriptorSetLayout;            // √Ë ˆ∑˚ºØ∫œ≈‰÷√£¨‘⁄‰÷»æπ‹œﬂ¥¥Ω® ±÷∏∂®
     VkDescriptorPool m_vkDescriptorPool;                    // √Ë ˆ∑˚≥ÿ£¨¥Ê∑≈√Ë ˆ∑˚
@@ -189,10 +193,12 @@ private:
     void CreateLogicalDevice();
     void CreateSwapChain();
     void CreateImageViews();
+    void ReadModelResource();
     void CreateUniformBuffer();
     void CreateDescriptorSets();
     void CreateDescriptorPool();
     void CreateRenderPass();
+    void CreateDepthResource();
     void CreateGraphicsPipeline();
     void CreateFrameBuffer();
     void CreateCommandPool();
