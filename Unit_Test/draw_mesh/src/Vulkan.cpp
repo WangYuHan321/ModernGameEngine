@@ -143,7 +143,7 @@ void RHIVulkan::InitVulkan()
     CreateLogicalDevice();
     CreateSwapChain();
     CreateImageViews();
-    CreateDepthResource();
+    //CreateDepthResource();
     CreateRenderPass();
     CreateUniformBuffer();
     CreateDescriptorSetLayout();
@@ -591,6 +591,7 @@ void RHIVulkan::CreateSwapChain()
     createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
     createInfo.presentMode = presentMode;
     createInfo.clipped = VK_TRUE;
+    createInfo.oldSwapchain = VK_NULL_HANDLE;
 
     if (vkCreateSwapchainKHR(m_vkDevice, &createInfo, nullptr, &m_vkSwapChain) != VK_SUCCESS) {
         throw std::runtime_error("failed to create swap chain!");
@@ -640,6 +641,13 @@ void RHIVulkan::CreateImageViews()
 {
     m_vkSwapChainImageViews.resize(m_vkSwapChainImages.size());
 
+    
+    for(size_t i =0; i< m_vkSwapChainImages.size(); i++)
+    {
+        m_vkSwapChainImageViews[i] = CreateImageView(m_vkSwapChainImages[i], m_vkSwapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
+    }
+    
+    /*
     for (uint32_t i = 0; i < m_vkSwapChainImages.size(); i++) {
         VkImageViewCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -660,6 +668,8 @@ void RHIVulkan::CreateImageViews()
             throw std::runtime_error("failed to create image views!");
         }
     }
+     
+     */
 }
 
 static void PrintNodes(const tinygltf::Scene &scene) {
@@ -905,7 +915,7 @@ void RHIVulkan::CreateGraphicsPipeline()
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-  vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
     vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
     vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
@@ -941,7 +951,9 @@ void RHIVulkan::CreateGraphicsPipeline()
 
     VkPipelineRasterizationStateCreateInfo rasterizer{};
     rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    rasterizer.depthClampEnable = VK_FALSE;
+#ifndef __APPLE__
+    rasterizer.depthClampEnable = VK_TRUE;
+#endif
     rasterizer.rasterizerDiscardEnable = VK_FALSE;
     rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizer.lineWidth = 1.0f;
@@ -978,6 +990,8 @@ void RHIVulkan::CreateGraphicsPipeline()
     depthSencilAttachment.minDepthBounds = 0.0f; // Optional
     depthSencilAttachment.maxDepthBounds = 1.0f; // Optional
     depthSencilAttachment.stencilTestEnable = VK_FALSE; // 没有写轮廓信息，所以跳过轮廓测试
+    depthSencilAttachment.flags = 0;
+    depthSencilAttachment.pNext = nullptr;
     depthSencilAttachment.front = {}; // Optional
     depthSencilAttachment.back = {}; // Optional
     
@@ -1022,6 +1036,7 @@ void RHIVulkan::CreateGraphicsPipeline()
 
 void RHIVulkan::CreateFrameBuffer()
 {
+    CreateDepthResource();
     m_vkSwapChainFrameBuffers.resize(m_vkSwapChainImageViews.size());
 
     for (size_t i = 0; i < m_vkSwapChainImageViews.size(); i++)
@@ -1514,6 +1529,7 @@ void RHIVulkan::CreateCommandBuffers()
         throw std::runtime_error("failed to allocate command buffers!");
     }
 
+    /*
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         VkCommandBufferBeginInfo beginInfo{};
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -1545,6 +1561,7 @@ void RHIVulkan::CreateCommandBuffers()
             throw std::runtime_error("failed to record command buffer!");
         }
     }
+     */
 }
 
 void RHIVulkan::CreateSyncObjects()
@@ -1574,7 +1591,6 @@ void RHIVulkan::CreateSyncObjects()
 
 void RHIVulkan::DrawFrame() {
     vkWaitForFences(m_vkDevice, 1, &m_vkInFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
-    vkResetFences(m_vkDevice, 1, &m_vkInFlightFences[m_currentFrame]);
 
     uint32_t imageIndex;
     VkResult result =vkAcquireNextImageKHR(
@@ -1588,7 +1604,8 @@ void RHIVulkan::DrawFrame() {
     }
 
     UpdateUniformBuffer(m_currentFrame);
-
+    vkResetFences(m_vkDevice, 1, &m_vkInFlightFences[m_currentFrame]);
+    
     vkResetCommandBuffer(m_vkCommandBuffer[m_currentFrame], 0);
     RecordCommandBuffer(m_vkCommandBuffer[m_currentFrame], imageIndex);
 
