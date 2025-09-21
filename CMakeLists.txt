@@ -9,7 +9,8 @@ set(DEP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps)
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui)
 set(GLM_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/glm)
 set(STB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/stb)  
-set(TINYGLTF_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/tinygltf)  
+set(TINYGLTF_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/tinygltf)
+set(GLSLANG_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/glslang/glslang/include)    
 
 if(WIN32)
     message(STATUS "current platform is Window Os !!!")
@@ -33,6 +34,7 @@ add_subdirectory(deps/tinygltf)
 add_subdirectory(Unit_Test/draw_mesh)
 add_subdirectory(Unit_Test/draw_texture)
 add_subdirectory(Unit_Test/draw_triangle)
+#add_subdirectory(Unit_Test/draw_render_base)
 
 
 
