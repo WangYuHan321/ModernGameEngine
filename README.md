@@ -22,12 +22,12 @@ it generate a named "build_xcode" directory, go to it and click project.xcodepro
 
 # Linux
 
-nothing
+Not supported yet
 
 # Android
 
-nothing
+Not supported yet
 
 # IOS
 
-nothing
+Not supported yet
