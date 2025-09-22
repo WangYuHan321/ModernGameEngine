@@ -34,6 +34,10 @@ add_subdirectory(deps/tinygltf)
 add_subdirectory(Unit_Test/draw_mesh)
 add_subdirectory(Unit_Test/draw_texture)
 add_subdirectory(Unit_Test/draw_triangle)
+
+if(WIN32)
+	add_subdirectory(Unit_Test/dx12_triangle)
+endif(WIN32)
 #add_subdirectory(Unit_Test/draw_render_base)
 
 
