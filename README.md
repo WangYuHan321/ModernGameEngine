@@ -26,8 +26,11 @@ Not supported yet
 
 # Android
 
-Not supported yet
+# You must Install Android Studio
+
+use AndroidStudio open android folder .
 
 # IOS
 
-Not supported yet
+open Terminal,cd current project and use it input "bash CMakeBuildIOS.sh"
+it cd named "ios" directory, go to it and click IOSExample.xcodeproj.
