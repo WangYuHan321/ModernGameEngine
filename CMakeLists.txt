@@ -1,5 +1,5 @@
-cmake_minimum_required (VERSION 3.0)
-cmake_policy(VERSION 3.0)
+cmake_minimum_required (VERSION 4.1)
+cmake_policy(VERSION 4.1)
 
 set(CMAKE_CXX_STANDARD 20) # this does nothing for MSVC, use target_compile_options below
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
