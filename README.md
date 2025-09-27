@@ -32,5 +32,7 @@ use AndroidStudio open android folder .
 
 # IOS
 
+Download https://sdk.lunarg.com/sdk/download/latest/mac/vulkan_sdk.dmg and install.
+
 open Terminal,cd current project and use it input "bash CMakeBuildIOS.sh"
 it cd named "ios" directory, go to it and click IOSExample.xcodeproj.
