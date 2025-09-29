@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 apply from: '../gradle/outputfilename.gradle'
 
 android {
-    compileSdk 36
+    compileSdkVersion rootProject.ext.compileSdkVersion
     defaultConfig {
         applicationId "de.saschawillems.vulkanTriangle"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -37,7 +37,7 @@ android {
 
 task copyTask {
     copy {
-        from '../../common/res/drawable'
+        from rootProject.ext.commonPath + 'res/drawable'
         into "src/main/res/drawable"
         include 'icon.png'
     }
@@ -53,8 +53,6 @@ task copyTask {
        into 'assets/shaders/glsl/triangle'
        include '*.*'
     }
-
-
 }
 
 preBuild.dependsOn copyTask

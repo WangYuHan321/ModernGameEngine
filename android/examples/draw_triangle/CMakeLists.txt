@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.10.0 FATAL_ERROR)
 set(NAME draw_triangle)
 
 set(SRC_DIR ../${NAME})
-set(BASE_DIR ../../../base)
+set(BASE_DIR ../base)
 set(DEP_DIR ../../../../deps)
 
 file(GLOB EXAMPLE_SRC "${SRC_DIR}/*.cpp")

@@ -42,6 +42,7 @@ ext {
     minSdkVersion = 21
     targetSdkVersion = 36
     compileSdkVersion = 36
-    shaderPath = '../../../shaders/'
-    assetPath = '../../../assets/'
+	commonPath = '../../common/'
+    shaderPath = '../../common/shaders/'
+    assetPath = '../../common/assets/'
 }
