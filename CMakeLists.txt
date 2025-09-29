@@ -1,5 +1,5 @@
-cmake_minimum_required (VERSION 4.1)
-cmake_policy(VERSION 4.1)
+cmake_minimum_required (VERSION 3.2)
+cmake_policy(VERSION 3.2)
 
 set(CMAKE_CXX_STANDARD 20) # this does nothing for MSVC, use target_compile_options below
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -34,11 +34,12 @@ add_subdirectory(deps/tinygltf)
 add_subdirectory(Unit_Test/draw_mesh)
 add_subdirectory(Unit_Test/draw_texture)
 add_subdirectory(Unit_Test/draw_triangle)
+add_subdirectory(Unit_Test/ResourceManager)
 
 if(WIN32)
 	add_subdirectory(Unit_Test/dx12_triangle)
 endif(WIN32)
-#add_subdirectory(Unit_Test/draw_render_base)
+add_subdirectory(Unit_Test/draw_render_base)
 
 
 
