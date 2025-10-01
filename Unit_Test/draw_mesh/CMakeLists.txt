@@ -36,6 +36,8 @@ set(SRC_FILES
 	${SOURCE_FILES}
 	${INCLUDE_HFILES}
 	${IMGUI_SRC}
+	${IMGUI_DIR}/backends/imgui_impl_glfw.cpp
+	${IMGUI_DIR}/backends/imgui_impl_vulkan.cpp
 	main.cpp
 	)
 
