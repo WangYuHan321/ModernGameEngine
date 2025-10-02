@@ -621,8 +621,8 @@ void RHIVulkan::CreateRenderPass()
 
 void RHIVulkan::CreateGraphicsPipeline()
 {
-    auto vertShaderCode = readFile("./shader/drawTriangle_v.spv");
-    auto fragShaderCode = readFile("./shader/drawTriangle_f.spv");
+    auto vertShaderCode = readFile("./Asset/shader/glsl/triangle/triangle.vert.spv");
+    auto fragShaderCode = readFile("./Asset/shader/glsl/triangle/triangle.frag.spv");
 
     VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);

@@ -52,6 +52,11 @@ link_directories(
   ${VK_SDK_PATH}/Lib
 )
 
+
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../../Asset" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Debug")
+
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../../Asset" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Release")
+
 add_executable(draw_texture ${SRC_FILES})
 
 if(WIN32)

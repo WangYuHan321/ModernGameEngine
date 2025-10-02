@@ -56,6 +56,10 @@ link_directories(
 
 add_executable(draw_mesh ${SRC_FILES})
 
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../../Asset" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Debug")
+
+file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../../Asset" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Release")
+
 if(WIN32)
 	target_link_libraries(draw_mesh PRIVATE ${DEPENDENCY_FILES})	
 endif(WIN32)

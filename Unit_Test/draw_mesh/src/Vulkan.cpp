@@ -685,7 +685,7 @@ void RHIVulkan::ReadModelResource()
     tinygltf::Model model;
     std::string error;
     std::string warning;
-    loader.LoadASCIIFromFile(&model, &error, &warning, "./mesh/scene.gltf");
+    loader.LoadASCIIFromFile(&model, &error, &warning, "./Asset/mesh/Avocado/Avocado.gltf");
     
     for (const auto& mesh : model.meshes) {
             for (const auto& primitive : mesh.primitives) {
@@ -890,8 +890,8 @@ void RHIVulkan::CreateRenderPass()
 
 void RHIVulkan::CreateGraphicsPipeline()
 {
-    auto vertShaderCode = readFile("./shader/draw_texture_v.spv");
-    auto fragShaderCode = readFile("./shader/draw_texture_f.spv");
+    auto vertShaderCode = readFile("./Asset/shader/glsl/draw_texture/draw_with_texture.vert.spv");
+    auto fragShaderCode = readFile("./Asset/shader/glsl/draw_texture/draw_with_texture.frag.spv");
 
     VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
@@ -1185,7 +1185,7 @@ void RHIVulkan::CreateImage(uint32_t width, uint32_t height, VkFormat format, Vk
 void RHIVulkan::CreateTextureImage()
 {
     int texWidth, texHeight, texChannels;
-    unsigned char *pixels = stbi_load("textures/screen1.jpg", &texWidth, &texHeight, 0, STBI_rgb_alpha);
+    unsigned char *pixels = stbi_load("./Asset/texture/CesiumLogoFlat.png", &texWidth, &texHeight, 0, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels)
