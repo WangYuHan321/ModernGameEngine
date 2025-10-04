@@ -37,7 +37,7 @@ android {
 
 task copyTask {
     copy {
-        from rootProject.ext.commonPath + 'res/drawable'
+        from rootProject.ext.assetPath + 'res/icon'
         into "src/main/res/drawable"
         include 'icon.png'
     }
