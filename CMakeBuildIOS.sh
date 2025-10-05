@@ -6,10 +6,10 @@ export srcIconPath=$curPath/Asset/res/icon
 export dstIconPath=$curPath/ios/ios/Resource
 
 export srcPath=$curPath/Asset
-export dstPath=$curPath/ios/Asset
+export dstPath=$curPath/ios
 
 cp ${srcIconPath}/*.* ${dstIconPath}
-cp ${srcPath}/*.* ${dstPath}
+cp -r ${srcPath} ${dstPath}
 
 
 cd ios
