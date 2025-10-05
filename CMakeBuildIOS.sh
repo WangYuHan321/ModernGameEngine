@@ -1,4 +1,17 @@
 #mkdir ios
+
+export curPath=${PWD}
+
+export srcIconPath=$curPath/Asset/res/icon
+export dstIconPath=$curPath/ios/ios/Resource
+
+export srcPath=$curPath/Asset
+export dstPath=$curPath/ios/Asset
+
+cp ${srcIconPath}/*.* ${dstIconPath}
+cp ${srcPath}/*.* ${dstPath}
+
+
 cd ios
 cmake -GXcode -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=x86_64 \
   -DWEBP_BUILD_DWEBP=0 -DWEBP_BUILD_CWEBP=0 \

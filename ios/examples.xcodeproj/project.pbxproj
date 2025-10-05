@@ -76,6 +76,7 @@
 		29B97314FDCFA39411CA2CEA /* CustomTemplate */ = {
 			isa = PBXGroup;
 			children = (
+				846CBCF22E924778003B9E7A /* Asset */,
 				A9BC9B1B1EE8421F00384233 /* MVKExample.h */,
 				A9BC9B1A1EE8421F00384233 /* MVKExample.cpp */,
 				A9B67B6A1C3AAE9800373FFD /* iOS */,
@@ -93,6 +94,13 @@
 				A9ADEC601B6EC2EB00DBA48C /* iOS */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		846CBCF22E924778003B9E7A /* Asset */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Asset;
 			sourceTree = "<group>";
 		};
 		A9ADEC601B6EC2EB00DBA48C /* iOS */ = {
