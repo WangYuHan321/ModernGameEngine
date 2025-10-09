@@ -1,4 +1,4 @@
-file(GLOB BASE_SRC "./*.cpp" "../../../../dps/imgui/*.cpp")
+file(GLOB BASE_SRC "./*.cpp" "./*.h" "./*.hpp" "../../../../dps/imgui/*.cpp")
 
 add_library(libbase SHARED ${BASE_SRC})
 
