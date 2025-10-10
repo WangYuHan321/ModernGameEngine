@@ -43,6 +43,7 @@ set(SRC_FILES
 
 include_directories( BEFORE
 	${DEP_DIR}
+	${IMGUI_DIR}
 	${STB_INCLUDE_DIR}
 	${CMAKE_CURRENMT}
 	${GLM_INCLUDE_DIR}
