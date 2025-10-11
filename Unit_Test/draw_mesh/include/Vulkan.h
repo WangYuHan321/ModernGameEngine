@@ -21,50 +21,340 @@
 #include <set>
 #include <array>
 
-struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
+
+#define VIEWPORT_VIEW 1080
+#define VIEWPORT_HEIGHT 720
+#define VERTEX_BUFFER_BIND_ID 0
+#define INSTANCE_BUFFER_BIND_ID 1
+
+
+struct InstanceData
+{
+    glm::vec3 InstancePosition;
+    glm::vec3 InstanceRotation;
+    float InstancePScale;
+    glm::uint8 InstanceTexIndex;
 };
 
-struct Vertex {
-    glm::vec3 pos;
-    glm::vec3 color;
-    glm::vec2 texCoord;
+/** 物体的MVP矩阵信息*/
+struct UniformBufferObject {
+    glm::mat4 Model;
+    glm::mat4 View;
+    glm::mat4 Proj;
+};
 
-    static VkVertexInputBindingDescription getBindingDescription() {
+/** 顶点数据存储结构*/
+struct Vertex {
+    glm::vec3 Position;
+    glm::vec3 Normal;
+    glm::vec3 Color;
+    glm::vec2 TexCoord;
+
+    // 顶点描述
+    static VkVertexInputBindingDescription GetBindingDescription() {
         VkVertexInputBindingDescription bindingDescription{};
-        bindingDescription.binding = 0;
+        bindingDescription.binding = VERTEX_BUFFER_BIND_ID;
         bindingDescription.stride = sizeof(Vertex);
         bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
         return bindingDescription;
     }
 
-    static std::array<VkVertexInputAttributeDescription, 3> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 3> attributeDescriptions{};
+    static std::array<VkVertexInputAttributeDescription, 4> GetAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
 
-        attributeDescriptions[0].binding = 0;
+        attributeDescriptions[0].binding = VERTEX_BUFFER_BIND_ID;
         attributeDescriptions[0].location = 0;
         attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[0].offset = offsetof(Vertex, pos);
+        attributeDescriptions[0].offset = offsetof(Vertex, Position);
 
-        attributeDescriptions[1].binding = 0;
+        attributeDescriptions[1].binding = VERTEX_BUFFER_BIND_ID;
         attributeDescriptions[1].location = 1;
         attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
+        attributeDescriptions[1].offset = offsetof(Vertex, Normal);
 
-        attributeDescriptions[2].binding = 0;
+        attributeDescriptions[2].binding = VERTEX_BUFFER_BIND_ID;
         attributeDescriptions[2].location = 2;
-        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+        attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(Vertex, Color);
+
+        attributeDescriptions[3].binding = VERTEX_BUFFER_BIND_ID;
+        attributeDescriptions[3].location = 3;
+        attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[3].offset = offsetof(Vertex, TexCoord);
 
         return attributeDescriptions;
     }
+
+    // 顶点描述，带Instance
+    static std::array<VkVertexInputBindingDescription, 2> GetBindingInstancedDescriptions() {
+        VkVertexInputBindingDescription bindingDescription0{};
+        bindingDescription0.binding = VERTEX_BUFFER_BIND_ID;
+        bindingDescription0.stride = sizeof(Vertex);
+        bindingDescription0.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+        VkVertexInputBindingDescription bindingDescription1{};
+        bindingDescription1.binding = INSTANCE_BUFFER_BIND_ID;
+        bindingDescription1.stride = sizeof(InstanceData);
+        bindingDescription1.inputRate = VK_VERTEX_INPUT_RATE_INSTANCE;
+
+        return { bindingDescription0, bindingDescription1 };
+    }
+
+    static std::array<VkVertexInputAttributeDescription, 8> GetAttributeInstancedDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 8> attributeDescriptions{};
+
+        attributeDescriptions[0].binding = VERTEX_BUFFER_BIND_ID;
+        attributeDescriptions[0].location = 0;
+        attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[0].offset = offsetof(Vertex, Position);
+
+        attributeDescriptions[1].binding = VERTEX_BUFFER_BIND_ID;
+        attributeDescriptions[1].location = 1;
+        attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[1].offset = offsetof(Vertex, Normal);
+
+        attributeDescriptions[2].binding = VERTEX_BUFFER_BIND_ID;
+        attributeDescriptions[2].location = 2;
+        attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(Vertex, Color);
+
+        attributeDescriptions[3].binding = VERTEX_BUFFER_BIND_ID;
+        attributeDescriptions[3].location = 3;
+        attributeDescriptions[3].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[3].offset = offsetof(Vertex, TexCoord);
+
+        attributeDescriptions[4].binding = INSTANCE_BUFFER_BIND_ID;
+        attributeDescriptions[4].location = 4;
+        attributeDescriptions[4].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[4].offset = offsetof(InstanceData, InstancePosition);
+
+        attributeDescriptions[5].binding = INSTANCE_BUFFER_BIND_ID;
+        attributeDescriptions[5].location = 5;
+        attributeDescriptions[5].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[5].offset = offsetof(InstanceData, InstanceRotation);
+
+        attributeDescriptions[6].binding = INSTANCE_BUFFER_BIND_ID;
+        attributeDescriptions[6].location = 6;
+        attributeDescriptions[6].format = VK_FORMAT_R32_SFLOAT;
+        attributeDescriptions[6].offset = offsetof(InstanceData, InstancePScale);
+
+        attributeDescriptions[7].binding = INSTANCE_BUFFER_BIND_ID;
+        attributeDescriptions[7].location = 7;
+        attributeDescriptions[7].format = VK_FORMAT_R8_UINT;
+        attributeDescriptions[7].offset = offsetof(InstanceData, InstanceTexIndex);
+
+        return attributeDescriptions;
+    }
+
+    bool operator==(const Vertex& other) const {
+        return Position == other.Position && Normal == other.Normal && Color == other.Color && TexCoord == other.TexCoord;
+    }
 };
 
+struct InstanceMesh
+{
+    std::vector<Vertex> Vertices;
+    std::vector<uint32_t> Indices;
+    VkBuffer VertexBuffer;
+    VkDeviceMemory VertexBufferMemory;                
+    VkBuffer IndexBuffer;                              
+    VkDeviceMemory IndexBufferMemory;                  
+
+    // only init with instanced mesh
+    VkBuffer InstancedBuffer;                            // Instanced buffer
+    VkDeviceMemory InstancedBufferMemory;                // Instanced buffer memory
+};
+
+struct Mesh
+{
+    std::vector<Vertex> Vertices;
+    std::vector<uint32_t> Indices;
+    VkBuffer VertexBuffer;
+    VkDeviceMemory VertexBufferMemory;
+    VkBuffer IndexBuffer;
+    VkDeviceMemory IndexBufferMemory;
+};
+
+struct Material
+{
+    std::vector<VkImage> TextureImages;                  
+    std::vector<VkDeviceMemory> TextureImageMemorys;     
+    std::vector<VkImageView> TextureImageViews;         
+    std::vector<VkSampler> TextureSamplers;  
+
+    VkDescriptorPool DescriptorPool;
+    std::vector<VkDescriptorSet> DescriptorSets;
+};
+
+struct RenderInstanceObject 
+{
+    Material mat;
+    InstanceMesh MeshData;
+    uint32_t InstanceCount;
+};
+
+struct RenderObject
+{
+    Material mat;
+    Mesh meshData;
+};
+
+struct RenderIndirectObject
+{
+    VkBuffer IndirectBuffer;                            // Indirect buffer
+    VkDeviceMemory IndirectBufferMemory;                // Indirect buffer memory
+    std::vector<VkDrawIndexedIndirectCommand> IndirectCommands;
+};
+
+struct RenderIndirectInstancedObject
+{
+    VkBuffer IndirectBuffer;                            // Indirect buffer
+    VkDeviceMemory IndirectBufferMemory;                // Indirect buffer memory
+    std::vector<VkDrawIndexedIndirectCommand> IndirectCommands;
+    uint32_t InstanceCount;
+};
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
+
+struct GeometryBuffer
+{
+    //depth
+    VkFormat DepthStencilFormat;
+	VkImage DepthStencilImage;
+	VkDeviceMemory DepthStencilMemory;
+	VkImageView DepthStencilView;
+	VkSampler DepthStencilSampler;
+    
+    //SceneCOlor
+    VkFormat SceneColorFormat;
+    VkImage SceneColorImage;
+    VkDeviceMemory SceneColorMemory;
+    VkImageView SceneColorImageView;
+    VkSampler SceneColorSampler;
+
+	//GBUFFER Normal
+    VkFormat GBufferAFormat;
+    VkImage GBufferAImage;
+    VkDeviceMemory GBufferAMemory;
+    VkImageView GBufferAImageView;
+    VkSampler GBufferASampler;
+
+
+    // Metallic + Roughness + Reflect
+    VkFormat GBufferBFormat;
+    VkImage GBufferBImage;
+    VkDeviceMemory GBufferBMemory;
+    VkImageView GBufferBImageView;
+    VkSampler GBufferBSampler;
+    
+    // BaseColor+AO
+    VkFormat GBufferCFormat;
+    VkImage GBufferCImage;
+    VkDeviceMemory GBufferCMemory;
+    VkImageView GBufferCImageView;
+    VkSampler GBufferCSampler;
+
+    // Position+ID
+    VkFormat GBufferDFormat;
+    VkImage GBufferDImage;
+    VkDeviceMemory GBufferDMemory;
+    VkImageView GBufferDImageView;
+    VkSampler GBufferDSampler;
+};
+
+struct ShadowPass
+{
+    std::vector<RenderObject*> renderObjects;
+	std::vector<RenderInstanceObject*> renderInstanceObjects;
+	std::vector<RenderIndirectObject*> renderIndirectObjects;
+	std::vector<RenderIndirectInstancedObject*> renderIndirectInstancedObjects;
+
+    float zNear, zFar;
+    int32_t Width, Height;
+    VkFormat Format;
+	VkFramebuffer FrameBuffer;
+    VkRenderPass RenderPass;
+    VkImage Image;
+    VkDeviceMemory Memory;
+    VkImageView ImageView;
+    VkSampler Sampler;
+	VkDescriptorSetLayout DescriptionSetLayout;
+	VkDescriptorPool DescriptorPool;
+	VkPipelineLayout PipelineLayout;
+	VkPipeline Pipeline;
+    VkPipeline PipelineInstanced;
+    std::vector<VkDescriptorSet> DescriptorSets;
+    std::vector<VkBuffer> UniformBuffers;
+	std::vector<VkDeviceMemory> UniformBuffersMemory;
+};
+
+class BackgroundPass
+{
+    VkImage Image;
+    VkImageView ImageView;
+    VkDeviceMemory Memory;
+    VkSampler Sampler;
+    VkRenderPass RenderPass;
+	VkDescriptorSetLayout DescriptorSetLayout;
+    VkDescriptorPool DescriptorPool;
+	std::vector<VkDescriptorSet> DescriptorSets;
+    VkPipelineLayout PipelineLayout;
+	VkPipeline PipelineInstanced;
+	std::vector<VkPipeline> Pipelines;
+} ;
+
+class SkyboxPass
+{
+    VkImage Image;
+    VkImageView ImageView;
+    VkDeviceMemory Memory;
+    VkSampler Sampler;
+    VkRenderPass RenderPass;
+    VkDescriptorSetLayout DescriptorSetLayout;
+    VkDescriptorPool DescriptorPool;
+    std::vector<VkDescriptorSet> DescriptorSets;
+    VkPipelineLayout PipelineLayout;
+    VkPipeline PipelineInstanced;
+    std::vector<VkPipeline> Pipelines;
+};
+
+struct BaseScenePass
+{
+    std::vector<RenderObject> RenderObjects;
+    std::vector<RenderInstanceObject> RenderInstanceObjects;
+	VkDescriptorSetLayout DescriptorSetLayout;
+	VkPipelineLayout PipelineLayout;
+	std::vector<VkPipeline> Pipelines;
+	std::vector<VkPipeline> PipelinesInstanced;
+};
+
+struct BaseSceneIndirectPass
+{
+    std::vector<RenderIndirectObject> RenderIndirectObjects;
+    std::vector<RenderIndirectInstancedObject> RenderIndirectInstanceObjects;
+    VkDescriptorSetLayout DescriptorSetLayout;
+    VkPipelineLayout PipelineLayout;
+    std::vector<VkPipeline> Pipelines;
+    std::vector<VkPipeline> PipelinesInstanced;
+};
+
+struct BaseSceneDeferredRenderingPass
+{
+    std::vector<RenderObject> RenderObjects;					// 待渲染的物体
+    std::vector<RenderInstanceObject> RenderInstanceObjects;	// 待渲染的物体
+    VkDescriptorSetLayout SceneDescriptorSetLayout;				// 描述符集合布局
+    VkPipelineLayout ScenePipelineLayout;						// 渲染管线布局
+    std::vector<VkPipeline> ScenePipelines;						// 渲染管线
+    std::vector<VkPipeline> ScenePipelinesInstanced;			// 渲染管线
+    VkFramebuffer SceneFrameBuffer;
+    VkRenderPass SceneRenderPass;
+    VkDescriptorSetLayout LightingDescriptorSetLayout;
+    VkDescriptorPool LightingDescriptorPool;
+    std::vector<VkDescriptorSet> LightingDescriptorSets;
+    VkPipelineLayout LightingPipelineLayout;
+    std::vector<VkPipeline> LightingPipelines;
+};
 
 class RHIVulkan
 {
@@ -99,6 +389,9 @@ private:
     VkInstance m_vkInstance;
     VkDevice m_vkDevice;
     VkDebugUtilsMessengerEXT m_debugMessenger; //Debug
+
+	RenderObject m_renderObject;
+    ShadowPass m_shadowmapPass;
 
     std::vector<VkCommandBuffer> m_commandBuffers;
     std::vector<VkSemaphore> m_vkImageAvailableSemaphores;    // 图像是否完成的信号
@@ -206,11 +499,23 @@ private:
     void CreateCommandPool();
     void CreateDescriptorSetLayout();
 
+    void CreateGeometry(std::vector<Vertex>&outVert, std::vector<uint32_t>& outIndice, const std::string& fileName);
+    void CreateShadowmapPass();
+	void CreateBaseScenePass();
+
     void UpdateUniformBuffer(uint32_t currentImage);
 
     void CreateTextureImage();
     void CreateTextureImageView();
     void CreateTextureSampler();
+    void CreateSampler(
+        VkSampler& outSampler,
+        const VkFilter filter = VK_FILTER_LINEAR,
+        const VkSamplerAddressMode addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        const VkSamplerAddressMode addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        const VkSamplerAddressMode addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        const VkBorderColor borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+        const uint32_t miplevels = 1);
     void TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout);
     void CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height);
     VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags);

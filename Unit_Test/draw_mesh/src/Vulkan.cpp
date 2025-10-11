@@ -4,19 +4,7 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
 
-
-/** 顶点数据positions和colors*/
-const std::vector<Vertex> vertices = {
-    {{-0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f}},
-    {{0.5f, -0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.0f}},
-    {{0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {0.0f, 1.0f}},
-    {{-0.5f, 0.5f, 0.0f}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}},
-};
-
-/** 顶点点序数据indices*/
-const std::vector<uint32_t> indices = {
-    0, 1, 2, 2, 3, 0,
-};
+#define SHADOW_DIM 1024
 
 // 接收调试信息的回调函数：必须加上那两个宏定义，才能确保被Vulkan库调用
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
@@ -138,11 +126,11 @@ void RHIVulkan::InitVulkan()
     CreateInstance();//创建Vulkan实例
     SetupDebugMessage();//设置debug
     CreateSurface();//创建Window
-    ReadModelResource();
     PickPhysicalDevice();
     CreateLogicalDevice();
     CreateSwapChain();
     CreateImageViews();
+    CreateBaseScenePass();
     //CreateDepthResource();
     CreateRenderPass();
     CreateUniformBuffer();
@@ -154,8 +142,6 @@ void RHIVulkan::InitVulkan()
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
-    CreateVertexBuffer(m_vertBuffers, m_vertBufferMemory, vertices);
-    CreateIndexBuffer(m_indexBuffers, m_indexBufferMemory, indices);
     CreateDescriptorPool();
     CreateDescriptorSets();
     CreateSyncObjects();
@@ -844,11 +830,11 @@ void RHIVulkan::CreateRenderPass()
     VkAttachmentDescription depthAttachment{};
     depthAttachment.format = FindDepthFormat();
     depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference colorAttachmentRef = {};
@@ -866,8 +852,8 @@ void RHIVulkan::CreateRenderPass()
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
     VkSubpassDependency dependency = {};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;//无依赖关系 "如果srcSubpass等于VK_SUBPASS_EXTERNAL，则第一个同步范围包括vkCmdBeginRenderPass用于开始渲染通道实例之前的提交顺序中发生的命令。
+    dependency.dstSubpass = 0;//无依赖关系
     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency.srcAccessMask = 0;
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
@@ -910,8 +896,8 @@ void RHIVulkan::CreateGraphicsPipeline()
 
     VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
 
-    auto bindingDescription = Vertex::getBindingDescription();
-    auto attributeDescriptions = Vertex::getAttributeDescriptions();
+    auto bindingDescription = Vertex::GetBindingDescription();
+    auto attributeDescriptions = Vertex::GetAttributeDescriptions();
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -1077,6 +1063,397 @@ void RHIVulkan::CreateCommandPool()
     }
 }
 
+void RHIVulkan::CreateGeometry(std::vector<Vertex>& outVert, std::vector<uint32_t>& outIndice, const std::string& fileName)
+{
+    tinygltf::TinyGLTF loader;
+    tinygltf::Model model;
+    std::string error;
+    std::string warning;
+    loader.LoadASCIIFromFile(&model, &error, &warning, fileName);
+
+    for (const auto& mesh : model.meshes) {
+        for (const auto& primitive : mesh.primitives) {
+            std::vector<Vertex> vertex = {};
+            std::vector<uint32_t> vertexIndex = {};
+            // --- LOAD VERTEX POSITIONS ---
+            if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
+                const tinygltf::Accessor& accessorPos = model.accessors[primitive.attributes.at("POSITION")];
+                const tinygltf::BufferView& bufferViewPos = model.bufferViews[accessorPos.bufferView];
+                const tinygltf::Buffer& bufferPos = model.buffers[bufferViewPos.buffer];
+
+                const float* positions = reinterpret_cast<const float*>(&bufferPos.data[bufferViewPos.byteOffset + accessorPos.byteOffset]);
+
+                std::cout << "Loading " << accessorPos.count << " vertices..." << std::endl;
+
+                if (vertex.size() == 0) vertex.resize(accessorPos.count);
+                for (size_t i = 0; i < accessorPos.count; i++) {
+                    // Positions are 3-component vectors (x, y, z)
+                    size_t stride = accessorPos.ByteStride(bufferViewPos);
+                    const float* pos = (const float*)((const char*)positions + i * stride);
+					vertex[i].Position = {pos[0], pos[1], pos[2]};
+                }
+            }
+
+            if (primitive.attributes.find("NORMAL") != primitive.attributes.end()) {
+                const tinygltf::Accessor& accessorNor = model.accessors[primitive.attributes.at("NORMAL")];
+                const tinygltf::BufferView& bufferViewNor = model.bufferViews[accessorNor.bufferView];
+                const tinygltf::Buffer& bufferNor = model.buffers[bufferViewNor.buffer];
+
+                const float* normals = reinterpret_cast<const float*>(&bufferNor.data[bufferViewNor.byteOffset + accessorNor.byteOffset]);
+
+                std::cout << "Loading " << accessorNor.count << " normals..." << std::endl;
+                for (size_t i = 0; i < accessorNor.count; i++) {
+                    // Positions are 3-component vectors (x, y, z)
+                    size_t stride = accessorNor.ByteStride(bufferViewNor);
+                    const float* pos = (const float*)((const char*)normals + i * stride);
+					vertex[i].Normal = {pos[0], pos[1], pos[2]};
+                }
+            }
+
+            if (primitive.attributes.find("COLOR") != primitive.attributes.end()) {
+                const tinygltf::Accessor& accessorNor = model.accessors[primitive.attributes.at("COLOR")];
+                const tinygltf::BufferView& bufferViewNor = model.bufferViews[accessorNor.bufferView];
+                const tinygltf::Buffer& bufferNor = model.buffers[bufferViewNor.buffer];
+
+                const float* normals = reinterpret_cast<const float*>(&bufferNor.data[bufferViewNor.byteOffset + accessorNor.byteOffset]);
+
+                std::cout << "Loading " << accessorNor.count << " colors..." << std::endl;
+                for (size_t i = 0; i < accessorNor.count; i++) {
+                    // Positions are 3-component vectors (x, y, z)
+                    size_t stride = accessorNor.ByteStride(bufferViewNor);
+                    const float* pos = (const float*)((const char*)normals + i * stride);
+                    vertex[i].Color = {pos[0], pos[1], pos[2]};
+                }
+            }
+
+            // --- LOAD INDICES ---
+            if (primitive.indices >= 0) {
+                const tinygltf::Accessor& accessor = model.accessors[primitive.indices];
+                const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+
+                std::cout << "Loading " << accessor.count << " indices..." << std::endl;
+
+                // Get the base pointer to the index data
+                const uint8_t* indexData = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
+
+                if (vertexIndex.size() == 0) vertexIndex.resize(accessor.count);
+
+                for (size_t i = 0; i < accessor.count; i++) {
+                    int index = -1;
+                    // Determine the index data type
+                    if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+                        index = static_cast<int>(reinterpret_cast<const uint8_t*>(indexData)[i]);
+                    }
+                    else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+                        index = static_cast<int>(reinterpret_cast<const uint16_t*>(indexData)[i]);
+                    }
+                    else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+                        index = static_cast<int>(reinterpret_cast<const uint32_t*>(indexData)[i]);
+                    }
+
+                    if (index != -1) {
+                        vertexIndex[i] = index;
+                    }
+                }
+            }
+            outVert = (vertex);
+			outIndice = (vertexIndex);
+        }
+    }
+}
+
+void RHIVulkan::CreateShadowmapPass()
+{
+    m_shadowmapPass.Width = SHADOW_DIM;
+	m_shadowmapPass.Height = SHADOW_DIM;
+	m_shadowmapPass.Format = FindDepthFormat();
+    CreateImage(m_shadowmapPass.Width, m_shadowmapPass.Height, m_shadowmapPass.Format, VK_IMAGE_TILING_OPTIMAL, 
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,m_shadowmapPass.Image, m_shadowmapPass.Memory);
+    m_shadowmapPass.ImageView = CreateImageView(m_shadowmapPass.Image, m_shadowmapPass.Format, VK_IMAGE_ASPECT_DEPTH_BIT);
+    CreateSampler(m_shadowmapPass.Sampler,
+        VK_FILTER_LINEAR,
+        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
+
+	// create uniform buffer for shadowmap
+    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+    m_shadowmapPass.UniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+	m_shadowmapPass.UniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    for(size_t i= 0;i<MAX_FRAMES_IN_FLIGHT;i++)
+    {
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_shadowmapPass.UniformBuffers[i], m_shadowmapPass.UniformBuffersMemory[i]);
+	}
+
+    //create descriptorsetlayout
+	VkDescriptorSetLayoutBinding uboLayoutBinding{};
+	uboLayoutBinding.binding = 0;
+	uboLayoutBinding.descriptorCount = 1;
+	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	uboLayoutBinding.pImmutableSamplers = nullptr;
+	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	std::array<VkDescriptorSetLayoutBinding, 1> bindings = { uboLayoutBinding };
+	VkDescriptorSetLayoutCreateInfo layoutInfo{};
+	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+	layoutInfo.pBindings = bindings.data();
+    if (vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_shadowmapPass.DescriptionSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+
+	//create descriptorpool
+	std::array<VkDescriptorPoolSize, 1> poolSizes{};
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+	VkDescriptorPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	poolInfo.pPoolSizes = poolSizes.data();
+	poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    if (vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &m_shadowmapPass.DescriptorPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+	}
+
+	//create descriptorsets
+	std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_shadowmapPass.DescriptionSetLayout);
+	VkDescriptorSetAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = m_shadowmapPass.DescriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+	allocInfo.pSetLayouts = layouts.data();
+    m_shadowmapPass.DescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkAllocateDescriptorSets(m_vkDevice, &allocInfo, m_shadowmapPass.DescriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+
+    // binding desc
+    for (size_t i = 0;i < MAX_FRAMES_IN_FLIGHT;i++)
+    {
+        std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
+		VkDescriptorBufferInfo bufferInfo{};
+        bufferInfo.buffer = m_shadowmapPass.UniformBuffers[i];
+		bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(UniformBufferObject);
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = m_shadowmapPass.DescriptorSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorCount = 1;
+		descriptorWrites[0].pBufferInfo = &bufferInfo;
+        vkUpdateDescriptorSets(m_vkDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    }
+
+    VkAttachmentDescription attachmentDescription{};
+	attachmentDescription.format = m_shadowmapPass.Format;
+	attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+    attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
+
+	VkAttachmentReference depthReference{};
+	depthReference.attachment = 0;
+	depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subPass{};
+    subPass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subPass.colorAttachmentCount = 0;
+    subPass.pDepthStencilAttachment = &depthReference;
+
+	//use subpass dependency for layout transition
+    std::array<VkSubpassDependency, 2> dependencies;
+
+    dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[0].dstSubpass = 0;
+    //  srcStageMask 表示同步的起始管线阶段
+    dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    //  dstStageMask表示同步的终止管线阶段。
+    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    //  着色器对附件以外的读取操作 源访问操作
+    dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    //  对深度模板附件的写入操作 目标访问操作
+    dependencies[0].dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    dependencies[1].srcSubpass = 0;
+    dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+    dependencies[1].srcStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+    dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    dependencies[1].srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    dependencies[1].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
+
+    VkRenderPassCreateInfo renderPassCreateInfo{};
+    renderPassCreateInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    renderPassCreateInfo.attachmentCount = 1;
+    renderPassCreateInfo.pAttachments = &attachmentDescription;
+    renderPassCreateInfo.subpassCount = 1;
+    renderPassCreateInfo.pSubpasses = &subPass;
+    renderPassCreateInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
+    renderPassCreateInfo.pDependencies = dependencies.data();
+
+
+    if (vkCreateRenderPass(m_vkDevice, &renderPassCreateInfo, nullptr, &m_shadowmapPass.RenderPass))
+    {
+        throw std::runtime_error("failed to create shadow map render pass !");
+    }
+
+    //create frame buffer
+    VkFramebufferCreateInfo bufCreateInfo{};
+    bufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    bufCreateInfo.renderPass = m_shadowmapPass.RenderPass;
+    bufCreateInfo.attachmentCount = 1;
+    bufCreateInfo.width = m_shadowmapPass.Width;
+    bufCreateInfo.height = m_shadowmapPass.Height;
+    bufCreateInfo.layers = 1;
+
+    if (vkCreateFramebuffer(m_vkDevice, &bufCreateInfo, nullptr, &m_shadowmapPass.FrameBuffer))
+    {
+        throw std::runtime_error("failed to create shadow map frame buffer !");
+    }
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI{};
+    inputAssemblyStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssemblyStateCI.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssemblyStateCI.primitiveRestartEnable = VK_FALSE;
+    VkPipelineRasterizationStateCreateInfo rasterizationStateCI{};
+    rasterizationStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizationStateCI.depthClampEnable = VK_FALSE;
+    rasterizationStateCI.rasterizerDiscardEnable = VK_FALSE;
+    rasterizationStateCI.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizationStateCI.lineWidth = 1.0f;
+    rasterizationStateCI.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizationStateCI.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizationStateCI.depthBiasEnable = VK_FALSE;
+    VkPipelineColorBlendAttachmentState blendAttachmentState{};
+    blendAttachmentState.colorWriteMask = 0xf;
+    blendAttachmentState.blendEnable = VK_FALSE;
+    VkPipelineColorBlendStateCreateInfo colorBlendState{};
+    colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlendState.logicOpEnable = VK_FALSE;
+    colorBlendState.attachmentCount = 1;
+    colorBlendState.pAttachments = &blendAttachmentState;
+    colorBlendState.blendConstants[0] = 0.0f;
+    colorBlendState.blendConstants[1] = 0.0f;
+    colorBlendState.blendConstants[2] = 0.0f;
+    colorBlendState.blendConstants[3] = 0.0f;
+    VkPipelineDepthStencilStateCreateInfo depthStencilState{};
+    depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencilState.depthTestEnable = VK_TRUE;
+    depthStencilState.depthWriteEnable = VK_TRUE;
+    depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    depthStencilState.depthBoundsTestEnable = VK_FALSE;
+    depthStencilState.minDepthBounds = 0.0f;
+    depthStencilState.maxDepthBounds = 1.0f;
+    depthStencilState.stencilTestEnable = VK_FALSE;
+    depthStencilState.front = {};
+    depthStencilState.back = {};
+    VkPipelineViewportStateCreateInfo viewportState{};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+    VkPipelineMultisampleStateCreateInfo multiSampleState{};
+    multiSampleState.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multiSampleState.sampleShadingEnable = VK_FALSE;
+    multiSampleState.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+    std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
+    dynamicState.pDynamicStates = dynamicStateEnables.data();
+
+    auto vertShaderCode = readFile("");
+    auto fragShaderCode = readFile("");
+
+    VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
+    VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo , fragShaderStageInfo };
+
+    VkPipelineVertexInputStateCreateInfo vertexInput{};
+    auto bindingDesc = Vertex::GetBindingDescription();
+    auto attrDesc = Vertex::GetAttributeDescriptions();
+    vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+    vertexInput.vertexBindingDescriptionCount = 1;
+    vertexInput.vertexAttributeDescriptionCount = static_cast<uint32_t>(attrDesc.size());
+    vertexInput.pVertexBindingDescriptions = &bindingDesc;
+    vertexInput.pVertexAttributeDescriptions = attrDesc.data();
+
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &m_shadowmapPass.DescriptionSetLayout;
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+
+    if (vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &m_shadowmapPass.PipelineLayout))
+    {
+        throw std::runtime_error("failed to create pipelinelayout !");
+    }
+
+    VkGraphicsPipelineCreateInfo pipelineCI{};
+    pipelineCI.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineCI.stageCount = 2;
+    pipelineCI.pStages = shaderStages;
+    pipelineCI.pVertexInputState = &vertexInput;
+    pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
+    pipelineCI.pViewportState = &viewportState;
+    pipelineCI.pRasterizationState = &rasterizationStateCI;
+    pipelineCI.pMultisampleState = &multiSampleState;
+    pipelineCI.pDepthStencilState = &depthStencilState; // 加上深度测试
+    pipelineCI.pColorBlendState = &colorBlendState;
+    pipelineCI.pDynamicState = &dynamicState;
+    pipelineCI.layout = m_shadowmapPass.PipelineLayout;
+    pipelineCI.renderPass = m_vkRenderPass;
+    pipelineCI.subpass = 0;
+    pipelineCI.basePipelineHandle = VK_NULL_HANDLE;
+
+    // Offscreen pipeline (vertex shader only)
+    //shaderStages[0] = loadShader(getShadersPath() + "shadowmapping/offscreen.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    pipelineCI.stageCount = 1;
+    // No blend attachment states (no color attachments used)
+    colorBlendState.attachmentCount = 0;
+    // Disable culling, so all faces contribute to shadows
+    rasterizationStateCI.cullMode = VK_CULL_MODE_NONE;
+    depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    // Enable depth bias
+    rasterizationStateCI.depthBiasEnable = VK_TRUE;
+    // Add depth bias to dynamic state, so we can change it at runtime
+    dynamicStateEnables.push_back(VK_DYNAMIC_STATE_DEPTH_BIAS);
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
+    dynamicState.pDynamicStates = dynamicStateEnables.data();
+
+    pipelineCI.renderPass = m_shadowmapPass.RenderPass;
+
+    if (vkCreateGraphicsPipelines(m_vkDevice, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &m_shadowmapPass.Pipeline) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create graphics pipeline!");
+    }
+
+    vkDestroyShaderModule(m_vkDevice, fragShaderModule, nullptr);
+    vkDestroyShaderModule(m_vkDevice, vertShaderModule, nullptr);
+}
+
+void RHIVulkan::CreateBaseScenePass()
+{
+    CreateGeometry(m_renderObject.meshData.Vertices, m_renderObject.meshData.Indices, "./Asset/mesh/Avocado/Avocado.gltf");
+}
+
 void RHIVulkan::CreateDescriptorSetLayout()
 {
     VkDescriptorSetLayoutBinding uniformLayoutBingding{};
@@ -1113,10 +1490,10 @@ void RHIVulkan::UpdateUniformBuffer(uint32_t currentImage)
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
     UniformBufferObject ubo{};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), m_vkSwapChainExtent.width / (float)m_vkSwapChainExtent.height, 0.1f, 10.0f);
-    ubo.proj[1][1] *= -1;
+    ubo.Model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    ubo.View = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    ubo.Proj = glm::perspective(glm::radians(45.0f), m_vkSwapChainExtent.width / (float)m_vkSwapChainExtent.height, 0.1f, 10.0f);
+    ubo.Proj[1][1] *= -1;
 
     void* data;
     vkMapMemory(m_vkDevice, m_vkUniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
@@ -1248,6 +1625,42 @@ void RHIVulkan::CreateTextureSampler()
     }
 }
 
+void RHIVulkan::CreateSampler(
+    VkSampler& outSampler,
+    const VkFilter filter,
+    const VkSamplerAddressMode addressModeU,
+    const VkSamplerAddressMode addressModeV,
+    const VkSamplerAddressMode addressModeW,
+    const VkBorderColor borderColor,
+    const uint32_t miplevels)
+{
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(m_physicalDevice, &properties);
+
+    VkSamplerCreateInfo samplerInfo{};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = filter;
+    samplerInfo.minFilter = filter;
+    samplerInfo.addressModeU = addressModeU;
+    samplerInfo.addressModeV = addressModeV;
+    samplerInfo.addressModeW = addressModeW;
+    // 可在此处关闭各项异性，有些硬件可能不支持
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    samplerInfo.borderColor = borderColor;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = static_cast<float>(miplevels);
+    samplerInfo.mipLodBias = 0.0f;
+
+    if (vkCreateSampler(m_vkDevice, &samplerInfo, nullptr, &outSampler) != VK_SUCCESS) {
+        throw std::runtime_error("failed to Create texture sampler!");
+    }
+}
+
 void RHIVulkan::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
 {
     VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
@@ -1365,12 +1778,7 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
     scissor.extent = m_vkSwapChainExtent;
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vkPipeLineLayout, 0, 1, &m_vkDescriptorSets[m_currentFrame], 0, nullptr);
 
-    // 如果顶点就按照传入的顶点渲染，使用vkCmdDraw
-    // vkCmdDraw(commandBuffer, static_cast<uint32_t>(vertices.size()), 1, 0, 0);
-    // 如果顶点需要按照点序渲染，使用vkCmdDrawIndexed
-    vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
 
     vkCmdEndRenderPass(commandBuffer);
 
