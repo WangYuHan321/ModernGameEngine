@@ -9,14 +9,14 @@
 #include <vector>
 #include <sstream>
 
-bool vks::debug::logToFile { false };
-std::string vks::debug::logFileName { "android_log.txt" };
+bool Render::Vulkan::debug::logToFile { false };
+std::string Render::Vulkan::debug::logFileName { "android_log.txt" };
 
 PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
 PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
 VkDebugUtilsMessengerEXT debugUtilsMessenger;
 
-VKAPI_ATTR VkBool32 VKAPI_CALL vks::debug::DebugUtilsMessageCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::debug::DebugUtilsMessageCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -91,7 +91,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL vks::debug::DebugUtilsMessageCallback(
     return VK_FALSE;
 }
 
-void vks::debug::SetupDebugging(VkInstance instance)
+void Render::Vulkan::debug::SetupDebugging(VkInstance instance)
 {
     vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
     vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
@@ -102,7 +102,7 @@ void vks::debug::SetupDebugging(VkInstance instance)
     assert(result == VK_SUCCESS);
 }
 
-void vks::debug::FreeDebugCallback(VkInstance instance)
+void Render::Vulkan::debug::FreeDebugCallback(VkInstance instance)
 {
     if (debugUtilsMessenger != VK_NULL_HANDLE)
     {
@@ -110,7 +110,7 @@ void vks::debug::FreeDebugCallback(VkInstance instance)
     }
 }
 
-void vks::debug::SetupDebugingMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& debugUtilsMessengerCI)
+void Render::Vulkan::debug::SetupDebugingMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& debugUtilsMessengerCI)
 {
     debugUtilsMessengerCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debugUtilsMessengerCI.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -118,7 +118,7 @@ void vks::debug::SetupDebugingMessengerCreateInfo(VkDebugUtilsMessengerCreateInf
     debugUtilsMessengerCI.pfnUserCallback = DebugUtilsMessageCallback;
 }
 
-void vks::debug::Log(std::string message)
+void Render::Vulkan::debug::Log(std::string message)
 {
     if (logToFile) {
         time_t timestamp;
@@ -134,14 +134,14 @@ PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT{ nullptr };
 PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT{ nullptr };
 PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT{ nullptr };
 
-void vks::debugutils::Setup(VkInstance instance)
+void Render::Vulkan::debugutils::Setup(VkInstance instance)
 {
     vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
     vkCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
     vkCmdInsertDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdInsertDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdInsertDebugUtilsLabelEXT"));
 }
 
-void vks::debugutils::CmdBeginLabel(VkCommandBuffer cmdbuffer, std::string caption, glm::vec4 color)
+void Render::Vulkan::debugutils::CmdBeginLabel(VkCommandBuffer cmdbuffer, std::string caption, glm::vec4 color)
 {
     if (!vkCmdBeginDebugUtilsLabelEXT) {
         return;
@@ -153,7 +153,7 @@ void vks::debugutils::CmdBeginLabel(VkCommandBuffer cmdbuffer, std::string capti
     vkCmdBeginDebugUtilsLabelEXT(cmdbuffer, &labelInfo);
 }
 
-void vks::debugutils::CmdEndLabel(VkCommandBuffer cmdbuffer)
+void Render::Vulkan::debugutils::CmdEndLabel(VkCommandBuffer cmdbuffer)
 {
     if (!vkCmdEndDebugUtilsLabelEXT) {
         return;

@@ -1,8 +1,16 @@
-file(GLOB BASE_SRC "./*.cpp" "./*.h" "./*.hpp" "../../../../dps/imgui/*.cpp")
+file(GLOB BASE_SRC "../../../dps/imgui/*.cpp" "./*.h" "./*.cpp")
 
-add_library(libbase SHARED ${BASE_SRC})
+file(GLOB RENDER_SRC "../../../Render/*.h" "../../../Render/*.cpp" "../../../Render/*.hpp")
+file(GLOB VULKAN_SRC "../../../Render/Vulkan/*.h" "../../../Render/Vulkan/*.cpp" "../../../Render/Vulkan*.hpp")
 
-set (LIB_INC ${BASE_DIR}
+add_library(libbase SHARED ${BASE_SRC} ${RENDER_SRC} ${VULKAN_SRC})
+
+SOURCE_GROUP(Render FILES  ${RENDER_SRC})
+SOURCE_GROUP(Render/Vulkan FILES  ${VULKAN_SRC})
+
+set (LIB_INC
+		${CMAKE_CURRENT_SOURCE_DIR}
+		${CMAKE_CURRENT_BINARY_DIR}
 		../../../deps
 		../../../deps/glm
 		../../../deps/stb

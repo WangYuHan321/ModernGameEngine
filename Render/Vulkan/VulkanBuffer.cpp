@@ -4,12 +4,12 @@
 #include "VulkanAndroid.h"
 #include "VulkanBuffer.h"
 
-VkResult vks::Buffer::Map(VkDeviceSize size, VkDeviceSize offset)
+VkResult Render::Vulkan::Buffer::Map(VkDeviceSize size, VkDeviceSize offset)
 {
     return vkMapMemory(device, memory, offset, size, 0, &mapped);
 }
 
-void vks::Buffer::UnMap()
+void Render::Vulkan::Buffer::UnMap()
 {
     if(mapped)
     {
@@ -18,25 +18,25 @@ void vks::Buffer::UnMap()
     }
 }
 
-VkResult vks::Buffer::Bind(VkDeviceSize offset)
+VkResult Render::Vulkan::Buffer::Bind(VkDeviceSize offset)
 {
     return vkBindBufferMemory(device, buffer, memory, offset);
 }
 
-void vks::Buffer::SetupDescriptor(VkDeviceSize size, VkDeviceSize offset)
+void Render::Vulkan::Buffer::SetupDescriptor(VkDeviceSize size, VkDeviceSize offset)
 {
     descriptor.offset = offset;
     descriptor.range = size;
     descriptor.buffer = buffer;
 }
 
-void vks::Buffer::CopyTo(void* data, VkDeviceSize size)
+void Render::Vulkan::Buffer::CopyTo(void* data, VkDeviceSize size)
 {
     if(!mapped) return;
     memcpy(mapped, data, size);
 }
 
-VkResult vks::Buffer::Flush(VkDeviceSize size, VkDeviceSize offset )
+VkResult Render::Vulkan::Buffer::Flush(VkDeviceSize size, VkDeviceSize offset )
 {
     VkMappedMemoryRange mappedRange{
         .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
@@ -48,7 +48,7 @@ VkResult vks::Buffer::Flush(VkDeviceSize size, VkDeviceSize offset )
     return vkFlushMappedMemoryRanges(device, 1, &mappedRange);
 }
 
-VkResult vks::Buffer::Invalidate(VkDeviceSize size, VkDeviceSize offset)
+VkResult Render::Vulkan::Buffer::Invalidate(VkDeviceSize size, VkDeviceSize offset)
 {
     VkMappedMemoryRange mappedRange{
             .sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE,
@@ -59,7 +59,7 @@ VkResult vks::Buffer::Invalidate(VkDeviceSize size, VkDeviceSize offset)
     return vkInvalidateMappedMemoryRanges(device, 1, &mappedRange);
 }
 
-void vks::Buffer::Destroy()
+void Render::Vulkan::Buffer::Destroy()
 {
     if(buffer)
     {

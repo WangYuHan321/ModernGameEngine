@@ -130,20 +130,20 @@ void RHIVulkan::InitVulkan()
     CreateLogicalDevice();
     CreateSwapChain();
     CreateImageViews();
-    CreateBaseScenePass();
     //CreateDepthResource();
     CreateRenderPass();
     CreateUniformBuffer();
-    CreateDescriptorSetLayout();
     CreateGraphicsPipeline();
     CreateFrameBuffer();
     CreateCommandPool();
     CreateCommandBuffers();
+
+    CreateShadowmapPass();
+    CreateBaseScenePass();
+
     CreateTextureImage();
     CreateTextureImageView();
     CreateTextureSampler();
-    CreateDescriptorPool();
-    CreateDescriptorSets();
     CreateSyncObjects();
 }
 
@@ -737,6 +737,19 @@ void RHIVulkan::CreateUniformBuffer()
         // 这里会导致 memory stack overflow，不应该在这里 vkMapMemory
         //vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
     }
+
+    bufferSize = sizeof(UniformBufferView);
+
+    m_vkViewUniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+    m_vkViewUniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_vkViewUniformBuffers[i], m_vkViewUniformBuffersMemory[i]);
+
+        // 这里会导致 memory stack overflow，不应该在这里 vkMapMemory
+        //vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+    }
 }
 
 void RHIVulkan::CreateDescriptorSets()
@@ -1063,7 +1076,7 @@ void RHIVulkan::CreateCommandPool()
     }
 }
 
-void RHIVulkan::CreateGeometry(std::vector<Vertex>& outVert, std::vector<uint32_t>& outIndice, const std::string& fileName)
+void RHIVulkan::CreateGeometry(std::vector<RenderObject>& outRenderObj, const std::string& fileName)
 {
     tinygltf::TinyGLTF loader;
     tinygltf::Model model;
@@ -1071,6 +1084,7 @@ void RHIVulkan::CreateGeometry(std::vector<Vertex>& outVert, std::vector<uint32_
     std::string warning;
     loader.LoadASCIIFromFile(&model, &error, &warning, fileName);
 
+    //texture model.textures
     for (const auto& mesh : model.meshes) {
         for (const auto& primitive : mesh.primitives) {
             std::vector<Vertex> vertex = {};
@@ -1157,8 +1171,10 @@ void RHIVulkan::CreateGeometry(std::vector<Vertex>& outVert, std::vector<uint32_
                     }
                 }
             }
-            outVert = (vertex);
-			outIndice = (vertexIndex);
+            RenderObject renderObjectTemp;
+            renderObjectTemp.meshData.Vertices = vertex;
+            renderObjectTemp.meshData.Indices = vertexIndex;
+            outRenderObj.push_back(renderObjectTemp);
         }
     }
 }
@@ -1309,6 +1325,7 @@ void RHIVulkan::CreateShadowmapPass()
     bufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     bufCreateInfo.renderPass = m_shadowmapPass.RenderPass;
     bufCreateInfo.attachmentCount = 1;
+	bufCreateInfo.pAttachments = &m_shadowmapPass.ImageView;
     bufCreateInfo.width = m_shadowmapPass.Width;
     bufCreateInfo.height = m_shadowmapPass.Height;
     bufCreateInfo.layers = 1;
@@ -1368,8 +1385,8 @@ void RHIVulkan::CreateShadowmapPass()
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
     dynamicState.pDynamicStates = dynamicStateEnables.data();
 
-    auto vertShaderCode = readFile("");
-    auto fragShaderCode = readFile("");
+    auto vertShaderCode = readFile("./Asset/shader/glsl/draw_mesh/draw_mesh_shadow_vert.spv");
+    auto fragShaderCode = readFile("./Asset/shader/glsl/draw_mesh/draw_mesh_shadow_frag.spv");
 
     VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
@@ -1451,7 +1468,664 @@ void RHIVulkan::CreateShadowmapPass()
 
 void RHIVulkan::CreateBaseScenePass()
 {
-    CreateGeometry(m_renderObject.meshData.Vertices, m_renderObject.meshData.Indices, "./Asset/mesh/Avocado/Avocado.gltf");
+    CreateDescriptorSetLayout(m_baseScenePass.DescriptorSetLayout, 3);
+
+    m_baseScenePass.Pipelines.resize(1);
+    CreateGraphicsPipeline(m_baseScenePass.PipelineLayout,
+        m_baseScenePass.Pipelines, 0,
+        m_baseScenePass.DescriptorSetLayout,
+        "./Asset/shader/glsl/draw_mesh/draw_mesh_base_vert.spv",
+        "./Asset/shader/glsl/draw_mesh/draw_mesh_base_frag.spv");
+
+    CreateGeometry(m_baseScenePass.RenderObjects, "./Asset/mesh/Avocado/Avocado.gltf");
+    std::vector<std::string> pngFiles;
+    pngFiles.push_back("./Asset/mesh/Avocado/Avocado_baseColor.png");
+    pngFiles.push_back("./Asset/mesh/Avocado/Avocado_normal.png");
+    pngFiles.push_back("./Asset/mesh/Avocado/Avocado_roughnessMetallic.png");
+
+    m_baseScenePass.RenderObjects[0].mat.TextureImageViews.resize(pngFiles.size());
+    m_baseScenePass.RenderObjects[0].mat.TextureSamplers.resize(pngFiles.size());
+    m_baseScenePass.RenderObjects[0].mat.TextureImages.resize(pngFiles.size());
+    m_baseScenePass.RenderObjects[0].mat.TextureImageMemorys.resize(pngFiles.size());
+    m_baseScenePass.RenderObjects[0].mat.TextureSamplers.resize(pngFiles.size());
+
+    for (int i = 0;i < pngFiles.size(); i++)
+    {
+        CreateImageContext(m_baseScenePass.RenderObjects[0].mat.TextureImages[i], m_baseScenePass.RenderObjects[0].mat.TextureImageMemorys[0],
+            m_baseScenePass.RenderObjects[0].mat.TextureImageViews[i], m_baseScenePass.RenderObjects[0].mat.TextureSamplers[i], pngFiles[i], true);
+    }
+
+    int i = 0;
+    for (auto item : m_baseScenePass.RenderObjects)
+    {
+        CreateVertexBuffer(item.meshData.VertexBuffer, item.meshData.VertexBufferMemory, item.meshData.Vertices);
+        CreateIndexBuffer(item.meshData.IndexBuffer, item.meshData.IndexBufferMemory, item.meshData.Indices);
+        CreateDescriptorPool(item.mat.DescriptorPool, 4);
+        CreateDescriptorSets(item.mat.DescriptorSets, item.mat.DescriptorPool, m_baseScenePass.DescriptorSetLayout, item.mat.TextureImageViews, item.mat.TextureSamplers);
+        i++;
+    }
+
+
+}
+
+static stbi_uc* readTextureAsset(const std::string& filename, int& texWidth, int& texHeight, int& texChannels, int& mipLevels)
+{
+    stbi_hdr_to_ldr_scale(2.2f);
+    stbi_uc* pixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    stbi_hdr_to_ldr_scale(1.0f);
+    mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+    if (!pixels) {
+        throw std::runtime_error("failed to load texture image!");
+        assert(true);
+    }
+    return pixels;
+}
+
+void RHIVulkan::GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
+{
+    // 检查图像格式是否支持 linear blitting
+    VkFormatProperties formatProperties;
+    vkGetPhysicalDeviceFormatProperties(m_physicalDevice, imageFormat, &formatProperties);
+
+    if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
+        throw std::runtime_error("texture image format does not support linear blitting!");
+    }
+
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.image = image;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.levelCount = 1;
+
+    int32_t mipWidth = texWidth;
+    int32_t mipHeight = texHeight;
+
+    for (uint32_t i = 1; i < mipLevels; i++) {
+        barrier.subresourceRange.baseMipLevel = i - 1;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+        vkCmdPipelineBarrier(commandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier);
+
+        VkImageBlit blit{};
+        blit.srcOffsets[0] = { 0, 0, 0 };
+        blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+        blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.srcSubresource.mipLevel = i - 1;
+        blit.srcSubresource.baseArrayLayer = 0;
+        blit.srcSubresource.layerCount = 1;
+        blit.dstOffsets[0] = { 0, 0, 0 };
+        blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+        blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.dstSubresource.mipLevel = i;
+        blit.dstSubresource.baseArrayLayer = 0;
+        blit.dstSubresource.layerCount = 1;
+
+        vkCmdBlitImage(commandBuffer,
+            image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            1, &blit,
+            VK_FILTER_LINEAR);
+
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        vkCmdPipelineBarrier(commandBuffer,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &barrier);
+
+        if (mipWidth > 1) mipWidth /= 2;
+        if (mipHeight > 1) mipHeight /= 2;
+    }
+
+    barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+    vkCmdPipelineBarrier(commandBuffer,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier);
+
+    EndSingleTimeCommandBuffer(commandBuffer);
+}
+
+void RHIVulkan::CreateImage(
+    VkImage& outImage,
+    VkDeviceMemory& OutImageMemory,
+    const uint32_t width, const uint32_t height, const VkFormat format,
+    const VkImageTiling tiling, const VkImageUsageFlags usage,
+    const VkMemoryPropertyFlags properties, const uint32_t miplevels)
+{
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.format = format;
+    imageInfo.tiling = tiling;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = usage;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    imageInfo.arrayLayers = 1;
+    imageInfo.mipLevels = miplevels;
+
+    if (vkCreateImage(m_vkDevice, &imageInfo, nullptr, &outImage) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create image!");
+    }
+
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(m_vkDevice, outImage, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+
+    if (vkAllocateMemory(m_vkDevice, &allocInfo, nullptr, &OutImageMemory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate image memory!");
+    }
+
+    vkBindImageMemory(m_vkDevice, outImage, OutImageMemory, 0);
+}
+
+void RHIVulkan::CreateImageView(
+    VkImageView& outImageView,
+    const VkImage& inImage,
+    const VkFormat inFormat,
+    const VkImageAspectFlags aspectFlags,
+    const uint32_t levelCount)
+{
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = inImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = inFormat;
+    viewInfo.subresourceRange.aspectMask = aspectFlags; // VK_IMAGE_ASPECT_COLOR_BIT 颜色 VK_IMAGE_ASPECT_DEPTH_BIT 深度
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = levelCount;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    if (vkCreateImageView(m_vkDevice, &viewInfo, nullptr, &outImageView) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create texture image view!");
+    }
+}
+
+void RHIVulkan::CreateImageContext(
+    VkImage& outImage,
+    VkDeviceMemory& outMemory,
+    VkImageView& outImageView,
+    VkSampler& outSampler,
+    const std::string& filename, bool sRGB)
+{
+    int texWidth, texHeight, texChannels, mipLevels;
+    stbi_uc* pixels = readTextureAsset(filename, texWidth, texHeight, texChannels, mipLevels);
+
+    VkDeviceSize imageSize = texWidth * texHeight * 4;
+
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingBufferMemory;
+    CreateBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, stagingBuffer, stagingBufferMemory);
+
+    void* data;
+    vkMapMemory(m_vkDevice, stagingBufferMemory, 0, imageSize, 0, &data);
+    memcpy(data, pixels, static_cast<size_t>(imageSize));
+    vkUnmapMemory(m_vkDevice, stagingBufferMemory);
+
+    // 清理pixels数据结构
+    stbi_image_free(pixels);
+
+    VkFormat format = sRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
+    // VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT 告诉Vulkan这张贴图即要被读也要被写
+    CreateImage(
+        outImage,
+        outMemory,
+        texWidth, texHeight, format,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, mipLevels);
+
+    TransitionImageLayout(outImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, mipLevels);
+    CopyBufferToImage(stagingBuffer, outImage, static_cast<uint32_t>(texWidth), static_cast<uint32_t>(texHeight));
+    //transitionImageLayout(outImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+    vkDestroyBuffer(m_vkDevice, stagingBuffer, nullptr);
+    vkFreeMemory(m_vkDevice, stagingBufferMemory, nullptr);
+
+    GenerateMipmaps(outImage, format, texWidth, texHeight, mipLevels);
+
+    CreateImageView(outImageView, outImage, format, VK_IMAGE_ASPECT_COLOR_BIT, mipLevels);
+    CreateSampler(outSampler,
+        VK_FILTER_LINEAR,
+        VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        VK_SAMPLER_ADDRESS_MODE_REPEAT,
+        VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+        mipLevels);
+}
+
+void RHIVulkan::TransitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t miplevels)
+{
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
+
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = oldLayout;
+    barrier.newLayout = newLayout;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = miplevels;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+
+    VkPipelineStageFlags sourceStage;
+    VkPipelineStageFlags destinationStage;
+
+    if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
+        barrier.srcAccessMask = 0;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+    }
+    else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+        sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+        destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else {
+        throw std::invalid_argument("unsupported layout transition!");
+    }
+
+    vkCmdPipelineBarrier(
+        commandBuffer,
+        sourceStage, destinationStage,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier
+    );
+
+    EndSingleTimeCommandBuffer(commandBuffer);
+}
+
+void RHIVulkan::CreateDescriptorSets(std::vector<VkDescriptorSet>& outDescriptorSets, const VkDescriptorPool& inDescriptorPool, const VkDescriptorSetLayout& inDescriptorSetLayout, const std::vector<VkImageView>& inImageViews, const std::vector<VkSampler>& inSamplers)
+{
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, inDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = inDescriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    allocInfo.pSetLayouts = layouts.data();
+
+    outDescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
+    if (vkAllocateDescriptorSets(m_vkDevice, &allocInfo, outDescriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate descriptor sets!");
+    }
+
+    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+
+        uint32_t write_size = static_cast<uint32_t>(inImageViews.size()) + 3; // 这里加2为 UniformBuffer 的个数
+        std::vector<VkWriteDescriptorSet> descriptorWrites{};
+        descriptorWrites.resize(write_size);
+
+        // 绑定 UnifromBuffer
+        VkDescriptorBufferInfo baseBufferInfo{};
+        baseBufferInfo.buffer = m_vkUniformBuffers[i];
+        baseBufferInfo.offset = 0;
+        baseBufferInfo.range = sizeof(UniformBufferObject);
+
+        descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[0].dstSet = outDescriptorSets[i];
+        descriptorWrites[0].dstBinding = 0;
+        descriptorWrites[0].dstArrayElement = 0;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorCount = 1;
+        descriptorWrites[0].pBufferInfo = &baseBufferInfo;
+
+        // 绑定 UnifromBuffer
+        VkDescriptorBufferInfo viewBufferInfo{};
+        viewBufferInfo.buffer = m_vkViewUniformBuffers[i];
+        viewBufferInfo.offset = 0;
+        viewBufferInfo.range = sizeof(UniformBufferView);
+
+        descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[1].dstSet = outDescriptorSets[i];
+        descriptorWrites[1].dstBinding = 1;
+        descriptorWrites[1].dstArrayElement = 0;
+        descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[1].descriptorCount = 1;
+        descriptorWrites[1].pBufferInfo = &viewBufferInfo;
+
+
+        VkDescriptorImageInfo shadowmapImageInfo{};
+        shadowmapImageInfo.imageLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+        shadowmapImageInfo.imageView = m_shadowmapPass.ImageView;
+        shadowmapImageInfo.sampler = m_shadowmapPass.Sampler;
+
+        descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrites[2].dstSet = outDescriptorSets[i];
+        descriptorWrites[2].dstBinding = 3;
+        descriptorWrites[2].dstArrayElement = 0;
+        descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        descriptorWrites[2].descriptorCount = 1;
+        descriptorWrites[2].pImageInfo = &shadowmapImageInfo;
+
+        // 绑定 Textures
+        // descriptorWrites会引用每一个创建的VkDescriptorImageInfo，所以需要用一个数组把它们存储起来
+        std::vector<VkDescriptorImageInfo> imageInfos;
+        imageInfos.resize(inImageViews.size());
+        for (size_t j = 0; j < inImageViews.size(); j++)
+        {
+            VkDescriptorImageInfo imageInfo{};
+            imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+            imageInfo.imageView = inImageViews[j];
+            imageInfo.sampler = inSamplers[j];
+            imageInfos[j] = imageInfo;
+
+            descriptorWrites[j + 3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[j + 3].dstSet = outDescriptorSets[i];
+            descriptorWrites[j + 3].dstBinding = static_cast<uint32_t>(j + 4);
+            descriptorWrites[j + 3].dstArrayElement = 0;
+            descriptorWrites[j + 3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            descriptorWrites[j + 3].descriptorCount = 1;
+            descriptorWrites[j + 3].pImageInfo = &imageInfos[j]; // 注意，这里是引用了VkDescriptorImageInfo，所有需要创建imageInfos这个数组，存储所有的imageInfo而不是使用局部变量imageInfo
+        }
+
+        vkUpdateDescriptorSets(m_vkDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+    }
+}
+
+void RHIVulkan::CreateDescriptorPool(VkDescriptorPool& outDescriptorPool, uint32_t sampler_num )
+{
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    poolSizes.resize(sampler_num + 2); // 这里3是2个UniformBuffer和一个环境Cubemap贴图
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    for (size_t i = 0; i < sampler_num; i++)
+    {
+        poolSizes[i + 2].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[i + 2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    }
+
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+
+    if (vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &outDescriptorPool) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor pool!");
+    }
+}
+
+void RHIVulkan::CreateDescriptorSetLayout(VkDescriptorSetLayout& outDescriptorSetLayout, uint32_t sampler_number)
+{
+    // UnifromBufferObject（ubo）绑定
+    VkDescriptorSetLayoutBinding baseUBOLayoutBinding{};
+    baseUBOLayoutBinding.binding = 0;
+    baseUBOLayoutBinding.descriptorCount = 1;
+    baseUBOLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    baseUBOLayoutBinding.pImmutableSamplers = nullptr;
+    baseUBOLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+    // UnifromBufferObject（ubo）绑定
+    VkDescriptorSetLayoutBinding viewUBOLayoutBinding{};
+    viewUBOLayoutBinding.binding = 1;
+    viewUBOLayoutBinding.descriptorCount = 1;
+    viewUBOLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    viewUBOLayoutBinding.pImmutableSamplers = nullptr;
+    viewUBOLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; // view ubo 主要信息用于 fragment shader
+
+    // 环境反射Cubemap贴图绑定
+    VkDescriptorSetLayoutBinding cubemapLayoutBinding{};
+    cubemapLayoutBinding.binding = 2;
+    cubemapLayoutBinding.descriptorCount = 1;
+    cubemapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    cubemapLayoutBinding.pImmutableSamplers = nullptr;
+    cubemapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    VkDescriptorSetLayoutBinding shadowmapLayoutBinding{};
+    shadowmapLayoutBinding.binding = 3;
+    shadowmapLayoutBinding.descriptorCount = 1;
+    shadowmapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    shadowmapLayoutBinding.pImmutableSamplers = nullptr;
+    shadowmapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+    // 将UnifromBufferObject和贴图采样器绑定到DescriptorSetLayout上
+    std::vector<VkDescriptorSetLayoutBinding> bindings;
+    bindings.resize(sampler_number + 4); // 这里3是2个UniformBuffer和1个环境Cubemap贴图
+    bindings[0] = baseUBOLayoutBinding;
+    bindings[1] = viewUBOLayoutBinding;
+    bindings[2] = cubemapLayoutBinding;
+    bindings[3] = shadowmapLayoutBinding;
+    for (size_t i = 0; i < sampler_number; i++)
+    {
+        VkDescriptorSetLayoutBinding samplerLayoutBinding{};
+        samplerLayoutBinding.binding = static_cast<uint32_t>(i + 4);
+        samplerLayoutBinding.descriptorCount = 1;
+        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerLayoutBinding.pImmutableSamplers = nullptr;
+        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        bindings[i + 4] = samplerLayoutBinding;
+    }
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
+
+
+    if (vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &outDescriptorSetLayout) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create descriptor set layout!");
+    }
+}
+
+void RHIVulkan::CreateGraphicsPipeline(VkPipelineLayout& outPipelineLayout,
+    std::vector<VkPipeline>& outPipelines,
+    const uint32_t specConstantsCount,
+    const VkDescriptorSetLayout& inDescriptorSetLayout,
+    const std::string& vert_filename,
+    const std::string& frag_filename,
+    const VkBool32 bDepthTest,
+    const VkCullModeFlags CullMode)
+{
+    auto vertShaderCode = readFile(vert_filename);
+    auto fragShaderCode = readFile(frag_filename);
+
+    VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
+    VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
+
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo{};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo{};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+    // 顶点缓存绑定的描述，定义了顶点都需要绑定什么数据，比如第一个位置绑定Position，第二个位置绑定Color，第三个位置绑定UV等
+    auto bindingDescription = Vertex::GetBindingDescription();
+    auto attributeDescriptions = Vertex::GetAttributeDescriptions();
+
+    // 渲染管线VertexBuffer输入
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+    if (bDepthTest == VK_FALSE && CullMode == VK_CULL_MODE_NONE) // 如果不做深度检测并且不做背面剔除，那么认为是渲染背景，不需要绑定VBO
+    {
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputInfo.vertexBindingDescriptionCount = 0;
+        vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    }
+    else // 正常VBO渲染绑定
+    {
+        vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+        vertexInputInfo.vertexBindingDescriptionCount = 1;
+        vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+        vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+        vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+    }
+
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    VkPipelineViewportStateCreateInfo viewportState{};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.scissorCount = 1;
+
+    VkPipelineRasterizationStateCreateInfo rasterizer{};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    // 关闭背面剔除，使得材质TwoSide渲染
+    rasterizer.cullMode = CullMode /*VK_CULL_MODE_BACK_BIT*/;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+
+    VkPipelineMultisampleStateCreateInfo multisampling{};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+
+    // 打开深度测试
+    VkPipelineDepthStencilStateCreateInfo depthStencil{};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = bDepthTest; //VK_TRUE;
+    depthStencil.depthWriteEnable = bDepthTest; //VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.minDepthBounds = 0.0f; // Optional
+    depthStencil.maxDepthBounds = 1.0f; // Optional
+    depthStencil.stencilTestEnable = VK_FALSE; // 没有写轮廓信息，所以跳过轮廓测试
+    depthStencil.front = {}; // Optional
+    depthStencil.back = {}; // Optional
+
+    VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+
+    VkPipelineColorBlendStateCreateInfo colorBlending{};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f;
+    colorBlending.blendConstants[1] = 0.0f;
+    colorBlending.blendConstants[2] = 0.0f;
+    colorBlending.blendConstants[3] = 0.0f;
+
+    std::vector<VkDynamicState> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR
+    };
+    VkPipelineDynamicStateCreateInfo dynamicState{};
+    dynamicState.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+    dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
+    dynamicState.pDynamicStates = dynamicStates.data();
+
+    // 设置 push constants
+    VkPushConstantRange pushConstant;
+    // 这个PushConstant的范围从头开始
+    pushConstant.offset = 0;
+    pushConstant.size = sizeof(GlobalConstants);
+    // 这是个全局PushConstant，所以希望各个着色器都能访问到
+    pushConstant.stageFlags = VK_SHADER_STAGE_ALL;
+
+    // 在渲染管线创建时，指定DescriptorSetLayout，用来传UniformBuffer
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = 1;
+    pipelineLayoutInfo.pSetLayouts = &inDescriptorSetLayout;
+    pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+
+    // PipelineLayout可以用来创建和绑定VertexBuffer和UniformBuffer，这样可以往着色器中传递参数
+    if (vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &outPipelineLayout) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to create pipeline layout!");
+    }
+
+    VkGraphicsPipelineCreateInfo pipelineInfo{};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pDepthStencilState = &depthStencil; // 加上深度测试
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = &dynamicState;
+    pipelineInfo.layout = outPipelineLayout;
+    pipelineInfo.renderPass = m_vkRenderPass;
+    pipelineInfo.subpass = 0;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+    // Use specialization constants 优化着色器变体
+    for (uint32_t i = 0; i < specConstantsCount; i++)
+    {
+        uint32_t specConstants = i;
+        VkSpecializationMapEntry specializationMapEntry = VkSpecializationMapEntry{};
+        specializationMapEntry.constantID = 0;
+        specializationMapEntry.offset = 0;
+        specializationMapEntry.size = sizeof(uint32_t);
+        VkSpecializationInfo specializationInfo = VkSpecializationInfo();
+        specializationInfo.mapEntryCount = 1;
+        specializationInfo.pMapEntries = &specializationMapEntry;
+        specializationInfo.dataSize = sizeof(uint32_t);
+        specializationInfo.pData = &specConstants;
+        shaderStages[1].pSpecializationInfo = &specializationInfo;
+
+        if (vkCreateGraphicsPipelines(m_vkDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &outPipelines[i]) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to create graphics pipeline!");
+        }
+    }
+
+    vkDestroyShaderModule(m_vkDevice, fragShaderModule, nullptr);
+    vkDestroyShaderModule(m_vkDevice, vertShaderModule, nullptr);
 }
 
 void RHIVulkan::CreateDescriptorSetLayout()
@@ -1736,58 +2410,120 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
     VkCommandBufferBeginInfo beginInfo{};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 
+
+    //begin recod command
     if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
     {
         throw std::runtime_error("failed to begin record command buffer !");
     }
 
-    VkRenderPassBeginInfo renderPassInfo{};
-    renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    renderPassInfo.renderPass = m_vkRenderPass;
-    renderPassInfo.framebuffer = m_vkSwapChainFrameBuffers[imageIndex];
-    renderPassInfo.renderArea.offset = { 0, 0 };
-    renderPassInfo.renderArea.extent = m_vkSwapChainExtent;
-
-    std::array<VkClearValue, 2> clearValues{};
-    clearValues[0].color = { {0.2f, 0.3f, 0.5f, 1.0f} };
-    clearValues[1].depthStencil = { 1.0f, 0 };
-
-    renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-    renderPassInfo.pClearValues = clearValues.data();
-
-    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vkGraphicsPipeline);
-
-    VkBuffer vertexBuffers[] = { m_vertBuffers };
-    VkDeviceSize offsets[] = { 0 };
-    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-    vkCmdBindIndexBuffer(commandBuffer, m_indexBuffers, 0, VK_INDEX_TYPE_UINT32);
-
-    VkViewport viewport{};
-    viewport.x = 0.0f;
-    viewport.y = 0.0f;
-    viewport.width = (float)m_vkSwapChainExtent.width;
-    viewport.height = (float)m_vkSwapChainExtent.height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
-    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-    VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
-    scissor.extent = m_vkSwapChainExtent;
-    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-
-
-    vkCmdEndRenderPass(commandBuffer);
-
-    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+    //shadow map
     {
-        throw std::runtime_error("failed to record command buffer!");
+        
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = m_shadowmapPass.RenderPass;
+        renderPassInfo.framebuffer = m_shadowmapPass.FrameBuffer;
+        renderPassInfo.renderArea.extent.width = m_shadowmapPass.Width;
+        renderPassInfo.renderArea.extent.height = m_shadowmapPass.Height;
+        std::array<VkClearValue, 1> clearValues{};
+        clearValues[0].depthStencil = { 1.0f, 0 };
+        renderPassInfo.clearValueCount = 1;
+        renderPassInfo.pClearValues = clearValues.data();
+
+        //begin
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        //viewport
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float)m_shadowmapPass.Width;
+        viewport.height = (float)m_shadowmapPass.Height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        //scissor
+        VkRect2D scissor{};
+        scissor.offset = { 0, 0 };
+        scissor.extent.width = (float)m_shadowmapPass.Width;
+        scissor.extent.width = (float)m_shadowmapPass.Height;
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+        //avoid artifacts
+        float depthBiasConstant = 1.25f;
+        float depthBiasSlope = 7.5; // change from 1.75f to fix PCF artifact
+        vkCmdSetDepthBias(
+            commandBuffer,
+            depthBiasConstant,
+            0.0f,
+            depthBiasSlope);
+
+        for (auto item : m_baseScenePass.RenderObjects)
+        {
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_shadowmapPass.Pipeline);
+            VkBuffer objectVertexBuffers[] = { item.meshData.VertexBuffer };
+            VkDeviceSize objectOffsets[] = { 0 };
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, objectVertexBuffers, objectOffsets);
+            vkCmdBindIndexBuffer(commandBuffer, item.meshData.IndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                m_shadowmapPass.PipelineLayout, 0, 1, &m_shadowmapPass.DescriptorSets[imageIndex], 0, nullptr);
+            vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(item.meshData.Indices.size()), 1, 0, 0, 0);
+        }
+
+        vkCmdEndRenderPass(commandBuffer);
     }
 
 
+    {
+        VkRenderPassBeginInfo renderPassInfo{};
+        renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+        renderPassInfo.renderPass = m_vkRenderPass;
+        renderPassInfo.framebuffer = m_vkSwapChainFrameBuffers[imageIndex];
+        renderPassInfo.renderArea.offset = { 0, 0 };
+        renderPassInfo.renderArea.extent = m_vkSwapChainExtent;
+
+        std::array<VkClearValue, 2> clearValues{};
+        clearValues[0].color = { {0.2f, 0.3f, 0.5f, 1.0f} };
+        clearValues[1].depthStencil = { 1.0f, 0 };
+
+        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassInfo.pClearValues = clearValues.data();
+
+        vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vkGraphicsPipeline);
+
+        VkBuffer vertexBuffers[] = { m_vertBuffers };
+        VkDeviceSize offsets[] = { 0 };
+        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+        vkCmdBindIndexBuffer(commandBuffer, m_indexBuffers, 0, VK_INDEX_TYPE_UINT32);
+
+        VkViewport viewport{};
+        viewport.x = 0.0f;
+        viewport.y = 0.0f;
+        viewport.width = (float)m_vkSwapChainExtent.width;
+        viewport.height = (float)m_vkSwapChainExtent.height;
+        viewport.minDepth = 0.0f;
+        viewport.maxDepth = 1.0f;
+        vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+
+        VkRect2D scissor{};
+        scissor.offset = { 0, 0 };
+        scissor.extent = m_vkSwapChainExtent;
+        vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+
+
+        vkCmdEndRenderPass(commandBuffer);
+
+        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+        {
+            throw std::runtime_error("failed to record command buffer!");
+        }
+
+    }
 }
 
 VkCommandBuffer RHIVulkan::BeginSingleTimeCommands()

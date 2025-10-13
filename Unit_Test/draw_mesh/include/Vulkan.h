@@ -43,6 +43,26 @@ struct UniformBufferObject {
     glm::mat4 Proj;
 };
 
+struct Light
+{
+    glm::vec4 position;
+    glm::vec4 color; // rgb for color, a for intensity
+    glm::vec4 direction;
+    glm::vec4 info;
+};
+
+struct UniformBufferView {
+    glm::mat4 shadowmap_space;
+    glm::mat4 local_to_world;
+    glm::vec4 camera_info;
+    Light directional_lights[4];
+    Light point_lights[4];
+    Light spot_lights[4];
+    glm::ivec4 lights_count;
+    float zNear;
+    float zFar;
+};
+
 /** 顶点数据存储结构*/
 struct Vertex {
     glm::vec3 Position;
@@ -199,6 +219,23 @@ struct RenderObject
     Material mat;
     Mesh meshData;
 };
+
+struct GlobalConstants {
+    float time;
+    float metallic;
+    float roughness;
+    uint32_t specConstants;
+    uint32_t specConstantsCount;				// 特殊常数，用于优化着色器变体
+
+    void resetConstants()
+    {
+        time = 0.0f;
+        metallic = 0.0f;
+        roughness = 1.0;
+        specConstants = 0;
+        specConstantsCount = 9;
+    }
+} ;
 
 struct RenderIndirectObject
 {
@@ -390,7 +427,7 @@ private:
     VkDevice m_vkDevice;
     VkDebugUtilsMessengerEXT m_debugMessenger; //Debug
 
-	RenderObject m_renderObject;
+	BaseScenePass m_baseScenePass;
     ShadowPass m_shadowmapPass;
 
     std::vector<VkCommandBuffer> m_commandBuffers;
@@ -444,6 +481,9 @@ private:
 
     std::vector<VkBuffer> m_vkUniformBuffers;				// 统一缓存区
     std::vector<VkDeviceMemory> m_vkUniformBuffersMemory;	// 统一缓存区内存地址
+
+    std::vector<VkBuffer> m_vkViewUniformBuffers;				// 统一缓存区
+    std::vector<VkDeviceMemory> m_vkViewUniformBuffersMemory;	// 统一缓存区内存地址
 private:
 
     struct QueueFamilyIndices {
@@ -499,9 +539,40 @@ private:
     void CreateCommandPool();
     void CreateDescriptorSetLayout();
 
-    void CreateGeometry(std::vector<Vertex>&outVert, std::vector<uint32_t>& outIndice, const std::string& fileName);
+    void CreateGeometry(std::vector<RenderObject>& outRenderObj, const std::string& fileName);
     void CreateShadowmapPass();
 	void CreateBaseScenePass();
+    void CreateDescriptorSets(std::vector<VkDescriptorSet>& outDescriptorSets, const VkDescriptorPool& inDescriptorPool, const VkDescriptorSetLayout& inDescriptorSetLayout, const std::vector<VkImageView>& inImageViews, const std::vector<VkSampler>& inSamplers);
+    void CreateDescriptorPool(VkDescriptorPool& outDescriptorPool, uint32_t sampler_num = 1);
+    void CreateDescriptorSetLayout(VkDescriptorSetLayout& outDescriptorSetLayout, uint32_t sampler_number = 1);
+    void CreateImageContext(
+        VkImage& outImage,
+        VkDeviceMemory& outMemory,
+        VkImageView& outImageView,
+        VkSampler& outSampler,
+        const std::string& filename, bool sRGB = true);
+    void CreateGraphicsPipeline(VkPipelineLayout& outPipelineLayout,
+        std::vector<VkPipeline>& outPipelines,
+        const uint32_t specConstantsCount,
+        const VkDescriptorSetLayout& inDescriptorSetLayout,
+        const std::string& vert_filename,
+        const std::string& frag_filename,
+        const VkBool32 bDepthTest = VK_TRUE,
+        const VkCullModeFlags CullMode = VK_CULL_MODE_BACK_BIT);
+    void GenerateMipmaps(VkImage image, VkFormat imageFormat, int32_t texWidth, int32_t texHeight, uint32_t mipLevels = 1);
+    void CreateImage(
+        VkImage& outImage,
+        VkDeviceMemory& OutImageMemory,
+        const uint32_t width, const uint32_t height, const VkFormat format,
+        const VkImageTiling tiling, const VkImageUsageFlags usage,
+        const VkMemoryPropertyFlags properties, const uint32_t miplevels = 1);
+    void TransitionImageLayout(VkImage image, VkImageLayout oldLayout, VkImageLayout newLayout, uint32_t miplevels = 1);
+    void CreateImageView(
+        VkImageView& outImageView,
+        const VkImage& inImage,
+        const VkFormat inFormat,
+        const VkImageAspectFlags aspectFlags = VK_IMAGE_ASPECT_COLOR_BIT,
+        const uint32_t levelCount = 1);
 
     void UpdateUniformBuffer(uint32_t currentImage);
 
