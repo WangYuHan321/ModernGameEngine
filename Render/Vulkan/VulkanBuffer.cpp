@@ -1,7 +1,4 @@
-#if defined __ANDROID__
-#endif
-
-#include "VulkanAndroid.h"
+#include "VulkanTool.h"
 #include "VulkanBuffer.h"
 
 VkResult Render::Vulkan::Buffer::Map(VkDeviceSize size, VkDeviceSize offset)
