@@ -1146,6 +1146,22 @@ void RHIVulkan::CreateGeometry(std::vector<RenderObject>& outRenderObj, const st
                 }
             }
 
+            if (primitive.attributes.find("TEXCOORD_0") != primitive.attributes.end()) {
+                const tinygltf::Accessor& accessorNor = model.accessors[primitive.attributes.at("TEXCOORD_0")];
+                const tinygltf::BufferView& bufferViewNor = model.bufferViews[accessorNor.bufferView];
+                const tinygltf::Buffer& bufferNor = model.buffers[bufferViewNor.buffer];
+
+                const float* normals = reinterpret_cast<const float*>(&bufferNor.data[bufferViewNor.byteOffset + accessorNor.byteOffset]);
+
+                std::cout << "Loading " << accessorNor.count << " colors..." << std::endl;
+                for (size_t i = 0; i < accessorNor.count; i++) {
+                    // Positions are 3-component vectors (x, y, z)
+                    size_t stride = accessorNor.ByteStride(bufferViewNor);
+                    const float* pos = (const float*)((const char*)normals + i * stride);
+                    vertex[i].TexCoord = { pos[0], pos[1] };
+                }
+            }
+
             // --- LOAD INDICES ---
             if (primitive.indices >= 0) {
                 const tinygltf::Accessor& accessor = model.accessors[primitive.indices];
@@ -2154,8 +2170,8 @@ void RHIVulkan::CreateDescriptorSetLayout()
 
 void RHIVulkan::UpdateUniformBuffer(uint32_t currentImage)
 {
-	glm::vec3 camPos = glm::vec3(0.0f, 0.0f, 5.0f);
-	glm::vec3 camView = glm::vec3(0.0f, 0.0f, -1.0f);
+	glm::vec3 camPos = glm::vec3(0.0f, 0.0f, -0.2f);
+	glm::vec3 camView = glm::vec3(0.0f, 0.0f, 1.0f);
 	glm::vec3 camUp = glm::vec3(0.0f, 1.0f, 0.0f);
     float cameraFOV = 45;
     float zNear = 0.1;
@@ -2172,7 +2188,7 @@ void RHIVulkan::UpdateUniformBuffer(uint32_t currentImage)
     Light light;
     glm::vec3 center = glm::vec3(0.0f);
     glm::vec3 lightPos = glm::vec3(4.0f, 0.0f, 4.0f);
-    float rollLight = time * 45.0f;
+    float rollLight = time * 0.45f;
     lightPos.x = cos(glm::radians(rollLight)) * 4.0f;
     lightPos.y = sin(glm::radians(rollLight)) * 4.0f;
     glm::vec3 lightDir = glm::normalize(lightPos - center);
