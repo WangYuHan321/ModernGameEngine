@@ -120,7 +120,7 @@ void RHIVulkan::InitWindow()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
-    m_glfwWindow = glfwCreateWindow(1024, 1080, "我的第一个程序", nullptr, nullptr);
+    m_glfwWindow = glfwCreateWindow(1024, 1080, "Vulkan_Demo", nullptr, nullptr);
 }
 
 
