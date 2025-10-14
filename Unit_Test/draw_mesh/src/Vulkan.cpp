@@ -3,6 +3,9 @@
 #define TINYGLTF_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <tiny_gltf.h>
+#include <glm/gtc/matrix_transform.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/gtx/hash.hpp>
 
 #define SHADOW_DIM 1024
 
@@ -133,13 +136,13 @@ void RHIVulkan::InitVulkan()
     //CreateDepthResource();
     CreateRenderPass();
     CreateUniformBuffer();
-    CreateGraphicsPipeline();
     CreateFrameBuffer();
     CreateCommandPool();
     CreateCommandBuffers();
 
     CreateShadowmapPass();
     CreateBaseScenePass();
+    //CreateGraphicsPipeline();
 
     CreateTextureImage();
     CreateTextureImageView();
@@ -829,8 +832,7 @@ void RHIVulkan::CreateDepthResource()
 
 void RHIVulkan::CreateRenderPass()
 {
-    //颜色缓冲区附件的格式应该和对应的 swap chain中的图像匹配，我们也不需要多重采样，因此我们将采样数设置为1。
-    VkAttachmentDescription colorAttachment = {};
+    VkAttachmentDescription colorAttachment{};
     colorAttachment.format = m_vkSwapChainImageFormat;
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
     colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
@@ -839,41 +841,45 @@ void RHIVulkan::CreateRenderPass()
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    
+
     VkAttachmentDescription depthAttachment{};
     depthAttachment.format = FindDepthFormat();
     depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkAttachmentReference colorAttachmentRef = {};
+    VkAttachmentReference colorAttachmentRef{};
     colorAttachmentRef.attachment = 0;
     colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    
-    VkAttachmentReference depthAttachmentRef = {};
+
+    VkAttachmentReference depthAttachmentRef{};
     depthAttachmentRef.attachment = 1;
     depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-    VkSubpassDescription subpass = {};
+    // 渲染子通道 SubPass
+    // SubPass是RenderPass的下属任务，和RenderPass共享Framebuffer等渲染资源
+    // 某些渲染操作，比如后处理的Blooming，当前渲染需要依赖上一个渲染结果，但是渲染资源不变，这是SubPass可以优化性能
+    VkSubpassDescription subpass{};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorAttachmentRef;
     subpass.pDepthStencilAttachment = &depthAttachmentRef;
 
-    VkSubpassDependency dependency = {};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;//无依赖关系 "如果srcSubpass等于VK_SUBPASS_EXTERNAL，则第一个同步范围包括vkCmdBeginRenderPass用于开始渲染通道实例之前的提交顺序中发生的命令。
-    dependency.dstSubpass = 0;//无依赖关系
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubpassDependency dependency{};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependency.srcAccessMask = 0;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
+    // 这里将渲染三角形的操作，简化成一个SubPass提交
     std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
-    VkRenderPassCreateInfo renderPassInfo = {};
+    VkRenderPassCreateInfo renderPassInfo{};
     renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
     renderPassInfo.pAttachments = attachments.data();
@@ -889,8 +895,8 @@ void RHIVulkan::CreateRenderPass()
 
 void RHIVulkan::CreateGraphicsPipeline()
 {
-    auto vertShaderCode = readFile("./Asset/shader/glsl/draw_texture/draw_with_texture.vert.spv");
-    auto fragShaderCode = readFile("./Asset/shader/glsl/draw_texture/draw_with_texture.frag.spv");
+    auto vertShaderCode = readFile("./Asset/shader/glsl/draw_mesh/draw_mesh_vert.spv");
+    auto fragShaderCode = readFile("./Asset/shader/glsl/draw_mesh/draw_mesh_frag.spv");
 
     VkShaderModule vertShaderModule = CreateShaderModule(vertShaderCode);
     VkShaderModule fragShaderModule = CreateShaderModule(fragShaderCode);
@@ -1472,7 +1478,7 @@ void RHIVulkan::CreateBaseScenePass()
 
     m_baseScenePass.Pipelines.resize(1);
     CreateGraphicsPipeline(m_baseScenePass.PipelineLayout,
-        m_baseScenePass.Pipelines, 0,
+        m_baseScenePass.Pipelines, 1,
         m_baseScenePass.DescriptorSetLayout,
         "./Asset/shader/glsl/draw_mesh/draw_mesh_base_vert.spv",
         "./Asset/shader/glsl/draw_mesh/draw_mesh_base_frag.spv");
@@ -1496,7 +1502,7 @@ void RHIVulkan::CreateBaseScenePass()
     }
 
     int i = 0;
-    for (auto item : m_baseScenePass.RenderObjects)
+    for (auto& item : m_baseScenePass.RenderObjects)
     {
         CreateVertexBuffer(item.meshData.VertexBuffer, item.meshData.VertexBufferMemory, item.meshData.Vertices);
         CreateIndexBuffer(item.meshData.IndexBuffer, item.meshData.IndexBufferMemory, item.meshData.Indices);
@@ -1832,7 +1838,7 @@ void RHIVulkan::CreateDescriptorSets(std::vector<VkDescriptorSet>& outDescriptor
 
         descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[2].dstSet = outDescriptorSets[i];
-        descriptorWrites[2].dstBinding = 3;
+        descriptorWrites[2].dstBinding = 2;
         descriptorWrites[2].dstArrayElement = 0;
         descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         descriptorWrites[2].descriptorCount = 1;
@@ -1852,7 +1858,7 @@ void RHIVulkan::CreateDescriptorSets(std::vector<VkDescriptorSet>& outDescriptor
 
             descriptorWrites[j + 3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[j + 3].dstSet = outDescriptorSets[i];
-            descriptorWrites[j + 3].dstBinding = static_cast<uint32_t>(j + 4);
+            descriptorWrites[j + 3].dstBinding = static_cast<uint32_t>(j + 3);
             descriptorWrites[j + 3].dstArrayElement = 0;
             descriptorWrites[j + 3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             descriptorWrites[j + 3].descriptorCount = 1;
@@ -1907,38 +1913,28 @@ void RHIVulkan::CreateDescriptorSetLayout(VkDescriptorSetLayout& outDescriptorSe
     viewUBOLayoutBinding.pImmutableSamplers = nullptr;
     viewUBOLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT; // view ubo 主要信息用于 fragment shader
 
-    // 环境反射Cubemap贴图绑定
-    VkDescriptorSetLayoutBinding cubemapLayoutBinding{};
-    cubemapLayoutBinding.binding = 2;
-    cubemapLayoutBinding.descriptorCount = 1;
-    cubemapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    cubemapLayoutBinding.pImmutableSamplers = nullptr;
-    cubemapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
     VkDescriptorSetLayoutBinding shadowmapLayoutBinding{};
-    shadowmapLayoutBinding.binding = 3;
+    shadowmapLayoutBinding.binding = 2;
     shadowmapLayoutBinding.descriptorCount = 1;
     shadowmapLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     shadowmapLayoutBinding.pImmutableSamplers = nullptr;
     shadowmapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-    // 将UnifromBufferObject和贴图采样器绑定到DescriptorSetLayout上
     std::vector<VkDescriptorSetLayoutBinding> bindings;
-    bindings.resize(sampler_number + 4); // 这里3是2个UniformBuffer和1个环境Cubemap贴图
+    bindings.resize(sampler_number + 3); 
     bindings[0] = baseUBOLayoutBinding;
     bindings[1] = viewUBOLayoutBinding;
-    bindings[2] = cubemapLayoutBinding;
-    bindings[3] = shadowmapLayoutBinding;
+    bindings[2] = shadowmapLayoutBinding;
     for (size_t i = 0; i < sampler_number; i++)
     {
         VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = static_cast<uint32_t>(i + 4);
+        samplerLayoutBinding.binding = static_cast<uint32_t>(i + 3);
         samplerLayoutBinding.descriptorCount = 1;
         samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         samplerLayoutBinding.pImmutableSamplers = nullptr;
         samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-        bindings[i + 4] = samplerLayoutBinding;
+        bindings[i + 3] = samplerLayoutBinding;
     }
     VkDescriptorSetLayoutCreateInfo layoutInfo{};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -2064,21 +2060,21 @@ void RHIVulkan::CreateGraphicsPipeline(VkPipelineLayout& outPipelineLayout,
     dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
     dynamicState.pDynamicStates = dynamicStates.data();
 
-    // 设置 push constants
-    VkPushConstantRange pushConstant;
-    // 这个PushConstant的范围从头开始
-    pushConstant.offset = 0;
-    pushConstant.size = sizeof(GlobalConstants);
-    // 这是个全局PushConstant，所以希望各个着色器都能访问到
-    pushConstant.stageFlags = VK_SHADER_STAGE_ALL;
+    //// 设置 push constants
+    //VkPushConstantRange pushConstant;
+    //// 这个PushConstant的范围从头开始
+    //pushConstant.offset = 0;
+    //pushConstant.size = sizeof(GlobalConstants);
+    //// 这是个全局PushConstant，所以希望各个着色器都能访问到
+    //pushConstant.stageFlags = VK_SHADER_STAGE_ALL;
 
     // 在渲染管线创建时，指定DescriptorSetLayout，用来传UniformBuffer
     VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = 1;
     pipelineLayoutInfo.pSetLayouts = &inDescriptorSetLayout;
-    pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
-    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    //pipelineLayoutInfo.pPushConstantRanges = &pushConstant;
+    //pipelineLayoutInfo.pushConstantRangeCount = 1;
 
     // PipelineLayout可以用来创建和绑定VertexBuffer和UniformBuffer，这样可以往着色器中传递参数
     if (vkCreatePipelineLayout(m_vkDevice, &pipelineLayoutInfo, nullptr, &outPipelineLayout) != VK_SUCCESS)
@@ -2158,21 +2154,75 @@ void RHIVulkan::CreateDescriptorSetLayout()
 
 void RHIVulkan::UpdateUniformBuffer(uint32_t currentImage)
 {
+	glm::vec3 camPos = glm::vec3(0.0f, 0.0f, 5.0f);
+	glm::vec3 camView = glm::vec3(0.0f, 0.0f, -1.0f);
+	glm::vec3 camUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    float cameraFOV = 45;
+    float zNear = 0.1;
+    float zFar = 100;
+
     static auto startTime = std::chrono::high_resolution_clock::now();
 
     auto currentTime = std::chrono::high_resolution_clock::now();
     float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-    UniformBufferObject ubo{};
-    ubo.Model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-    ubo.View = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.Proj = glm::perspective(glm::radians(45.0f), m_vkSwapChainExtent.width / (float)m_vkSwapChainExtent.height, 0.1f, 10.0f);
-    ubo.Proj[1][1] *= -1;
+    m_shadowmapPass.zNear = zNear;
+    m_shadowmapPass.zFar = zFar;
 
-    void* data;
-    vkMapMemory(m_vkDevice, m_vkUniformBuffersMemory[currentImage], 0, sizeof(ubo), 0, &data);
-    memcpy(data, &ubo, sizeof(ubo));
+    Light light;
+    glm::vec3 center = glm::vec3(0.0f);
+    glm::vec3 lightPos = glm::vec3(4.0f, 0.0f, 4.0f);
+    float rollLight = time * 45.0f;
+    lightPos.x = cos(glm::radians(rollLight)) * 4.0f;
+    lightPos.y = sin(glm::radians(rollLight)) * 4.0f;
+    glm::vec3 lightDir = glm::normalize(lightPos - center);
+
+    light.position = glm::vec4(lightPos, 0.0);
+    light.color = glm::vec4(1.0, 1.0, 1.0, 3.0);
+    light.direction = glm::vec4(lightDir, 0.0);
+    light.info = glm::vec4(0.0, 0.0, 0.0, 0.0);
+
+    glm::mat4 localToWorld = glm::rotate(glm::mat4(1.0f), rollLight, glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 shadowView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 shadowProjection = glm::perspective(glm::radians(cameraFOV), 1.0f, m_shadowmapPass.zNear, m_shadowmapPass.zFar);
+
+
+    UniformBufferObject UBOBaseData{};
+    UBOBaseData.Model = localToWorld;
+    UBOBaseData.View = glm::lookAt(camPos, camView, camUp);
+    UBOBaseData.Proj = glm::perspective(glm::radians(cameraFOV), m_vkSwapChainExtent.width / (float)m_vkSwapChainExtent.height, zNear, zFar);
+    UBOBaseData.Proj[1][1] *= -1;
+
+    void* data_base_ubo;
+    vkMapMemory(m_vkDevice, m_vkUniformBuffersMemory[currentImage], 0, sizeof(UBOBaseData), 0, &data_base_ubo);
+    memcpy(data_base_ubo, &UBOBaseData, sizeof(UBOBaseData));
     vkUnmapMemory(m_vkDevice, m_vkUniformBuffersMemory[currentImage]);
+
+    UniformBufferView UBOViewData{};
+    // shadowmap_space 的 MVP 矩阵中，M矩阵在FS中计算，所以传入 localToWorld 进入FS
+    UBOViewData.shadowmap_space = shadowProjection * shadowView;
+    UBOViewData.local_to_world = localToWorld;
+    UBOViewData.camera_info = glm::vec4(camPos, cameraFOV);
+    UBOViewData.lights_count = glm::ivec4(1, 0, 0, 2);
+    UBOViewData.directional_lights[0] = light;
+    UBOViewData.zNear = m_shadowmapPass.zNear;
+    UBOViewData.zFar = m_shadowmapPass.zFar;
+
+    void* data_view;
+    vkMapMemory(m_vkDevice, m_vkViewUniformBuffersMemory[currentImage], 0, sizeof(UBOViewData), 0, &data_view);
+    memcpy(data_view, &UBOViewData, sizeof(UBOViewData));
+    vkUnmapMemory(m_vkDevice, m_vkViewUniformBuffersMemory[currentImage]);
+
+    UniformBufferObject UBOShadowData{};
+    UBOShadowData.Model = localToWorld;
+    UBOShadowData.View = shadowView;
+    UBOShadowData.Proj = shadowProjection;
+
+    void* data_shadow_ubo;
+    vkMapMemory(m_vkDevice, m_shadowmapPass.UniformBuffersMemory[currentImage], 0, sizeof(UBOShadowData), 0, &data_shadow_ubo);
+    memcpy(data_shadow_ubo, &UBOShadowData, sizeof(UBOShadowData));
+    vkUnmapMemory(m_vkDevice, m_shadowmapPass.UniformBuffersMemory[currentImage]);
+
 }
 
 VkImageView RHIVulkan::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags)
@@ -2468,7 +2518,7 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
             vkCmdBindVertexBuffers(commandBuffer, 0, 1, objectVertexBuffers, objectOffsets);
             vkCmdBindIndexBuffer(commandBuffer, item.meshData.IndexBuffer, 0, VK_INDEX_TYPE_UINT32);
             vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                m_shadowmapPass.PipelineLayout, 0, 1, &m_shadowmapPass.DescriptorSets[imageIndex], 0, nullptr);
+                m_shadowmapPass.PipelineLayout, 0, 1, &m_shadowmapPass.DescriptorSets[m_currentFrame], 0, nullptr);
             vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(item.meshData.Indices.size()), 1, 0, 0, 0);
         }
 
@@ -2485,20 +2535,13 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
         renderPassInfo.renderArea.extent = m_vkSwapChainExtent;
 
         std::array<VkClearValue, 2> clearValues{};
-        clearValues[0].color = { {0.2f, 0.3f, 0.5f, 1.0f} };
+        clearValues[0].color = { {0.3f, 0.5f, 0.2f, 1.0f} };
         clearValues[1].depthStencil = { 1.0f, 0 };
 
         renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
         renderPassInfo.pClearValues = clearValues.data();
 
         vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-        vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_vkGraphicsPipeline);
-
-        VkBuffer vertexBuffers[] = { m_vertBuffers };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, m_indexBuffers, 0, VK_INDEX_TYPE_UINT32);
 
         VkViewport viewport{};
         viewport.x = 0.0f;
@@ -2515,14 +2558,27 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
         vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 
-
-        vkCmdEndRenderPass(commandBuffer);
-
-        if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+        for (auto item : m_baseScenePass.RenderObjects)
         {
-            throw std::runtime_error("failed to record command buffer!");
-        }
+            vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_baseScenePass.Pipelines[0]);
 
+            VkBuffer vertexBuffers[] = { item.meshData.VertexBuffer };
+            VkDeviceSize offsets[] = { 0 };
+            vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+            vkCmdBindIndexBuffer(commandBuffer, item.meshData.IndexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+            vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+                m_baseScenePass.PipelineLayout, 0, 1, &m_baseScenePass.RenderObjects[0].mat.DescriptorSets[m_currentFrame], 0, nullptr);
+            vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(item.meshData.Indices.size()), 1, 0, 0, 0);
+
+            vkCmdEndRenderPass(commandBuffer);
+
+        }
+    }
+
+    if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+    {
+        throw std::runtime_error("failed to record command buffer!");
     }
 }
 
