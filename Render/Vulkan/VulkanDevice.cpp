@@ -51,12 +51,71 @@ Render::Vulkan::VulkanDevice::~VulkanDevice()
 
 uint32_t Render::Vulkan::VulkanDevice::GetMemoryType( uint32_t typeBits, VkMemoryPropertyFlags properties, VkBool32 *memTypeFound ) const
 {
+    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+    {
+        if ((typeBits & 1) == 1)
+        {
+            if ((memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+            {
+                if (memTypeFound)
+                {
+                    *memTypeFound = true;
+                }
+                return i;
+            }
+        }
+        typeBits >>= 1;
+    }
 
+    if (memTypeFound)
+    {
+        *memTypeFound = false;
+        return 0;
+    }
+    else
+    {
+        throw std::runtime_error("Could not find a matching memory type");
+    }
 }
 
 uint32_t Render::Vulkan::VulkanDevice::GetQueueFamilyIndex(VkQueueFlags flag) const
 {
+    // Dedicated queue for compute
+    // Try to find a queue family index that supports compute but not graphics
+    if ((flag & VK_QUEUE_COMPUTE_BIT) == flag)
+    {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+        {
+            if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
+            {
+                return i;
+            }
+        }
+    }
 
+    // Dedicated queue for transfer
+    // Try to find a queue family index that supports transfer but not graphics and compute
+    if ((flag & VK_QUEUE_TRANSFER_BIT) == flag)
+    {
+        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+        {
+            if ((queueFamilyProperties[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
+            {
+                return i;
+            }
+        }
+    }
+
+    // For other queue types or if no separate compute queue is present, return the first one to support the requested flags
+    for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
+    {
+        if ((queueFamilyProperties[i].queueFlags & flag) == flag)
+        {
+            return i;
+        }
+    }
+
+    throw std::runtime_error("Could not find a matching queue family index");
 }
 
 VkResult Render::Vulkan::VulkanDevice::CreateLogicalDevice(VkPhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions,
@@ -102,15 +161,32 @@ void Render::Vulkan::VulkanDevice::FlushCommandBuffer(VkCommandBuffer commandBuf
 
 void Render::Vulkan::VulkanDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, bool free)
 {
-
+    return FlushCommandBuffer(commandBuffer, queue, commandPool, free);
 }
 
 bool Render::Vulkan::VulkanDevice::ExtensionSupported(std::string extension)
 {
-
+    return (std::find(supportedExtensions.begin(), supportedExtensions.end(), extension) != supportedExtensions.end());
 }
 
 VkFormat Render::Vulkan::VulkanDevice::GetSupportedDepthFormat(bool checkSamplingSupport)
 {
-
+    // All depth formats may be optional, so we need to find a suitable depth format to use
+    std::vector<VkFormat> depthFormats = { VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D32_SFLOAT, VK_FORMAT_D24_UNORM_S8_UINT, VK_FORMAT_D16_UNORM_S8_UINT, VK_FORMAT_D16_UNORM };
+    for (auto& format : depthFormats)
+    {
+        VkFormatProperties formatProperties;
+        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &formatProperties);
+        // Format must support depth stencil attachment for optimal tiling
+        if (formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
+        {
+            if (checkSamplingSupport) {
+                if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+                    continue;
+                }
+            }
+            return format;
+        }
+    }
+    throw std::runtime_error("Could not find a matching depth format");
 }
