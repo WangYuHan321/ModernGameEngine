@@ -8,15 +8,24 @@
 #include <stdio.h>
 #include <vector>
 #include <sstream>
+#include<iostream>
 
-bool Render::Vulkan::debug::logToFile { false };
-std::string Render::Vulkan::debug::logFileName { "android_log.txt" };
+bool Render::Vulkan::Debug::mblogToFile{ false };
+#if defined(__ANDROID__)
+    std::string Render::Vulkan::Debug::mblogToFile{ "android_log.txt" };
+#elif(_WIN32)
+    std::string Render::Vulkan::Debug::mlogFileName{ "window_log.txt" };
+#elif(IOS)
+    std::string Render::Vulkan::Debug::mlogFileName{ "ios_log.txt" };
+#endif // 
+
+
 
 PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
 PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
 VkDebugUtilsMessengerEXT debugUtilsMessenger;
 
-VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::debug::DebugUtilsMessageCallback(
+VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::Debug::DebugUtilsMessageCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
         VkDebugUtilsMessageTypeFlagsEXT messageType,
         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -27,7 +36,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::debug::DebugUtilsMessageCallback(
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
         prefix = "VERBOSE: ";
 #if defined(_WIN32)
-        if (!logToFile) {
+        if (!mblogToFile) {
 					prefix = "\033[32m" + prefix + "\033[0m";
 				}
 #endif
@@ -35,7 +44,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::debug::DebugUtilsMessageCallback(
     else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
         prefix = "INFO: ";
 #if defined(_WIN32)
-        if (!logToFile) {
+        if (!mblogToFile) {
 					prefix = "\033[36m" + prefix + "\033[0m";
 				}
 #endif
@@ -43,7 +52,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::debug::DebugUtilsMessageCallback(
     else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
         prefix = "WARNING: ";
 #if defined(_WIN32)
-        if (!logToFile) {
+        if (!mblogToFile) {
 					prefix = "\033[33m" + prefix + "\033[0m";
 				}
 #endif
@@ -51,7 +60,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::debug::DebugUtilsMessageCallback(
     else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
         prefix = "ERROR: ";
 #if defined(_WIN32)
-        if (!logToFile) {
+        if (!mblogToFile) {
                     prefix = "\033[31m" + prefix + "\033[0m";
                 }
 #endif
@@ -78,8 +87,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::debug::DebugUtilsMessageCallback(
 			} else {
 				std::cout << debugMessage.str() << "\n\n";
 			}
-			if (logToFile) {
-				log(debugMessage.str());
+			if (mlogFileName) {
+				Log(debugMessage.str());
 			}
 			fflush(stdout);
 #endif
@@ -91,7 +100,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::debug::DebugUtilsMessageCallback(
     return VK_FALSE;
 }
 
-void Render::Vulkan::debug::SetupDebugging(VkInstance instance)
+void Render::Vulkan::Debug::SetupDebugging(VkInstance instance)
 {
     vkCreateDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkCreateDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT"));
     vkDestroyDebugUtilsMessengerEXT = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT"));
@@ -102,7 +111,7 @@ void Render::Vulkan::debug::SetupDebugging(VkInstance instance)
     assert(result == VK_SUCCESS);
 }
 
-void Render::Vulkan::debug::FreeDebugCallback(VkInstance instance)
+void Render::Vulkan::Debug::FreeDebugCallback(VkInstance instance)
 {
     if (debugUtilsMessenger != VK_NULL_HANDLE)
     {
@@ -110,7 +119,7 @@ void Render::Vulkan::debug::FreeDebugCallback(VkInstance instance)
     }
 }
 
-void Render::Vulkan::debug::SetupDebugingMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& debugUtilsMessengerCI)
+void Render::Vulkan::Debug::SetupDebugingMessengerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& debugUtilsMessengerCI)
 {
     debugUtilsMessengerCI.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
     debugUtilsMessengerCI.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
@@ -118,13 +127,13 @@ void Render::Vulkan::debug::SetupDebugingMessengerCreateInfo(VkDebugUtilsMesseng
     debugUtilsMessengerCI.pfnUserCallback = DebugUtilsMessageCallback;
 }
 
-void Render::Vulkan::debug::Log(std::string message)
+void Render::Vulkan::Debug::Log(std::string message)
 {
-    if (logToFile) {
+    if (mblogToFile) {
         time_t timestamp;
         time(&timestamp);
         std::ofstream logfile;
-        logfile.open(logFileName, std::ios_base::app);
+        logfile.open(mlogFileName, std::ios_base::app);
         logfile << strtok(ctime(&timestamp), "\n") << ": " << message << std::endl;
         logfile.close();
     }

@@ -2,6 +2,7 @@
 #include "VulkanTool.h"
 #include <unordered_map>
 #include <assert.h>
+#include <stdexcept>
 
 #if (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK) || defined(VK_USE_PLATFORM_METAL_EXT))
 #define VK_ENABLE_BETA_EXTENSIONS
@@ -121,6 +122,9 @@ uint32_t Render::Vulkan::VulkanDevice::GetQueueFamilyIndex(VkQueueFlags flag) co
 VkResult Render::Vulkan::VulkanDevice::CreateLogicalDevice(VkPhysicalDeviceFeatures enabledFeatures, std::vector<const char*> enabledExtensions,
                              void* pNextChain, bool useSwapChain, VkQueueFlags requestedQueueType)
 {
+    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
+	const float defaultQueuePriority(0.0f);
+
 
 }
 

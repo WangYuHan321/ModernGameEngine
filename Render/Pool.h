@@ -9,7 +9,7 @@
 #include <vector>
 #include "Base.h"
 
-using namespace Renderer::Util;
+using namespace Render::Util;
 
 namespace Renderer
 {
@@ -51,72 +51,71 @@ namespace Renderer
 	
 		void Destroy(Handle<ObjectType> handle)
 		{
-			if(handle.empty())
+			if(handle.Empty())
 				return;
 		
 			assert(mNumObjects > 0);
-			assert(numObjects_ > 0); // double deletion
-			const uint32_t index = handle.index();
-			assert(index < objects_.size());
-			assert(handle.gen() == objects_[index].gen_); // double deletion
-			objects_[index].obj_ = ImplObjectType{};
-			objects_[index].gen_++;
-			objects_[index].nextFree_ = freeListHead_;
+			const uint32_t index = handle.Index();
+			assert(index < mObjects.size());
+			assert(handle.Gen() == mObjects[index].mGen); // double deletion
+			mObjects[index].mObj = ImplObjectType{};
+			mObjects[index].mGen++;
+			mObjects[index].mNextFree = mFreeListHead;
 			freeListHead_ = index;
-			numObjects_--;
+			mNumObjects--;
 		}
 		
 		const ImplObjectType* get(Handle<ObjectType> handle) const
 		{
-			if (handle.empty())
+			if (handle.Empty())
 				return nullptr;
 	
-			const uint32_t index = handle.index();
-			assert(index < objects_.size());
-			assert(handle.gen() == objects_[index].gen_); // accessing deleted object
+			const uint32_t index = handle.Index();
+			assert(index < mObjects.size());
+			assert(handle.Gen() == mObjects[index].mGen); // accessing deleted object
 			
-			return &objects_[index].obj_;
+			return &mObjects[index].mObj;
 		}
 		
-		ImplObjectType* get(Handle<ObjectType> handle) {
-		if (handle.empty())
+		ImplObjectType* Get(Handle<ObjectType> handle) {
+		if (handle.Empty())
 			return nullptr;
 	
-			const uint32_t index = handle.index();
-			assert(index < objects_.size());
-			assert(handle.gen() == objects_[index].gen_); // accessing deleted object
-			return &objects_[index].obj_;
+			const uint32_t index = handle.Index();
+			assert(index < mObjects.size());
+			assert(handle.gen() == mObjects[index].mGen); // accessing deleted object
+			return &mObjects[index].mObj;
 		}
 		
-		Handle<ObjectType> getHandle(uint32_t index) const {
-			assert(index < objects_.size());
-			if (index >= objects_.size())
+		Handle<ObjectType> GetHandle(uint32_t index) const {
+			assert(index < mObjects.size());
+			if (index >= mObjects.size())
 				return {};
 	
-			return Handle<ObjectType>(index, objects_[index].gen_);
+			return Handle<ObjectType>(index, mObjects[index].mGen);
 		}
 		
-		Handle<ObjectType> findObject(const ImplObjectType* obj) {
+		Handle<ObjectType> FindObject(const ImplObjectType* obj) {
 		if (!obj)
 			return {};
 	
 			for (size_t idx = 0; idx != objects_.size(); idx++) {
-				if (objects_[idx].obj_ == *obj) {
-					return Handle<ObjectType>((uint32_t)idx, objects_[idx].gen_);
+				if (mObjects[idx].mObj == *obj) {
+					return Handle<ObjectType>((uint32_t)idx, mObjects[idx].mGen);
 				}
 			}
 	
 			return {};
 		}
 	
-		void clear() {
-			objects_.clear();
+		void Clear() {
+			mObjects.clear();
 			freeListHead_ = kListEndSentinel;
-			numObjects_ = 0;
+			mNumObjects = 0;
 		}
 	
-		uint32_t numObjects() const {
-			return numObjects_;
+		uint32_t NumObjects() const {
+			return mNumObjects;
 		}
-  }	
+  };
 }

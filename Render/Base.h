@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace Renderer
+namespace Render
 {
   namespace Util
   {
@@ -18,19 +18,19 @@ namespace Renderer
       public:
         Handle() = default;
         
-        bool empty() const {
+        bool Empty() const {
           return mGen == 0;
         }
 
-        bool valid() const{
+        bool Valid() const{
           return mGen != 0;
         }
 
-        uint32_t index() const{
+        uint32_t Index() const{
           return mIndex;
         }
 
-        uint32_t gen() const {
+        uint32_t Gen() const {
             return mGen;
         }
 
