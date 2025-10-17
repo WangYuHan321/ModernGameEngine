@@ -61,7 +61,7 @@ namespace Renderer
 			mObjects[index].mObj = ImplObjectType{};
 			mObjects[index].mGen++;
 			mObjects[index].mNextFree = mFreeListHead;
-			freeListHead_ = index;
+			mFreeListHead = index;
 			mNumObjects--;
 		}
 		
@@ -110,7 +110,7 @@ namespace Renderer
 	
 		void Clear() {
 			mObjects.clear();
-			freeListHead_ = kListEndSentinel;
+			mFreeListHead = kListEndSentinel;
 			mNumObjects = 0;
 		}
 	
