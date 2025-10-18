@@ -11,6 +11,14 @@ namespace Render
     {
         class VulkanDevice
         {
+        public:
+        struct QueueFamilyIndices
+        {
+            uint32_t  graphics;
+            uint32_t compute;
+            uint32_t transfer;
+        };
+
           VkPhysicalDevice physicalDevice { VK_NULL_HANDLE};
 
           VkDevice logicalDevice{ VK_NULL_HANDLE };
@@ -29,12 +37,7 @@ namespace Render
 
           VkCommandPool commandPool { VK_NULL_HANDLE };
 
-          struct QueueFamilyIndices
-          {
-              uint32_t  graphics;
-              uint32_t compute;
-              uint32_t transfer;
-          };
+          QueueFamilyIndices queueFamilyIndices;
 
           operator VkDevice() const
           {

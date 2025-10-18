@@ -26,8 +26,10 @@
 
 namespace Render
 {
-    namespace Vulkan {
-        namespace Debug {
+    namespace Vulkan 
+    {
+        namespace Debug 
+        {
             extern bool mblogToFile;
             extern std::string mlogFileName;
 

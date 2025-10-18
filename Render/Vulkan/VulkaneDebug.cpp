@@ -143,14 +143,14 @@ PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT{ nullptr };
 PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT{ nullptr };
 PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT{ nullptr };
 
-void Render::Vulkan::debugutils::Setup(VkInstance instance)
+void Render::Vulkan::DebugUtils::Setup(VkInstance instance)
 {
     vkCmdBeginDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdBeginDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdBeginDebugUtilsLabelEXT"));
     vkCmdEndDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdEndDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdEndDebugUtilsLabelEXT"));
     vkCmdInsertDebugUtilsLabelEXT = reinterpret_cast<PFN_vkCmdInsertDebugUtilsLabelEXT>(vkGetInstanceProcAddr(instance, "vkCmdInsertDebugUtilsLabelEXT"));
 }
 
-void Render::Vulkan::debugutils::CmdBeginLabel(VkCommandBuffer cmdbuffer, std::string caption, glm::vec4 color)
+void Render::Vulkan::DebugUtils::CmdBeginLabel(VkCommandBuffer cmdbuffer, std::string caption, glm::vec4 color)
 {
     if (!vkCmdBeginDebugUtilsLabelEXT) {
         return;
@@ -162,7 +162,7 @@ void Render::Vulkan::debugutils::CmdBeginLabel(VkCommandBuffer cmdbuffer, std::s
     vkCmdBeginDebugUtilsLabelEXT(cmdbuffer, &labelInfo);
 }
 
-void Render::Vulkan::debugutils::CmdEndLabel(VkCommandBuffer cmdbuffer)
+void Render::Vulkan::DebugUtils::CmdEndLabel(VkCommandBuffer cmdbuffer)
 {
     if (!vkCmdEndDebugUtilsLabelEXT) {
         return;
