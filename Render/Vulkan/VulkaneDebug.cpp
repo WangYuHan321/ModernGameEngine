@@ -20,10 +20,19 @@ bool Render::Vulkan::Debug::mblogToFile{ false };
 #endif // 
 
 
+namespace Render
+{
+    namespace Vulkan
+    {
+        PFN_vkCreateDebugUtilsMessengerEXT  vkCreateDebugUtilsMessengerEXT;
+        PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
+        VkDebugUtilsMessengerEXT debugUtilsMessenger;
 
-PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
-PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
-VkDebugUtilsMessengerEXT debugUtilsMessenger;
+        PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT{ nullptr };
+        PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT{ nullptr };
+        PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT{ nullptr };
+    }
+}
 
 VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::Debug::DebugUtilsMessageCallback(
         VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -87,7 +96,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL Render::Vulkan::Debug::DebugUtilsMessageCallback(
 			} else {
 				std::cout << debugMessage.str() << "\n\n";
 			}
-			if (mlogFileName) {
+			if (mblogToFile) {
 				Log(debugMessage.str());
 			}
 			fflush(stdout);
@@ -138,10 +147,6 @@ void Render::Vulkan::Debug::Log(std::string message)
         logfile.close();
     }
 }
-
-PFN_vkCmdBeginDebugUtilsLabelEXT vkCmdBeginDebugUtilsLabelEXT{ nullptr };
-PFN_vkCmdEndDebugUtilsLabelEXT vkCmdEndDebugUtilsLabelEXT{ nullptr };
-PFN_vkCmdInsertDebugUtilsLabelEXT vkCmdInsertDebugUtilsLabelEXT{ nullptr };
 
 void Render::Vulkan::DebugUtils::Setup(VkInstance instance)
 {
