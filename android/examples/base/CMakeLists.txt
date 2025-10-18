@@ -1,7 +1,7 @@
 file(GLOB BASE_SRC "../../../dps/imgui/*.cpp" "./*.h" "./*.cpp")
 
 file(GLOB RENDER_SRC "../../../Render/*.h" "../../../Render/*.cpp" "../../../Render/*.hpp")
-file(GLOB VULKAN_SRC "../../../Render/Vulkan/*.h" "../../../Render/Vulkan/*.cpp" "../../../Render/Vulkan*.hpp")
+file(GLOB VULKAN_SRC "../../../Render/Vulkan/*.h" "../../../Render/Vulkan/*.cpp" "../../../Render/Vulkan/*.hpp")
 
 add_library(libbase SHARED ${BASE_SRC} ${RENDER_SRC} ${VULKAN_SRC})
 

@@ -1,7 +1,7 @@
 
 file(GLOB BASE_SRC "./include/*.h" "./include/*.hpp")
 file(GLOB RENDER_SRC "../../Render/*.h" "../../Render/*.cpp" "../../Render/*.hpp")
-file(GLOB VULKAN_SRC "../../Render/Vulkan/*.h" "../../Render/Vulkan/*.cpp" "../../Render/Vulkan*.hpp")
+file(GLOB VULKAN_SRC "../../Render/Vulkan/*.h" "../../Render/Vulkan/*.cpp" "../../Render/Vulkan/*.hpp")
 
 SOURCE_GROUP(Render FILES  ${RENDER_SRC})
 SOURCE_GROUP(Render/Vulkan FILES  ${VULKAN_SRC})
