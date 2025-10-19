@@ -6,22 +6,7 @@
     #include <vulkan/vulkan.h>
 #endif
 
-#include <math.h>
-#include <stdlib.h>
-#include <string>
-#include <cstring>
-#include <fstream>
-#include <assert.h>
-#include <stdio.h>
-#include <vector>
-#include <sstream>
-#include<iostream>
-#ifdef _WIN32
-#include <windows.h>
-#include <fcntl.h>
-#include <io.h>
-#endif
-
+#include "VulkanTool.h"
 #include <glm/glm.hpp>
 
 namespace Render
