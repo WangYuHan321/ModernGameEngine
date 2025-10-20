@@ -1,6 +1,5 @@
 #include "VulkanBuffer.h"
 #include "VulkanDevice.h"
-#include "VulkanDevice.h"
 
 namespace Render
 {
@@ -15,7 +14,7 @@ namespace Render
             VkDeviceMemory deviceMemory;
             VkImageView imageView;
             uint32_t width, height;
-            uint32_t mipLelves;
+            uint32_t mipLevels;
             uint32_t layerCount;
             VkDescriptorImageInfo descirptor;
             VkSampler sampler;
@@ -27,8 +26,16 @@ namespace Render
         class VulkanTexture2D : public VulkanTexture
         {
         public:
-            void LoadFromFile();
-            void FromBuffer(void* buffer,
+            void LoadFromFile(
+                std::string        filename,
+                VkFormat           format,
+                Vulkan::VulkanDevice* device,
+                VkQueue            copyQueue,
+                VkImageUsageFlags  imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
+                VkImageLayout      imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            );
+            void FromBuffer(
+                void* buffer,
                 VkDeviceSize       bufferSize,
                 VkFormat           format,
                 uint32_t           texWidth,

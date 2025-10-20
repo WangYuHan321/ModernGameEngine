@@ -16,6 +16,9 @@
 #include <io.h>
 #endif
 
+#include "vulkan/vulkan.h"
+#include "VulkanDevice.h"
+
 // Custom define for better code readability
 #define VK_FLAGS_NONE 0
 // Default fence timeout in nanoseconds
@@ -46,3 +49,24 @@
 	}																									\
 }
 #endif
+
+namespace Render
+{
+	namespace Vulkan
+	{
+		namespace Tool
+		{
+			void SetImageLayout(
+				VkCommandBuffer commandBuffer,
+				VkImage         image,
+				VkImageLayout   oldImageLayout,
+				VkImageLayout   newImageLayout,
+				VkImageSubresourceRange subresourceRange,
+				VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, //默认 对所有指令阶段都要做屏障
+				VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);//默认 对所有指令阶段都要做屏障
+
+			void GenerateMipMap(Render::Vulkan::VulkanDevice* device,
+				VkQueue queue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+		}
+	}
+}

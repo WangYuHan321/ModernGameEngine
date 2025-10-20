@@ -72,6 +72,9 @@ namespace Render
 
 			inline VkImageMemoryBarrier ImageMemoryBarrier()
 			{
+				//srcQueueFamilyIndex：源队列族（哪个队列族当前拥有这个缓冲区）。
+				//dstQueueFamilyIndex：目标队列族（哪个队列族将在此缓冲区上继续使用）。
+				//如果你设置为 VK_QUEUE_FAMILY_IGNORED，表示你不进行队列族之间的所有权传递，只做内存可见性 / 访问
 				VkImageMemoryBarrier imageMemoryBarrier{};
 				imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 				imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
