@@ -1,4 +1,4 @@
-#include "VulkanSwapChain.h"
+﻿#include "VulkanSwapChain.h"
 #if defined(VK_USE_PLATFORM_WIN32_KHR)//VK_USE_PLATFORM_WIN_KHR
 void Render::Vulkan::VulkanSwapChain::InitSurface(void* platformHandle, void* platformWindow)
 {
@@ -92,6 +92,98 @@ void Render::Vulkan::VulkanSwapChain::InitSurface(void* platformHandle, void* pl
 
 	colorFormat = selectedFormat.format;
 	colorSpace = selectedFormat.colorSpace;
+}
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+void Render::Vulkan::VulkanSwapChain::InitSurface(ANativeWindow* pwindow)
+{
+    VkResult  err = VK_SUCCESS;
+
+    VkAndroidSurfaceCreateInfoKHR surfaceCreateInfo{};
+    surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
+    surfaceCreateInfo.window = pwindow;
+    if(err != VK_SUCCESS)
+    {
+        std::runtime_error("Could not create surface !");
+    }
+
+    uint32_t queueCount;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, NULL);
+    assert(queueCount > 1);
+
+    std::vector<VkQueueFamilyProperties> queueProps(queueCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queueProps.data());
+
+    std::vector<VkBool32> supportsPresent(queueCount);
+    for(uint32_t i =0; i< queueCount;i++)
+        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &supportsPresent[i]);
+
+    uint32_t graphicsQueueNodeIndex = UINT32_MAX;
+    uint32_t presentQueueNodeIndex = UINT32_MAX;
+    for (uint32_t i = 0; i < queueCount; i++)
+    {
+        if ((queueProps[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) != 0)
+        {
+            if (graphicsQueueNodeIndex == UINT32_MAX)
+            {
+                graphicsQueueNodeIndex = i;
+            }
+
+            if (supportsPresent[i] == VK_TRUE)
+            {
+                graphicsQueueNodeIndex = i;
+                presentQueueNodeIndex = i;
+                break;
+            }
+        }
+    }
+
+    if (presentQueueNodeIndex == UINT32_MAX)
+    {
+        for (uint32_t i = 0; i < queueCount; ++i)
+        {
+            if (supportsPresent[i] == VK_TRUE)
+            {
+                presentQueueNodeIndex = i;
+                break;
+            }
+        }
+    }
+
+    if (graphicsQueueNodeIndex == UINT32_MAX || presentQueueNodeIndex == UINT32_MAX)
+    {
+        std::runtime_error("Could not find a graphics and/or presenting queue!");
+    }
+
+    if (graphicsQueueNodeIndex != presentQueueNodeIndex)
+    {
+        std::runtime_error("Separate graphics and presenting queues are not supported yet!");
+    }
+
+    queueNodeIndex = graphicsQueueNodeIndex;
+
+    uint32_t formatCount;
+    VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, NULL));
+    assert(formatCount > 0);
+
+    std::vector<VkSurfaceFormatKHR> surfaceFormats(formatCount);
+    VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &formatCount, surfaceFormats.data()));
+
+    VkSurfaceFormatKHR selectedFormat = surfaceFormats[0];
+    std::vector<VkFormat> preferredImageFormats = {
+            VK_FORMAT_B8G8R8A8_UNORM,
+            VK_FORMAT_R8G8B8A8_UNORM,
+            VK_FORMAT_A8B8G8R8_UNORM_PACK32
+    };
+
+    for (auto& availableFormat : surfaceFormats) {
+        if (std::find(preferredImageFormats.begin(), preferredImageFormats.end(), availableFormat.format) != preferredImageFormats.end()) {
+            selectedFormat = availableFormat;
+            break;
+        }
+    }
+
+    colorFormat = selectedFormat.format;
+    colorSpace = selectedFormat.colorSpace;
 }
 #endif
 

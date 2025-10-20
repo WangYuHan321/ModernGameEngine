@@ -330,7 +330,7 @@ void Render::Vulkan::VulkanDevice::CopyBuffer(Render::Vulkan::Buffer *src, Rende
 
     vkCmdCopyBuffer(copyCmd, src->buffer, dst->buffer, 1, &bufferCopy);
 
-    //直接等CPU直接好
+    //??????CPU??????
     FlushCommandBuffer(copyCmd, queue);
 }
 
@@ -366,7 +366,7 @@ VkCommandBuffer Render::Vulkan::VulkanDevice::CreateCommandBuffer(VkCommandBuffe
 
 void Render::Vulkan::VulkanDevice::FlushCommandBuffer(VkCommandBuffer commandBuffer, VkQueue queue, VkCommandPool pool, bool free)
 {
-    //等CPU
+    //??CPU
     if (commandBuffer == VK_NULL_HANDLE)
         return;
 

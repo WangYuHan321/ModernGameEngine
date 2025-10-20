@@ -1,4 +1,4 @@
-namespace Render
+﻿namespace Render
 {
 	class Buffer
 	{

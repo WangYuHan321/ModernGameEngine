@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 #include <vector>
 
 #if defined (WIN32)
@@ -30,6 +30,8 @@ namespace Render
 
 #if defined (VK_USE_PLATFORM_WIN32_KHR)//VK_USE_PLATFORM_WIN32_KHR
 			void InitSurface(void* platformHandle, void* platformWindow);
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+            void InitSurface(ANativeWindow* window);
 #endif
 
 			void SetContext(VkInstance instance, VkPhysicalDevice physicalDevice, VkDevice device);

@@ -1,4 +1,4 @@
-#include "VulkaneDebug.h"
+﻿#include "VulkaneDebug.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string>
@@ -12,7 +12,7 @@
 
 bool Render::Vulkan::Debug::mblogToFile{ false };
 #if defined(__ANDROID__)
-    std::string Render::Vulkan::Debug::mblogToFile{ "android_log.txt" };
+    std::string Render::Vulkan::Debug::mlogFileName{ "android_log.txt" };
 #elif(_WIN32)
     std::string Render::Vulkan::Debug::mlogFileName{ "window_log.txt" };
 #elif(IOS)

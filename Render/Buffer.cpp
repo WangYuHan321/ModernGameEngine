@@ -1,4 +1,4 @@
-#include <stdlib.h>
+﻿#include <stdlib.h>
 #include "Buffer.h"
 
 Render::Buffer::Buffer()

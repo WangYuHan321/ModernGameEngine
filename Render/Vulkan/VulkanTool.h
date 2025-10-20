@@ -34,7 +34,7 @@
 	VkResult res = (f);																					\
 	if (res != VK_SUCCESS)																				\
 	{																									\
-		LOGE("Fatal : VkResult is \" %s \" in %s at line %d", vks::tools::errorString(res).c_str(), __FILE__, __LINE__); \
+		LOGE("Fatal : VkResult is \" %s \" in %s at line %d", "error", __FILE__, __LINE__); \
 		assert(res == VK_SUCCESS);																		\
 	}																									\
 }
@@ -62,8 +62,8 @@ namespace Render
 				VkImageLayout   oldImageLayout,
 				VkImageLayout   newImageLayout,
 				VkImageSubresourceRange subresourceRange,
-				VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, //Ä¬ÈÏ ¶ÔËùÓÐÖ¸Áî½×¶Î¶¼Òª×öÆÁÕÏ
-				VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);//Ä¬ÈÏ ¶ÔËùÓÐÖ¸Áî½×¶Î¶¼Òª×öÆÁÕÏ
+				VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, //Ä¬ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½×¶Î¶ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+				VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);//Ä¬ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½×¶Î¶ï¿½Òªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 			void GenerateMipMap(Render::Vulkan::VulkanDevice* device,
 				VkQueue queue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);

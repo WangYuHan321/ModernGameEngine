@@ -1,214 +1,214 @@
-#include "VulkanTool.h"
+ï»¿#include "VulkanTool.h"
 #include "VulkanInitializers.hpp"
 
 void Render::Vulkan::Tool::SetImageLayout(
-	VkCommandBuffer commandBuffer,
-	VkImage         image,
-	VkImageLayout   oldImageLayout,
-	VkImageLayout   newImageLayout,
-	VkImageSubresourceRange subresourceRange,
-	VkPipelineStageFlags srcStageMask,
-	VkPipelineStageFlags dstStageMask)
+        VkCommandBuffer commandBuffer,
+        VkImage         image,
+        VkImageLayout   oldImageLayout,
+        VkImageLayout   newImageLayout,
+        VkImageSubresourceRange subresourceRange,
+        VkPipelineStageFlags srcStageMask,
+        VkPipelineStageFlags dstStageMask)
 {
-	/*oldImageLayout£ºÍ¼Æ¬µ±Ç°µÄ²¼¾Ö¡£
-	newImageLayout£ºÄãÏëÒªÇÐ»»µ½µÄ²¼¾Ö¡£
-	srcAccessMask£ºÔÚÇÐ»»Ç°ÐèÒªÍê³É / ¿É¼ûµÄ·ÃÎÊÀàÐÍ£¬È·±£ÔÚ½øÈëÐÂ²¼¾ÖÇ°ÕâÐ©²Ù×÷ÒÑ¾­Íê³É¡¢¶ÔºóÐø·ÃÎÊ¿É¼û¡£
-	dstAccessMask£ºÇÐ»»µ½ÐÂ²¼¾Öºó£¬Ä¿±ê·ÃÎÊÀàÐÍÐèÒªµÄÄÚ´æ / Ö´ÐÐÆÁÕÏ¡£*/
+    /*oldImageLayoutï¼šå›¾ç‰‡å½“å‰çš„å¸ƒå±€ã€‚
+    newImageLayoutï¼šä½ æƒ³è¦åˆ‡æ¢åˆ°çš„å¸ƒå±€ã€‚
+    srcAccessMaskï¼šåœ¨åˆ‡æ¢å‰éœ€è¦å®Œæˆ / å¯è§çš„è®¿é—®ç±»åž‹ï¼Œç¡®ä¿åœ¨è¿›å…¥æ–°å¸ƒå±€å‰è¿™äº›æ“ä½œå·²ç»å®Œæˆã€å¯¹åŽç»­è®¿é—®å¯è§ã€‚
+    dstAccessMaskï¼šåˆ‡æ¢åˆ°æ–°å¸ƒå±€åŽï¼Œç›®æ ‡è®¿é—®ç±»åž‹éœ€è¦çš„å†…å­˜ / æ‰§è¡Œå±éšœã€‚*/
 
-	VkImageMemoryBarrier imageMemoryBarrier = Render::Vulkan::Initializer::ImageMemoryBarrier();
-	imageMemoryBarrier.oldLayout = oldImageLayout;
-	imageMemoryBarrier.newLayout = newImageLayout;
-	imageMemoryBarrier.image = image;
-	imageMemoryBarrier.subresourceRange = subresourceRange;
+    VkImageMemoryBarrier imageMemoryBarrier = Render::Vulkan::Initializer::ImageMemoryBarrier();
+    imageMemoryBarrier.oldLayout = oldImageLayout;
+    imageMemoryBarrier.newLayout = newImageLayout;
+    imageMemoryBarrier.image = image;
+    imageMemoryBarrier.subresourceRange = subresourceRange;
 
-	switch (oldImageLayout)
-	{	
-	case VK_IMAGE_LAYOUT_UNDEFINED://Í¼Æ¬µ±Ç°ÎÞ¶¨Òå²¼¾Ö£¬³£ÓÃÓÚ³õÊ¼×´Ì¬£»²»±£ÁôÊý¾Ý¡£
-		srcStageMask = 0;//Ã»ÓÐÒÑ·¢ÉúµÄ·ÃÎÊÐèÒªµÈ´ý¡£
-		break;
-	case VK_IMAGE_LAYOUT_PREINITIALIZED://Í¼Æ¬ÒÑ±»Ö÷»ú/CPU Ô¤³õÊ¼»¯Ð´Èë¹ý£¨ÏßÐÔÍ¼Æ¬½Ï³£¼û£©¡£
-		imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;//±£Ö¤Ö÷»ú¶ËÐ´ÈëÍê³Éºó£¬Éè±¸ÔÙ·ÃÎÊÍ¼Æ¬¡£
-		break;
+    switch (oldImageLayout)
+    {
+        case VK_IMAGE_LAYOUT_UNDEFINED://å›¾ç‰‡å½“å‰æ— å®šä¹‰å¸ƒå±€ï¼Œå¸¸ç”¨äºŽåˆå§‹çŠ¶æ€ï¼›ä¸ä¿ç•™æ•°æ®ã€‚
+            srcStageMask = 0;//æ²¡æœ‰å·²å‘ç”Ÿçš„è®¿é—®éœ€è¦ç­‰å¾…ã€‚
+            break;
+        case VK_IMAGE_LAYOUT_PREINITIALIZED://å›¾ç‰‡å·²è¢«ä¸»æœº/CPU é¢„åˆå§‹åŒ–å†™å…¥è¿‡ï¼ˆçº¿æ€§å›¾ç‰‡è¾ƒå¸¸è§ï¼‰ã€‚
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;//ä¿è¯ä¸»æœºç«¯å†™å…¥å®ŒæˆåŽï¼Œè®¾å¤‡å†è®¿é—®å›¾ç‰‡ã€‚
+            break;
 
-	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: //Í¼Æ¬½«×÷ÎªÑÕÉ«¸½¼þÊ¹ÓÃ£¨äÖÈ¾Ä¿±ê£©¡£
-		imageMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;//È·±£ÔÚ½øÈëÐÂ²¼¾ÖÇ°£¬ÑÕÉ«¸½¼þÐ´ÈëÒÑ¾­Íê³É¡£
-		break;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL: //å›¾ç‰‡å°†ä½œä¸ºé¢œè‰²é™„ä»¶ä½¿ç”¨ï¼ˆæ¸²æŸ“ç›®æ ‡ï¼‰ã€‚
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;//ç¡®ä¿åœ¨è¿›å…¥æ–°å¸ƒå±€å‰ï¼Œé¢œè‰²é™„ä»¶å†™å…¥å·²ç»å®Œæˆã€‚
+            break;
 
-	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL://Í¼Æ¬½«×÷ÎªÉî¶È/Ä£°å£¨Éî¶È/Ä£°å»º³åÇø£©Ê¹ÓÃ¡£
-		imageMemoryBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;//È·±£ÔÚ½øÈëÐÂ²¼¾ÖÇ°£¬´«Êä¶ÁÈ¡/Ïà¹Ø²Ù×÷Íê³É¡£
-		break;
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL://å›¾ç‰‡å°†ä½œä¸ºæ·±åº¦/æ¨¡æ¿ï¼ˆæ·±åº¦/æ¨¡æ¿ç¼“å†²åŒºï¼‰ä½¿ç”¨ã€‚
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;//ç¡®ä¿åœ¨è¿›å…¥æ–°å¸ƒå±€å‰ï¼Œä¼ è¾“è¯»å–/ç›¸å…³æ“ä½œå®Œæˆã€‚
+            break;
 
-	case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL://Í¼Æ¬½«×÷Îª´«ÊäÔ´Ê¹ÓÃ£¨¶ÁÊý¾Ý£©¡£
-		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;//È·±£ÔÚ½øÈëÐÂ²¼¾ÖÇ°£¬´«Êä¶ÁÈ¡/Ïà¹Ø²Ù×÷Íê³É¡£
-		break;
+        case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL://å›¾ç‰‡å°†ä½œä¸ºä¼ è¾“æºä½¿ç”¨ï¼ˆè¯»æ•°æ®ï¼‰ã€‚
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;//ç¡®ä¿åœ¨è¿›å…¥æ–°å¸ƒå±€å‰ï¼Œä¼ è¾“è¯»å–/ç›¸å…³æ“ä½œå®Œæˆã€‚
+            break;
 
-	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL://Í¼Æ¬½«×÷Îª´«ÊäÄ¿±êÊ¹ÓÃ£¨Ð´Êý¾Ý£©¡£
-		imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;//È·±£ÔÚ½øÈëÐÂ²¼¾ÖÇ°£¬´«ÊäÐ´ÈëÍê³É¡£
-		break;
+        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL://å›¾ç‰‡å°†ä½œä¸ºä¼ è¾“ç›®æ ‡ä½¿ç”¨ï¼ˆå†™æ•°æ®ï¼‰ã€‚
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;//ç¡®ä¿åœ¨è¿›å…¥æ–°å¸ƒå±€å‰ï¼Œä¼ è¾“å†™å…¥å®Œæˆã€‚
+            break;
 
-	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL://Í¼Æ¬½«±»×ÅÉ«Æ÷Ö»¶Á·ÃÎÊ£¨Èç²ÉÑùÆ÷£©¡£
-		imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;//È·±£Ö®Ç°µÄÐ´Èë¶Ô×ÅÉ«Æ÷¿É¼û¡£
-		break;
-	default:
-		// Other source layouts aren't handled (yet)
-		break;
-	}
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL://å›¾ç‰‡å°†è¢«ç€è‰²å™¨åªè¯»è®¿é—®ï¼ˆå¦‚é‡‡æ ·å™¨ï¼‰ã€‚
+            imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;//ç¡®ä¿ä¹‹å‰çš„å†™å…¥å¯¹ç€è‰²å™¨å¯è§ã€‚
+            break;
+        default:
+            // Other source layouts aren't handled (yet)
+            break;
+    }
 
-	switch (newImageLayout)
-	{
-	case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL://Í¼Æ¬½«×÷Îª´«ÊäÄ¿±êÊ¹ÓÃ£¨Ð´Êý¾Ý£©¡£
-		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;//Ä¿±êÊÇÐ´Èëµ½Í¼Æ¬£¬Í¨¹ý´«Êä½øÐÐ¡£¡£
-		break;
-	case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
-		imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;//Ä¿±êÊÇ´ÓÍ¼Æ¬¶ÁÈ¡£¬Í¨¹ý´«Êä½øÐÐ¡£¡£
-		break;
-	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
-		imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;//Ä¿±êÊÇ×÷ÎªÑÕÉ«¸½¼þÐ´Èë¡£
-		break;
-	case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL://Ä¿±êÊÇ×÷ÎªÉî¶È/Ä£°å¸½¼þÐ´Èë£»×¢ÒâÓÃ OR ÒÔÃâ¸²¸ÇÔ­ÓÐÖµ¡£
-		imageMemoryBarrier.dstAccessMask = imageMemoryBarrier.dstAccessMask | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-		break;
-	case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
-		if (imageMemoryBarrier.srcAccessMask == 0)//Í¼Æ¬½«±»×ÅÉ«Æ÷Ö»¶Á·ÃÎÊ£¨Èç²ÉÑùÆ÷£©¡£
-		{
-			imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;//Ö®Ç°Ã»ÓÐÏÔÊ½Ö¸¶¨¹ýÈÎºÎ·ÃÎÊ£¨ÀýÈç´Ó UNDEFINED ×ªµ½Ö»¶Á£©£¬¾Í¼ÙÉè¿ÉÄÜÓÐÖ÷»úÐ´Èë»ò´«ÊäÐ´ÈëÐèÒªÍ¬²½£¬È·±£ÕâÐ©Ð´Èë¶Ô×ÅÉ«Æ÷¶ÁÈ¡¿É¼û¡£
-		}
-		imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-		break;
-	}
+    switch (newImageLayout)
+    {
+        case VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL://å›¾ç‰‡å°†ä½œä¸ºä¼ è¾“ç›®æ ‡ä½¿ç”¨ï¼ˆå†™æ•°æ®ï¼‰ã€‚
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;//ç›®æ ‡æ˜¯å†™å…¥åˆ°å›¾ç‰‡ï¼Œé€šè¿‡ä¼ è¾“è¿›è¡Œã€‚ã€‚
+            break;
+        case VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL:
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;//ç›®æ ‡æ˜¯ä»Žå›¾ç‰‡è¯»å–ï¼Œé€šè¿‡ä¼ è¾“è¿›è¡Œã€‚ã€‚
+            break;
+        case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;//ç›®æ ‡æ˜¯ä½œä¸ºé¢œè‰²é™„ä»¶å†™å…¥ã€‚
+            break;
+        case VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL://ç›®æ ‡æ˜¯ä½œä¸ºæ·±åº¦/æ¨¡æ¿é™„ä»¶å†™å…¥ï¼›æ³¨æ„ç”¨ OR ä»¥å…è¦†ç›–åŽŸæœ‰å€¼ã€‚
+            imageMemoryBarrier.dstAccessMask = imageMemoryBarrier.dstAccessMask | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+            break;
+        case VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL:
+            if (imageMemoryBarrier.srcAccessMask == 0)//å›¾ç‰‡å°†è¢«ç€è‰²å™¨åªè¯»è®¿é—®ï¼ˆå¦‚é‡‡æ ·å™¨ï¼‰ã€‚
+            {
+                imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT;//ä¹‹å‰æ²¡æœ‰æ˜¾å¼æŒ‡å®šè¿‡ä»»ä½•è®¿é—®ï¼ˆä¾‹å¦‚ä»Ž UNDEFINED è½¬åˆ°åªè¯»ï¼‰ï¼Œå°±å‡è®¾å¯èƒ½æœ‰ä¸»æœºå†™å…¥æˆ–ä¼ è¾“å†™å…¥éœ€è¦åŒæ­¥ï¼Œç¡®ä¿è¿™äº›å†™å…¥å¯¹ç€è‰²å™¨è¯»å–å¯è§ã€‚
+            }
+            imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            break;
+    }
 
-	vkCmdPipelineBarrier(
-		commandBuffer,
-		srcStageMask,
-		dstStageMask,
-		0,
-		0, nullptr,
-		0, nullptr,
-		1, &imageMemoryBarrier);
+    vkCmdPipelineBarrier(
+            commandBuffer,
+            srcStageMask,
+            dstStageMask,
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &imageMemoryBarrier);
 }
 
 VkCommandBuffer BeginSingleTimeCommands(Render::Vulkan::VulkanDevice* device, VkCommandPool cmdPool)
 {
-	// ºÍäÖÈ¾Ò»Ñù£¬Ê¹ÓÃCommandBuffer¿½±´»º´æ
-	VkCommandBufferAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	allocInfo.commandPool = cmdPool;
-	allocInfo.commandBufferCount = 1;
+    // å’Œæ¸²æŸ“ä¸€æ ·ï¼Œä½¿ç”¨CommandBufferæ‹·è´ç¼“å­˜
+    VkCommandBufferAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+    allocInfo.commandPool = cmdPool;
+    allocInfo.commandBufferCount = 1;
 
-	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(device->logicalDevice, &allocInfo, &commandBuffer);
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(device->logicalDevice, &allocInfo, &commandBuffer);
 
-	VkCommandBufferBeginInfo beginInfo{};
-	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
 
-	vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
 
-	return commandBuffer;
+    return commandBuffer;
 }
 
 void EndSingleTimeCommands(Render::Vulkan::VulkanDevice* device, VkCommandPool cmdPool, VkCommandBuffer commandBuffer,VkQueue queue)
 {
-	vkEndCommandBuffer(commandBuffer);
+    vkEndCommandBuffer(commandBuffer);
 
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &commandBuffer;
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(queue);
+    vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(queue);
 
-	vkFreeCommandBuffers(device->logicalDevice, cmdPool, 1, &commandBuffer);
+    vkFreeCommandBuffers(device->logicalDevice, cmdPool, 1, &commandBuffer);
 }
 
-void Render::Vulkan::Tool::GenerateMipMap(Render::Vulkan::VulkanDevice* device, 
-	VkQueue queue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
+void Render::Vulkan::Tool::GenerateMipMap(Render::Vulkan::VulkanDevice* device,
+                                          VkQueue queue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight, uint32_t mipLevels)
 {
-	// ¼ì²éÍ¼Ïñ¸ñÊ½ÊÇ·ñÖ§³Ö linear blitting
-	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(device->physicalDevice, format, &formatProperties);
+    // æ£€æŸ¥å›¾åƒæ ¼å¼æ˜¯å¦æ”¯æŒ linear blitting
+    VkFormatProperties formatProperties;
+    vkGetPhysicalDeviceFormatProperties(device->physicalDevice, format, &formatProperties);
 
-	if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
-		throw std::runtime_error("texture image format does not support linear blitting!");
-	}
+    if (!(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)) {
+        throw std::runtime_error("texture image format does not support linear blitting!");
+    }
 
-	VkCommandBuffer commandBuffer = BeginSingleTimeCommands(device, device->commandPool);
+    VkCommandBuffer commandBuffer = BeginSingleTimeCommands(device, device->commandPool);
 
-	VkImageMemoryBarrier barrier{};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.image = image;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
-	barrier.subresourceRange.levelCount = 1;
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.image = image;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.subresourceRange.levelCount = 1;
 
-	int32_t mipWidth = texWidth;
-	int32_t mipHeight = texHeight;
+    int32_t mipWidth = texWidth;
+    int32_t mipHeight = texHeight;
 
-	for (uint32_t i = 1; i < mipLevels; i++) {
-		barrier.subresourceRange.baseMipLevel = i - 1;
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-		barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+    for (uint32_t i = 1; i < mipLevels; i++) {
+        barrier.subresourceRange.baseMipLevel = i - 1;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
 
-		vkCmdPipelineBarrier(commandBuffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
+        vkCmdPipelineBarrier(commandBuffer,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0,
+                             0, nullptr,
+                             0, nullptr,
+                             1, &barrier);
 
-		VkImageBlit blit{};
-		blit.srcOffsets[0] = { 0, 0, 0 };
-		blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
-		blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.srcSubresource.mipLevel = i - 1;
-		blit.srcSubresource.baseArrayLayer = 0;
-		blit.srcSubresource.layerCount = 1;
-		blit.dstOffsets[0] = { 0, 0, 0 };
-		blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
-		blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-		blit.dstSubresource.mipLevel = i;
-		blit.dstSubresource.baseArrayLayer = 0;
-		blit.dstSubresource.layerCount = 1;
+        VkImageBlit blit{};
+        blit.srcOffsets[0] = { 0, 0, 0 };
+        blit.srcOffsets[1] = { mipWidth, mipHeight, 1 };
+        blit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.srcSubresource.mipLevel = i - 1;
+        blit.srcSubresource.baseArrayLayer = 0;
+        blit.srcSubresource.layerCount = 1;
+        blit.dstOffsets[0] = { 0, 0, 0 };
+        blit.dstOffsets[1] = { mipWidth > 1 ? mipWidth / 2 : 1, mipHeight > 1 ? mipHeight / 2 : 1, 1 };
+        blit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        blit.dstSubresource.mipLevel = i;
+        blit.dstSubresource.baseArrayLayer = 0;
+        blit.dstSubresource.layerCount = 1;
 
-		vkCmdBlitImage(commandBuffer,
-			image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-			image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-			1, &blit,
-			VK_FILTER_LINEAR);
+        vkCmdBlitImage(commandBuffer,
+                       image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                       image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                       1, &blit,
+                       VK_FILTER_LINEAR);
 
-		barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-		barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        barrier.srcAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+        barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-		vkCmdPipelineBarrier(commandBuffer,
-			VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-			0, nullptr,
-			0, nullptr,
-			1, &barrier);
+        vkCmdPipelineBarrier(commandBuffer,
+                             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                             0, nullptr,
+                             0, nullptr,
+                             1, &barrier);
 
-		if (mipWidth > 1) mipWidth /= 2;
-		if (mipHeight > 1) mipHeight /= 2;
-	}
+        if (mipWidth > 1) mipWidth /= 2;
+        if (mipHeight > 1) mipHeight /= 2;
+    }
 
-	barrier.subresourceRange.baseMipLevel = mipLevels - 1;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.subresourceRange.baseMipLevel = mipLevels - 1;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-	vkCmdPipelineBarrier(commandBuffer,
-		VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
-		0, nullptr,
-		0, nullptr,
-		1, &barrier);
+    vkCmdPipelineBarrier(commandBuffer,
+                         VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0,
+                         0, nullptr,
+                         0, nullptr,
+                         1, &barrier);
 
-	EndSingleTimeCommands(device, device->commandPool,commandBuffer, queue);
+    EndSingleTimeCommands(device, device->commandPool,commandBuffer, queue);
 }
 

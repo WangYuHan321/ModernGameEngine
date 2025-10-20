@@ -1,4 +1,4 @@
-#include "VulkanTexture.h"
+﻿#include "VulkanTexture.h"
 #include "VulkanTool.h"
 #include <stdexcept>
 #define TINYGLTF_IMPLEMENTATION
