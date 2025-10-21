@@ -149,23 +149,28 @@ extern PFN_vkResetCommandBuffer vkResetCommandBuffer;
 
 extern PFN_vkGetPhysicalDeviceImageFormatProperties vkGetPhysicalDeviceImageFormatProperties;
 
-namespace vks
+namespace Render
 {
-    namespace android
-    {
-        /* @brief Touch control thresholds from Android NDK samples */
-        const int32_t DOUBLE_TAP_TIMEOUT = 300 * 1000000;
-        const int32_t TAP_TIMEOUT = 180 * 1000000;
-        const int32_t DOUBLE_TAP_SLOP = 100;
-        const int32_t TAP_SLOP = 8;
+    namespace Vulkan {
+        namespace android {
+            /* @brief Touch control thresholds from Android NDK samples */
+            const int32_t DOUBLE_TAP_TIMEOUT = 300 * 1000000;
+            const int32_t TAP_TIMEOUT = 180 * 1000000;
+            const int32_t DOUBLE_TAP_SLOP = 100;
+            const int32_t TAP_SLOP = 8;
 
-        /** @brief Density of the device screen (in DPI) */
-        extern int32_t screenDensity;
+            /** @brief Density of the device screen (in DPI) */
+            extern int32_t screenDensity;
 
-        bool loadVulkanLibrary();
-        void loadVulkanFunctions(VkInstance instance);
-        void freeVulkanLibrary();
-        void getDeviceConfig();
-        void showAlert(const char* message);
+            bool LoadVulkanLibrary();
+
+            void LoadVulkanFunctions(VkInstance instance);
+
+            void FreeVulkanLibrary();
+
+            void GetDeviceConfig();
+
+            void ShowAlert(const char *message);
+        }
     }
 }
