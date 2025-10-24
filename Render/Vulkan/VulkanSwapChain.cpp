@@ -3,11 +3,15 @@
 void Render::Vulkan::VulkanSwapChain::InitSurface(void* platformHandle, void* platformWindow)
 {
 	VkResult err = VK_SUCCESS;
+
+#if defined (_WIN32)
 	VkWin32SurfaceCreateInfoKHR surfaceCreateInfo{};
 	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
 	surfaceCreateInfo.hinstance = (HINSTANCE)platformHandle;
-	surfaceCreateInfo.hwnd = (HWND)platformHandle;
+	surfaceCreateInfo.hwnd = (HWND)platformWindow;
 	err = vkCreateWin32SurfaceKHR(instance, &surfaceCreateInfo, nullptr, &surface);
+
+#endif
 
 	if (err != VK_SUCCESS)
 	{
@@ -202,7 +206,7 @@ void Render::Vulkan::VulkanSwapChain::Create(uint32_t width, uint32_t height, bo
 
 	VkSwapchainKHR oldSwapchain = swapChain;
 
-	VkSurfaceCapabilitiesKHR surfCaps;
+	VkSurfaceCapabilitiesKHR surfCaps{};
 	VK_CHECK_RESULT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &surfCaps));
 
 	VkExtent2D swapchainExtent = {};

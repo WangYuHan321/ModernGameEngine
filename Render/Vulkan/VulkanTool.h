@@ -34,7 +34,7 @@
 	VkResult res = (f);																					\
 	if (res != VK_SUCCESS)																				\
 	{																									\
-		LOGE("Fatal : VkResult is \" %s \" in %s at line %d", "error", __FILE__, __LINE__); \
+		LOGE("Fatal : VkResult is \" %s \" in %s at line %d", Render::Vulkan::Tool::ErrorString(res), __FILE__, __LINE__); \
 		assert(res == VK_SUCCESS);																		\
 	}																									\
 }
@@ -44,7 +44,7 @@
 	VkResult res = (f);																					\
 	if (res != VK_SUCCESS)																				\
 	{																									\
-		std::cout << "Fatal : VkResult is \""  << "\" in " << __FILE__ << " at line " << __LINE__ << "\n"; \
+		std::cout << "Fatal : VkResult is \"" << Render::Vulkan::Tool::ErrorString(res) << "\" in " << __FILE__ << " at line " << __LINE__ << "\n"; \
 		assert(res == VK_SUCCESS);																		\
 	}																									\
 }
@@ -71,6 +71,8 @@ namespace Render
 			VkBool32 GetSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat);
 
 			VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat* depthFormat);
+
+			std::string ErrorString(VkResult errorCode);
 		}
 	}
 }
