@@ -39,7 +39,7 @@ bool ApplicationBase::InitVulkan()
 
 	// Select physical device to be used for the Vulkan example
 	// Defaults to the first device unless specified by command line
-	uint32_t selectedDevice = 1;
+	uint32_t selectedDevice = 0;
 
 	m_physicalDevice = physicalDevices[selectedDevice];
 
@@ -435,6 +435,11 @@ ApplicationBase::ApplicationBase()
 		SetupConsole("Debug Console");
 	}
 #endif
+
+	m_camera.type = Camera::CameraType::lookat;
+	m_camera.setPosition(glm::vec3(0.0f, 0.0f, -2.5f));
+	m_camera.setRotation(glm::vec3(0.0f));
+	m_camera.setPerspective(60.0f, (float)width / (float)height, 1.0f, 256.0f);
 }
 
 ApplicationBase::~ApplicationBase()

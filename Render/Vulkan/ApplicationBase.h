@@ -458,12 +458,12 @@ private:
     void CreateSurface();
     void CreateCommandPool();
     void CreateSwapChain();
+    void CreatePipelineCache();
     void CreateCommandBuffers();
     void CreateSynchronizationPrimitives();
-    void SetupDepthStencil();
-    void SetupRenderPass();
-    void CreatePipelineCache();
-    void SetupFrameBuffer();
+    virtual void SetupDepthStencil();
+    virtual void SetupRenderPass();
+    virtual void SetupFrameBuffer();
 
     void NextFrame();
 
@@ -500,7 +500,7 @@ public:
 
     VkResult CreateInstance();
 
-    void Prepare();
+    virtual void Prepare();
 
     virtual void Render() = 0;
 
