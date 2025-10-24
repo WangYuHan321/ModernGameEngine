@@ -12,7 +12,7 @@
 
 Render::Vulkan::VulkanDevice::VulkanDevice(VkPhysicalDevice _physicalDevice1)
 {
-    assert(physicalDevice);
+    assert(_physicalDevice1);
 
     this->physicalDevice = _physicalDevice1;
 

@@ -19,14 +19,15 @@ bool ApplicationBase::InitVulkan()
 		Render::Vulkan::Debug::SetupDebugging(m_instance);
 	}
 
+	// Physical device
 	uint32_t gpuCount = 0;
 	// Get number of available physical devices
 	VK_CHECK_RESULT(vkEnumeratePhysicalDevices(m_instance, &gpuCount, nullptr));
 	if (gpuCount == 0) {
-		std::runtime_error("No device with Vulkan support found");
+		std::runtime_error ("No device with Vulkan support found");
 		return false;
 	}
-
+	// Enumerate devices
 	std::vector<VkPhysicalDevice> physicalDevices(gpuCount);
 	result = vkEnumeratePhysicalDevices(m_instance, &gpuCount, physicalDevices.data());
 	if (result != VK_SUCCESS) {
@@ -34,9 +35,56 @@ bool ApplicationBase::InitVulkan()
 		return false;
 	}
 
+	// GPU selection
+
+	// Select physical device to be used for the Vulkan example
+	// Defaults to the first device unless specified by command line
 	uint32_t selectedDevice = 0;
 
+	m_physicalDevice = physicalDevices[selectedDevice];
+
+	// Store properties (including limits), features and memory properties of the physical device (so that examples can check against them)
+	vkGetPhysicalDeviceProperties(m_physicalDevice, &m_deviceProperties);
+	vkGetPhysicalDeviceFeatures(m_physicalDevice, &m_deviceFeatures);
+	vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &m_deviceMemoryProperties);
+
+	// Derived examples can override this to set actual features (based on above readings) to enable for logical device creation
+	GetEnabledFeatures();
+
+	vulkanDevice = new Render::Vulkan::VulkanDevice(m_physicalDevice);
+
+	GetEnabledExtensions();
+
+	result = vulkanDevice->CreateLogicalDevice(m_enabledFeatures, m_enabledDeviceExtensions, m_deviceCreatepNextChain);
+	if (result != VK_SUCCESS) {
+		std::runtime_error("Could not create Vulkan device: \n");
+		return false;
+	}
+	m_device = vulkanDevice->logicalDevice;
+
+	// Get a graphics queue from the device
+	vkGetDeviceQueue(m_device, vulkanDevice->queueFamilyIndices.graphics, 0, &m_queue);
+
+	// Find a suitable depth and/or stencil format
+	VkBool32 validFormat{ false };
+	// Samples that make use of stencil will require a depth + stencil format, so we select from a different list
+	if (requiresStencil) {
+		validFormat = Render::Vulkan::Tool::GetSupportedDepthStencilFormat(m_physicalDevice, &m_depthFormat);
+	}
+	else {
+		validFormat = Render::Vulkan::Tool::GetSupportedDepthFormat(m_physicalDevice, &m_depthFormat);
+	}
+	assert(validFormat);
+
+	m_swapChain.SetContext(m_instance, m_physicalDevice, m_device);
+	
+	
+	return true;
 }
+
+void ApplicationBase::GetEnabledFeatures() {}
+
+void ApplicationBase::GetEnabledExtensions() {}
 
 VkResult ApplicationBase::CreateInstance()
 {
@@ -199,6 +247,11 @@ void ApplicationBase::CreateSynchronizationPrimitives()
 	}
 }
 
+void ApplicationBase::DestroyCommandBuffers()
+{
+	vkFreeCommandBuffers(m_device, m_cmdPool, static_cast<uint32_t>(m_drawCmdBuffers.size()), m_drawCmdBuffers.data());
+}
+
 void ApplicationBase::SetupDepthStencil()
 {
 	VkImageCreateInfo imageCI = Render::Vulkan::Initializer::ImageCreateInfo();
@@ -334,6 +387,12 @@ void ApplicationBase::SetupFrameBuffer()
 	}
 }
 
+void ApplicationBase::NextFrame()
+{
+	Render();
+	frameCounter++;
+}
+
 void ApplicationBase::Prepare()
 {
 	CreateSurface();
@@ -346,6 +405,74 @@ void ApplicationBase::Prepare()
 	CreatePipelineCache();
 	SetupFrameBuffer();
 	prepared = true;
+}
+
+void ApplicationBase::RenderLoop()
+{
+#if defined(_WIN32)
+	MSG msg;
+	bool quitMessageReceived = false;
+	while (!quitMessageReceived) {
+		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+			if (msg.message == WM_QUIT) {
+				quitMessageReceived = true;
+				break;
+			}
+		}
+		if (prepared && !IsIconic(window)) {
+			NextFrame();
+		}
+	}
+#endif
+}
+
+ApplicationBase::ApplicationBase()
+{
+#if defined(_WIN32)
+	if (debugVulkan)
+	{
+		SetupConsole("Debug Console");
+	}
+#endif
+}
+
+ApplicationBase::~ApplicationBase()
+{
+	m_swapChain.CleanUp();
+	if (m_descriptorPool != VK_NULL_HANDLE) {
+		vkDestroyDescriptorPool(m_device, m_descriptorPool, nullptr);
+	}
+	DestroyCommandBuffers();
+	if (m_renderPass != VK_NULL_HANDLE) {
+		vkDestroyRenderPass(m_device, m_renderPass, nullptr);
+	}
+	for (auto& frameBuffer : m_frameBuffers) {
+		vkDestroyFramebuffer(m_device, frameBuffer, nullptr);
+	}
+	for (auto& shaderModule : m_shaderModules) {
+		vkDestroyShaderModule(m_device, shaderModule, nullptr);
+	}
+	vkDestroyImageView(m_device, m_depthStencil.view, nullptr);
+	vkDestroyImage(m_device, m_depthStencil.image, nullptr);
+	vkFreeMemory(m_device, m_depthStencil.memory, nullptr);
+	vkDestroyPipelineCache(m_device, m_pipelineCache, nullptr);
+	vkDestroyCommandPool(m_device, m_cmdPool, nullptr);
+	for (auto& fence : m_waitFences) {
+		vkDestroyFence(m_device, fence, nullptr);
+	}
+	for (auto& semaphore : m_presentCompleteSemaphores) {
+		vkDestroySemaphore(m_device, semaphore, nullptr);
+	}
+	for (auto& semaphore : m_renderCompleteSemaphores) {
+		vkDestroySemaphore(m_device, semaphore, nullptr);
+	}
+	delete vulkanDevice;
+	if (debugVulkan) {
+		Render::Vulkan::Debug::FreeDebugCallback(m_instance);
+	}
+	vkDestroyInstance(m_instance, nullptr);
 }
 
 #if defined(_WIN32)

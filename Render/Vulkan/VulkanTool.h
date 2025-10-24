@@ -67,6 +67,10 @@ namespace Render
 
 			void GenerateMipMap(Render::Vulkan::VulkanDevice* device,
 				VkQueue queue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+
+			VkBool32 GetSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat);
+
+			VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat* depthFormat);
 		}
 	}
 }
