@@ -1,5 +1,5 @@
 
-file(GLOB BASE_SRC "./include/*.h" "./src/*.cpp")
+file(GLOB BASE_SRC "./include/*.h" "./include/*.hpp" "./src/*.cpp")
 file(GLOB RENDER_SRC "../../Render/*.h" "../../Render/*.cpp" "../../Render/*.hpp")
 file(GLOB VULKAN_SRC "../../Render/Vulkan/*.h" "../../Render/Vulkan/*.cpp" "../../Render/Vulkan/*.hpp")
 
@@ -59,6 +59,15 @@ include_directories( BEFORE
 link_directories(
   ${VK_SDK_PATH}/Lib
 )
+
+if(WIN32)
+	file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../../Asset" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}")
+endif(WIN32)
+	
+if(APPLE)
+	file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../../Asset" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Debug")
+	file(COPY "${CMAKE_CURRENT_SOURCE_DIR}/../../Asset" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/Release")
+endif(APPLE)
 
 add_executable(draw_pass ${SRC_FILES})
 

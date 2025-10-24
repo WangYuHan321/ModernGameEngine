@@ -24,6 +24,8 @@
 #include "VulkanTexture.h"
 #include "VulkanInitializers.hpp"
 
+#include "../Camera.hpp"
+
 #include <iostream>
 #include <fstream>
 #include <stdexcept>
@@ -449,6 +451,8 @@ protected:
     std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> m_presentCompleteSemaphores{};
     std::vector<VkSemaphore> m_renderCompleteSemaphores{};
     std::array<VkFence, MAX_FRAMES_IN_FLIGHT> m_waitFences;
+
+    Camera m_camera;
 
 private:
     void CreateSurface();

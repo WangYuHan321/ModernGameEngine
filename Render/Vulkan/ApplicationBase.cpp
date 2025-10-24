@@ -39,7 +39,7 @@ bool ApplicationBase::InitVulkan()
 
 	// Select physical device to be used for the Vulkan example
 	// Defaults to the first device unless specified by command line
-	uint32_t selectedDevice = 0;
+	uint32_t selectedDevice = 1;
 
 	m_physicalDevice = physicalDevices[selectedDevice];
 
@@ -77,8 +77,7 @@ bool ApplicationBase::InitVulkan()
 	assert(validFormat);
 
 	m_swapChain.SetContext(m_instance, m_physicalDevice, m_device);
-	
-	
+
 	return true;
 }
 

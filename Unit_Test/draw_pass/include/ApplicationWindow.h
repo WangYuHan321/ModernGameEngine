@@ -63,8 +63,21 @@ private:
 
 	uint32_t m_currentFrame{ 0 };
 
-private:
+public:
 	void CreateSynchronizationPrimitives();
+	void CreateCommandBuffers();
+	void CreateVertexBuffer();
+	void CreateDescriptorPool();
+	void CreateDescriptorSetLayout();
+	void CreateDescriptorSets();
+	void SetupDepthStencil();
+	void SetupFrameBuffer();
+	void SetupRenderPass();
+	VkShaderModule LoadSPIRVShader(const std::string& filename);
+	void CreatePipelines();
+	void CreateUniformBuffers();
+	void CreatePipelineCache();
+	void Prepare();
 
 };
 
