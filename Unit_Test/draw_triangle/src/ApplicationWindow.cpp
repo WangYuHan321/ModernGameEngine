@@ -770,7 +770,11 @@ void ApplicationWin::Render()
 	vkCmdBindIndexBuffer(commandBuffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
 	// Draw indexed triangle
 	vkCmdDrawIndexed(commandBuffer, indices.count, 1, 0, 0, 0);
+
+	DrawUI(commandBuffer);
+
 	vkCmdEndRenderPass(commandBuffer);
+
 	// Ending the render pass will add an implicit barrier transitioning the frame buffer color attachment to
 	// VK_IMAGE_LAYOUT_PRESENT_SRC_KHR for presenting it to the windowing system
 	VK_CHECK_RESULT(vkEndCommandBuffer(commandBuffer));

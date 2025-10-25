@@ -65,12 +65,23 @@ namespace Render
 				VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, //Ĭ�� ������ָ��׶ζ�Ҫ������
 				VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);//Ĭ�� ������ָ��׶ζ�Ҫ������
 
+			void SetImageLayout(
+				VkCommandBuffer commandBuffer,
+				VkImage         image,
+				VkImageAspectFlags aspectMask,
+				VkImageLayout   oldImageLayout,
+				VkImageLayout   newImageLayout,
+				VkPipelineStageFlags srcStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, //Ĭ�� ������ָ��׶ζ�Ҫ������
+				VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);//Ĭ�� ������ָ��׶ζ�Ҫ������
+
 			void GenerateMipMap(Render::Vulkan::VulkanDevice* device,
 				VkQueue queue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
 
 			VkBool32 GetSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat);
 
 			VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat* depthFormat);
+
+			VkShaderModule LoadShader(const char* fileName, VkDevice device);
 
 			std::string ErrorString(VkResult errorCode);
 		}

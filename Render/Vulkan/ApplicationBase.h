@@ -18,6 +18,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>
+#include "UIOverlay.h"
 #include "VulkaneDebug.h"
 #include "VulkanBuffer.h"
 #include "VulkanDevice.h"
@@ -464,8 +465,10 @@ private:
     virtual void SetupDepthStencil();
     virtual void SetupRenderPass();
     virtual void SetupFrameBuffer();
+    virtual void OnUpdateUIOverlay(UIOverlay* ui);
 
     void NextFrame();
+    void UpdateOverlay();
 
     void DestroyCommandBuffers();
 
@@ -487,6 +490,7 @@ public:
 
     uint32_t apiVersion = VK_API_VERSION_1_0;
     VulkanDevice* vulkanDevice = {};
+    Render::Vulkan::UIOverlay ui;
 
     HWND window;
     HINSTANCE windowInstance;
@@ -505,6 +509,8 @@ public:
     virtual void Render() = 0;
 
     void RenderLoop();
+
+    void DrawUI(const VkCommandBuffer commandBuffer);
 
     virtual void GetEnabledFeatures();
 

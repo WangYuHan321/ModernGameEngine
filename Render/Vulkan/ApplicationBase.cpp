@@ -386,10 +386,42 @@ void ApplicationBase::SetupFrameBuffer()
 	}
 }
 
+void ApplicationBase::OnUpdateUIOverlay(UIOverlay* ui)
+{
+}
+
 void ApplicationBase::NextFrame()
 {
 	Render();
 	frameCounter++;
+	UpdateOverlay();
+}
+
+void ApplicationBase::UpdateOverlay()
+{
+
+	ImGuiIO& io = ImGui::GetIO();
+
+	io.DisplaySize = ImVec2((float)width, (float)height);
+
+	ImGui::NewFrame();
+
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
+	ImGui::SetNextWindowPos(ImVec2(10 * ui.scale, 10 * ui.scale));
+	ImGui::SetNextWindowSize(ImVec2(0, 0), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Vulkan Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+	ImGui::TextUnformatted(title.c_str());
+	ImGui::TextUnformatted(m_deviceProperties.deviceName);
+	ImGui::Text("Triangle Demo");
+	ImGui::PushItemWidth(250.0f * ui.scale);
+	OnUpdateUIOverlay(&ui);
+	ImGui::PopItemWidth();
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+	ImGui::Render();
+
+	ui.Update();
 }
 
 void ApplicationBase::Prepare()
@@ -403,7 +435,40 @@ void ApplicationBase::Prepare()
 	SetupRenderPass();
 	CreatePipelineCache();
 	SetupFrameBuffer();
-	prepared = true;
+
+
+
+	VkPipelineShaderStageCreateInfo shaderVertStage = {};
+	shaderVertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderVertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	shaderVertStage.module = Render::Vulkan::Tool::LoadShader("./Asset/shader/glsl/base/uioverlay.vert.spv",m_device);
+	shaderVertStage.pName = "main";
+
+	VkPipelineShaderStageCreateInfo shaderFragStage = {};
+	shaderFragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderFragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	shaderFragStage.module = Render::Vulkan::Tool::LoadShader("./Asset/shader/glsl/base/uioverlay.frag.spv", m_device);
+	shaderFragStage.pName = "main";
+
+	ui.device = vulkanDevice;
+	ui.queue = m_queue;
+	ui.shaders = {
+		shaderVertStage,
+		shaderFragStage
+	};
+
+	ui.PrepareResource();
+	ui.PreparePipeline(m_pipelineCache, m_renderPass, m_swapChain.colorFormat, m_depthFormat);
+}
+
+void ApplicationBase::DrawUI(const VkCommandBuffer commandBuffer)
+{
+	const VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width, (float)height, 0.0f, 1.0f);
+	const VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
+	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+
+	ui.Draw(commandBuffer);
 }
 
 void ApplicationBase::RenderLoop()

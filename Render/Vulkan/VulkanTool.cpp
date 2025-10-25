@@ -87,6 +87,23 @@ void Render::Vulkan::Tool::SetImageLayout(
             1, &imageMemoryBarrier);
 }
 
+void Render::Vulkan::Tool::SetImageLayout(
+    VkCommandBuffer commandBuffer,
+    VkImage         image,
+    VkImageAspectFlags aspectMask,
+    VkImageLayout   oldImageLayout,
+    VkImageLayout   newImageLayout,
+    VkPipelineStageFlags srcStageMask, //Ĭ�� ������ָ��׶ζ�Ҫ������
+    VkPipelineStageFlags dstStageMask)
+{
+    VkImageSubresourceRange subresourceRange = {};
+    subresourceRange.aspectMask = aspectMask;
+    subresourceRange.baseMipLevel = 0;
+    subresourceRange.levelCount = 1;
+    subresourceRange.layerCount = 1;
+    SetImageLayout(commandBuffer, image, oldImageLayout, newImageLayout, subresourceRange, srcStageMask, dstStageMask);
+}
+
 VkCommandBuffer BeginSingleTimeCommands(Render::Vulkan::VulkanDevice* device, VkCommandPool cmdPool)
 {
     // 和渲染一样，使用CommandBuffer拷贝缓存
@@ -256,6 +273,39 @@ VkBool32 Render::Vulkan::Tool::GetSupportedDepthFormat(VkPhysicalDevice physical
     }
 
     return false;
+}
+
+VkShaderModule Render::Vulkan::Tool::LoadShader(const char* fileName, VkDevice device)
+{
+    std::ifstream is(fileName, std::ios::binary | std::ios::in | std::ios::ate);
+
+    if (is.is_open())
+    {
+        size_t size = is.tellg();
+        is.seekg(0, std::ios::beg);
+        char* shaderCode = new char[size];
+        is.read(shaderCode, size);
+        is.close();
+
+        assert(size > 0);
+
+        VkShaderModule shaderModule;
+        VkShaderModuleCreateInfo moduleCreateInfo{};
+        moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        moduleCreateInfo.codeSize = size;
+        moduleCreateInfo.pCode = (uint32_t*)shaderCode;
+
+        VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
+
+        delete[] shaderCode;
+
+        return shaderModule;
+    }
+    else
+    {
+        std::cerr << "Error: Could not open shader file \"" << fileName << "\"" << "\n";
+        return VK_NULL_HANDLE;
+    }
 }
 
 std::string Render::Vulkan::Tool::ErrorString(VkResult errorCode)
