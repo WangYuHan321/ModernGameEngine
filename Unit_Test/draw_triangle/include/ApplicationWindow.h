@@ -68,6 +68,7 @@ public:
 	void CreateDescriptorPool();
 	void CreateDescriptorSetLayout();
 	void CreateDescriptorSets();
+	void UpdateUniformBuffers();
 	
 	void SetupDepthStencil() override;
 	void SetupFrameBuffer() override;

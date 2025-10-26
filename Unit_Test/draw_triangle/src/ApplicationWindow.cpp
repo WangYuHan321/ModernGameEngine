@@ -556,10 +556,7 @@ void ApplicationWin::CreatePipelines()
 
 	// Input attribute bindings describe shader attribute locations and memory layouts
 	std::array<VkVertexInputAttributeDescription, 2> vertexInputAttributs{};
-	// These match the following shader layout (see triangle.vert):
-	//	layout (location = 0) in vec3 inPos;
-	//	layout (location = 1) in vec3 inColor;
-	// Attribute location 0: Position
+
 	vertexInputAttributs[0].binding = 0;
 	vertexInputAttributs[0].location = 0;
 	// Position attribute is three 32 bit signed (SFLOAT) floats (R32 G32 B32)
@@ -679,6 +676,18 @@ void ApplicationWin::Prepare()
 	prepared = true;
 }
 
+void ApplicationWin::UpdateUniformBuffers()
+{
+	//m_camera.setPerspective(60.0f, (float)(width / 3.0f) / (float)height, 0.1f, 256.0f);
+
+	ShaderData shaderData{};
+	shaderData.projectionMatrix = m_camera.matrices.perspective;
+	shaderData.viewMatrix = m_camera.matrices.view;
+	shaderData.modelMatrix = glm::mat4(1.0f);
+
+	memcpy(m_uniformBuffers[m_currentFrame].mapped, &shaderData, sizeof(ShaderData));
+}
+
 void ApplicationWin::Render()
 {
 	if (!prepared)
@@ -693,27 +702,14 @@ void ApplicationWin::Render()
 	uint32_t imageIndex;
 	VkResult result = vkAcquireNextImageKHR(m_device, m_swapChain.swapChain, UINT64_MAX, m_presentCompleteSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
 	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-		//WindowResize();
+		WindowResize();
 		return;
 	}
 	else if ((result != VK_SUCCESS) && (result != VK_SUBOPTIMAL_KHR)) {
 		throw "Could not acquire the next swap chain image!";
 	}
 
-	// Update the uniform buffer for the next frame
-	ShaderData shaderData{};
-	shaderData.projectionMatrix = m_camera.matrices.perspective;
-	shaderData.viewMatrix = m_camera.matrices.view;
-	shaderData.modelMatrix = glm::mat4(1.0f);
-
-	// Copy the current matrices to the current frame's uniform buffer
-	// Note: Since we requested a host coherent memory type for the uniform buffer, the write is instantly visible to the GPU
-	memcpy(m_uniformBuffers[m_currentFrame].mapped, &shaderData, sizeof(ShaderData));
-
-	// Build the command buffer
-	// Unlike in OpenGL all rendering commands are recorded into command buffers that are then submitted to the queue
-	// This allows to generate work upfront in a separate thread
-	// For basic command buffers (like in this sample), recording is so fast that there is no need to offload this
+	UpdateUniformBuffers();
 
 	vkResetCommandBuffer(m_commandBuffers[m_currentFrame], 0);
 
@@ -814,7 +810,7 @@ void ApplicationWin::Render()
 	result = vkQueuePresentKHR(m_queue, &presentInfo);
 
 	if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
-		//WindowResize();
+		WindowResize();
 	}
 	else if (result != VK_SUCCESS) {
 		throw "Could not present the image to the swap chain!";

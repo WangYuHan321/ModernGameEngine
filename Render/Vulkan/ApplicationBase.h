@@ -455,7 +455,7 @@ protected:
 
     Camera m_camera;
 
-private:
+protected:
     void CreateSurface();
     void CreateCommandPool();
     void CreateSwapChain();
@@ -465,11 +465,11 @@ private:
     virtual void SetupDepthStencil();
     virtual void SetupRenderPass();
     virtual void SetupFrameBuffer();
+    virtual void BuildCommandBuffer();
     virtual void OnUpdateUIOverlay(UIOverlay* ui);
 
     void NextFrame();
     void UpdateOverlay();
-
     void DestroyCommandBuffers();
 
     std::string GetWindowTitle() const;
@@ -492,8 +492,13 @@ public:
     VulkanDevice* vulkanDevice = {};
     Render::Vulkan::UIOverlay ui;
 
+    uint32_t destWidth{};
+    uint32_t destHeight{};
+
+#if defined (_WIN32)
     HWND window;
     HINSTANCE windowInstance;
+#endif
 
     uint32_t frameCounter = 0;
 
@@ -510,6 +515,8 @@ public:
 
     void RenderLoop();
 
+    void WindowResize();
+
     void DrawUI(const VkCommandBuffer commandBuffer);
 
     virtual void GetEnabledFeatures();
@@ -524,7 +531,7 @@ public:
 #if defined( _WIN32 )
     void SetupConsole(std::string title);
     HWND SetUpWindow(HINSTANCE, WNDPROC);
-    void HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    virtual void HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 #endif
 
 };

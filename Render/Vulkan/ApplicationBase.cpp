@@ -386,6 +386,11 @@ void ApplicationBase::SetupFrameBuffer()
 	}
 }
 
+
+void ApplicationBase::BuildCommandBuffer()
+{
+}
+
 void ApplicationBase::OnUpdateUIOverlay(UIOverlay* ui)
 {
 }
@@ -473,6 +478,10 @@ void ApplicationBase::DrawUI(const VkCommandBuffer commandBuffer)
 
 void ApplicationBase::RenderLoop()
 {
+
+	destWidth = width;
+	destHeight = height;
+
 #if defined(_WIN32)
 	MSG msg;
 	bool quitMessageReceived = false;
@@ -490,6 +499,49 @@ void ApplicationBase::RenderLoop()
 		}
 	}
 #endif
+}
+
+void ApplicationBase::WindowResize()
+{
+	if (!prepared)
+		return;
+
+	prepared = false;
+
+	vkDeviceWaitIdle(m_device);
+
+	width = destWidth;
+	height = destHeight;
+
+	//Recreate the frame buffer
+	vkDestroyImageView(m_device, m_depthStencil.view, nullptr);
+	vkDestroyImage(m_device, m_depthStencil.image, nullptr);
+	vkFreeMemory(m_device, m_depthStencil.memory, nullptr);
+	
+	for (auto& frameBuffer : m_frameBuffers)
+		vkDestroyFramebuffer(m_device, frameBuffer, nullptr);
+
+	DestroyCommandBuffers();
+
+	//for (auto& fence : m_waitFences)
+	//	vkDestroyFence(m_device, fence, nullptr);
+
+	//for (auto semp : m_presentCompleteSemaphores)
+	//	vkDestroySemaphore(m_device, semp, nullptr);
+
+	//for (auto semp : m_renderCompleteSemaphores)
+	//	vkDestroySemaphore(m_device, semp, nullptr);
+
+	ui.Resize(width, height);
+	CreateSwapChain();
+	SetupDepthStencil();
+	CreateCommandBuffers();
+	BuildCommandBuffer();
+	//CreateSynchronizationPrimitives();
+	SetupFrameBuffer();
+	m_camera.updateAspectRatio((float)width / (float)height);
+	vkDeviceWaitIdle(m_device);
+	prepared = true;
 }
 
 ApplicationBase::ApplicationBase()
@@ -694,6 +746,9 @@ void ApplicationBase::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 	case WM_KEYDOWN:
 		switch (wParam)
 		{
+		case VK_ESCAPE:
+			PostQuitMessage(0);
+			break;
 		}
 
 		break;
@@ -721,6 +776,13 @@ void ApplicationBase::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 		break;
 	}
 	case WM_SIZE:
+	{
+		destWidth = LOWORD(lParam);
+		destHeight = LOWORD(lParam);
+		if (!prepared)
+			return;
+		WindowResize();
+	}
 		break;
 
 	case WM_ENTERSIZEMOVE:
