@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <io.h>
 #include <ShellScalingAPI.h>
-
+#include <GLFW/glfw3.h>
 #endif
 
 #include "VulkanSwapChain.h"
@@ -14,7 +14,6 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE // 深度缓存区，OpenGL默认是（-1， 1）Vulakn为（0.0， 1.0）
 #define STB_IMAGE_IMPLEMENTATION
-#include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <chrono>

@@ -4,13 +4,14 @@ set(NAME draw_triangle)
 
 set(SRC_DIR ../${NAME})
 set(BASE_DIR ../base)
-set(DEP_DIR ../../../../deps)
+set(RENDER_DIR ../../../)
+set(DEP_DIR ${RENDER_DIR}/deps)
+set(IMGUI_DIR ${DEP_DIR}/imgui)
+set(UNIT_TRIANGLE_DIR ../../../Unit_Test/draw_triangle)
 
-file(GLOB EXAMPLE_SRC "${SRC_DIR}/*.cpp")
+file(GLOB EXAMPLE_SRC ${UNIT_TRIANGLE_DIR}/include/*.h ${UNIT_TRIANGLE_DIR}/src/*.cpp ${UNIT_TRIANGLE_DIR}/*.cpp)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 -DVK_USE_PLATFORM_ANDROID_KHR -DVK_NO_PROTOTYPES")
-
-file(GLOB EXAMPLE_SRC "${SRC_DIR}/*.cpp")
 
 add_library(native-lib SHARED ${EXAMPLE_SRC})
 
@@ -21,9 +22,10 @@ add_subdirectory(../base ${CMAKE_SOURCE_DIR}/../base)
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -u ANativeActivity_onCreate")
 
 include_directories(${BASE_DIR})
-include_directories(${EXTERNAL_DIR})
-include_directories(${EXTERNAL_DIR}/glm)
-include_directories(${EXTERNAL_DIR}/imgui)
+include_directories(${RENDER_DIR})
+include_directories(${DEP_DIR})
+include_directories(${DEP_DIR}/glm)
+include_directories(${UNIT_TRIANGLE_DIR}/include)
 include_directories(${ANDROID_NDK}/sources/android/native_app_glue)
 
 target_link_libraries(
