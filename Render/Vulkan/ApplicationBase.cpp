@@ -38,8 +38,15 @@ bool ApplicationBase::InitVulkan()
 	// GPU selection
 
 	// Select physical device to be used for the Vulkan example
-	// Defaults to the first device unless specified by command line
+
 	uint32_t selectedDevice = 0;
+	std::vector<VkPhysicalDevice> devices(gpuCount);
+	vkEnumeratePhysicalDevices(m_instance, &gpuCount, devices.data());
+	for (int i = 0; i < gpuCount; i++)
+	{
+		selectedDevice = i;
+		break;
+	}
 
 	m_physicalDevice = physicalDevices[selectedDevice];
 
@@ -262,6 +269,7 @@ void ApplicationBase::SetupDepthStencil()
 	imageCI.samples = VK_SAMPLE_COUNT_1_BIT;
 	imageCI.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imageCI.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	imageCI.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
 	VK_CHECK_RESULT(vkCreateImage(m_device, &imageCI, nullptr, &m_depthStencil.image));
 	VkMemoryRequirements memReq{};
@@ -503,42 +511,38 @@ void ApplicationBase::RenderLoop()
 
 void ApplicationBase::WindowResize()
 {
-	if (!prepared)
-		return;
-
 	prepared = false;
 
 	vkDeviceWaitIdle(m_device);
 
 	width = destWidth;
 	height = destHeight;
+	CreateSwapChain();
 
 	//Recreate the frame buffer
 	vkDestroyImageView(m_device, m_depthStencil.view, nullptr);
 	vkDestroyImage(m_device, m_depthStencil.image, nullptr);
 	vkFreeMemory(m_device, m_depthStencil.memory, nullptr);
+	SetupDepthStencil();
 	
 	for (auto& frameBuffer : m_frameBuffers)
 		vkDestroyFramebuffer(m_device, frameBuffer, nullptr);
 
-	DestroyCommandBuffers();
+	SetupFrameBuffer();
 
-	//for (auto& fence : m_waitFences)
-	//	vkDestroyFence(m_device, fence, nullptr);
+	for (auto& fence : m_waitFences)
+		vkDestroyFence(m_device, fence, nullptr);
 
-	//for (auto semp : m_presentCompleteSemaphores)
-	//	vkDestroySemaphore(m_device, semp, nullptr);
+	for (auto semp : m_presentCompleteSemaphores)
+		vkDestroySemaphore(m_device, semp, nullptr);
 
-	//for (auto semp : m_renderCompleteSemaphores)
-	//	vkDestroySemaphore(m_device, semp, nullptr);
+	for (auto semp : m_renderCompleteSemaphores)
+		vkDestroySemaphore(m_device, semp, nullptr);
 
 	ui.Resize(width, height);
-	CreateSwapChain();
-	SetupDepthStencil();
-	CreateCommandBuffers();
 	BuildCommandBuffer();
-	//CreateSynchronizationPrimitives();
-	SetupFrameBuffer();
+	CreateSynchronizationPrimitives();
+
 	m_camera.updateAspectRatio((float)width / (float)height);
 	vkDeviceWaitIdle(m_device);
 	prepared = true;
@@ -778,7 +782,7 @@ void ApplicationBase::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 	case WM_SIZE:
 	{
 		destWidth = LOWORD(lParam);
-		destHeight = LOWORD(lParam);
+		destHeight = HIWORD(lParam);
 		if (!prepared)
 			return;
 		WindowResize();
