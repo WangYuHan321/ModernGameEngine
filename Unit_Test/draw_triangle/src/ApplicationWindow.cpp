@@ -417,6 +417,16 @@ VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
 	size_t shaderSize;
 	char* shaderCode{ nullptr };
 
+#if defined (__ANDROID__)
+    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager,filename.c_str(), AASSET_MODE_STREAMING );
+    assert(asset);
+    shaderSize = AAsset_getLength(asset);
+    assert(shaderSize > 0);
+
+    shaderCode = new char[shaderSize];
+    AAsset_read(asset, shaderCode, shaderSize);
+    AAsset_close(asset);
+#else
 	std::ifstream is(filename, std::ios::binary | std::ios::in | std::ios::ate);
 
 	if (is.is_open())
@@ -450,6 +460,7 @@ VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
 		std::cerr << "Error: Could not open shader file \"" << filename << "\"" << std::endl;
 		return VK_NULL_HANDLE;
 	}
+#endif
 }
 
 void ApplicationWin::CreatePipelines()

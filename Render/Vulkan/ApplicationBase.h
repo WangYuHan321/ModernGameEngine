@@ -7,6 +7,12 @@
 #include <io.h>
 #include <ShellScalingAPI.h>
 #include <GLFW/glfw3.h>
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+#include<android/native_activity.h>
+#include<android/asset_manager.h>
+#include<android_native_app_glue.h>
+#include<sys/system_properties.h>
+#include"VulkanAndroid.h"
 #endif
 
 #include "VulkanSwapChain.h"
@@ -497,6 +503,13 @@ public:
 #if defined (_WIN32)
     HWND window;
     HINSTANCE windowInstance;
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+    struct TouchPos
+    {
+        int32_t x;
+        int32_t  y;
+    };
+    TouchPos touchPos ={0,0};
 #endif
 
     uint32_t frameCounter = 0;
@@ -531,6 +544,8 @@ public:
     void SetupConsole(std::string title);
     HWND SetUpWindow(HINSTANCE, WNDPROC);
     virtual void HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+    static int32_t  HandleAppInput(struct android_app* app, AInputEvent* event);
 #endif
 
 };

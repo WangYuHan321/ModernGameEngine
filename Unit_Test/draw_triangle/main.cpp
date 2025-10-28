@@ -22,6 +22,23 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance
 	return 0;
 }
 
+#elif defined(__ANDROID__)
+#include <android_native_app_glue.h>
+#include "VulkanAndroid.h"
+
+ApplicationWin* app;
+void android_main(android_app* state)
+{
+    androidApp = state;
+	Render::Vulkan::android::GetDeviceConfig();
+	app = new ApplicationWin();
+	state->userData = app;
+    //state->onAppCmd = ???
+    state->onInputEvent = ApplicationBase::HandleAppInput;
+	app->RenderLoop();
+	delete(app);
+}
+
 #endif
 
 

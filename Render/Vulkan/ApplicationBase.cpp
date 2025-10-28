@@ -795,5 +795,35 @@ void ApplicationBase::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 		break;
 	}
 }
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+
+int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* event)
+{
+    ApplicationBase* pBase = reinterpret_cast<ApplicationBase*>(app->userData);
+    if(AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION)
+    {
+        int32_t eventSource = AInputEvent_getSource(event);
+        switch(eventSource)
+        {
+            case AINPUT_SOURCE_JOYSTICK:
+            {
+            }
+            break;
+            case AINPUT_SOURCE_TOUCHSCREEN:
+            {
+                int32_t action = AMotionEvent_getAction(event);
+
+                switch (action)
+                {
+
+                }
+            }
+            break;
+            default:
+                return 1;
+                break;
+        }
+    }
+}
 
 #endif
