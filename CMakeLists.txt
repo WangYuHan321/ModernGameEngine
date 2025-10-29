@@ -1,5 +1,5 @@
-cmake_minimum_required (VERSION 3.2)
-cmake_policy(VERSION 3.2)
+cmake_minimum_required (VERSION 3.5)
+cmake_policy(VERSION 3.5)
 
 set(CMAKE_CXX_STANDARD 20) # this does nothing for MSVC, use target_compile_options below
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -8,7 +8,8 @@ set(CMAKE_CXX_EXTENSIONS ON)
 set(DEP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps) 
 set(IMGUI_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/imgui)
 set(GLM_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/glm)
-set(STB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/stb)  
+set(STB_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/stb) 
+set(RENDER_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Render) 
 set(TINYGLTF_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/tinygltf)
 set(GLSLANG_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/glslang/glslang/include)    
 
@@ -31,6 +32,7 @@ add_subdirectory(deps/glslang)
 add_subdirectory(deps/tinygltf)
 #add_subdirectory(deps/taskflow)
 
+add_subdirectory(Unit_Test/render_lib)
 add_subdirectory(Unit_Test/draw_mesh)
 add_subdirectory(Unit_Test/draw_texture)
 add_subdirectory(Unit_Test/draw_triangle)
@@ -39,7 +41,6 @@ add_subdirectory(Unit_Test/ResourceManager)
 if(WIN32)
 	add_subdirectory(Unit_Test/dx12_triangle)
 endif(WIN32)
-add_subdirectory(Unit_Test/draw_render_base)
 
 
 

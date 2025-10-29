@@ -1,21 +1,23 @@
 
-file(GLOB BASE_SRC "./include/*.h" "./include/*.hpp")
+#file(GLOB BASE_SRC "./include/*.h" "./src/*.pp")
 file(GLOB RENDER_SRC "../../Render/*.h" "../../Render/*.cpp" "../../Render/*.hpp")
 file(GLOB VULKAN_SRC "../../Render/Vulkan/*.h" "../../Render/Vulkan/*.cpp" "../../Render/Vulkan/*.hpp")
 
 SOURCE_GROUP(Render FILES  ${RENDER_SRC})
 SOURCE_GROUP(Render/Vulkan FILES  ${VULKAN_SRC})
 
-project(draw_render_base)
+project(RenderLib)
 
 if (MSVC)
     add_compile_options("/utf-8")
 endif()
 
 if(WIN32)
-	set(DEPENDENCY_FILES ${Vulkan_LIBRARY} glfw)	
+	set(DEPENDENCY_FILES ${Vulkan_LIBRARY})	
 elseif(APPLE)
-	set(DEPENDENCY_FILES ${Vulkan_LIBRARY} glfw)
+	set(DEPENDENCY_FILES ${Vulkan_LIBRARY})
+else()
+	set(DEPENDENCY_FILES ${Vulkan_LIBRARY})
 endif(WIN32)
 
 
@@ -34,15 +36,15 @@ set (IMGUI_SRC
 )
 
 set(SRC_FILES 
-	${BASE_SRC}
+	#${BASE_SRC}
 	${RENDER_SRC}
 	${VULKAN_SRC}
 	${IMGUI_SRC}
-	main.cpp
 	)
 
 include_directories( BEFORE
 	${DEP_DIR}
+	${IMGUI_DIR}
 	${STB_INCLUDE_DIR}
 	${CMAKE_CURRENMT}
 	${GLM_INCLUDE_DIR}
@@ -53,20 +55,9 @@ include_directories( BEFORE
 	${CMAKE_CURRENT_SOURCE_DIR}/include
 )
 
-link_directories(
-  ${VK_SDK_PATH}/Lib
-)
+add_library(RenderLib STATIC ${SRC_FILES})
 
-add_executable(draw_render_base ${SRC_FILES})
-
-if(WIN32)
-	target_link_libraries(draw_render_base PRIVATE ${DEPENDENCY_FILES})	
-endif(WIN32)
-		
-if(APPLE)
-	target_link_libraries(draw_render_base PRIVATE  ${DEPENDENCY_FILES})
-endif(APPLE)
-
+target_link_libraries(RenderLib PRIVATE  ${DEPENDENCY_FILES})
 
 
 

@@ -6,7 +6,7 @@
 #include <fcntl.h>
 #include <io.h>
 #include <ShellScalingAPI.h>
-#include <GLFW/glfw3.h>
+//#include <GLFW/glfw3.h>
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
 #include<android/native_activity.h>
 #include<android/asset_manager.h>
