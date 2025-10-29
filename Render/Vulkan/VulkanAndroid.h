@@ -1,14 +1,13 @@
 #pragma once
 
-#include "vulkan/vulkan.h"
-
 #if defined(__ANDROID__)
+
+#include "vulkan/vulkan.h"
 #include <android/log.h>
 #include <android_native_app_glue.h>
 #include <android/configuration.h>
 #include <memory>
 #include <string>
-#endif
 
 // Global reference to android application object
 extern android_app* androidApp;
@@ -174,3 +173,5 @@ namespace Render
         }
     }
 }
+
+#endif

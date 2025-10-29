@@ -8,11 +8,11 @@
 #include <ShellScalingAPI.h>
 //#include <GLFW/glfw3.h>
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+#include"VulkanAndroid.h"
 #include<android/native_activity.h>
 #include<android/asset_manager.h>
 #include<android_native_app_glue.h>
 #include<sys/system_properties.h>
-#include"VulkanAndroid.h"
 #endif
 
 #include "VulkanSwapChain.h"

@@ -24,7 +24,7 @@ int APIENTRY WinMain(_In_ HINSTANCE hInstance, _In_opt_  HINSTANCE hPrevInstance
 
 #elif defined(__ANDROID__)
 #include <android_native_app_glue.h>
-#include "VulkanAndroid.h"
+#include "Render/Vulkan/VulkanAndroid.h"
 
 ApplicationWin* app;
 void android_main(android_app* state)

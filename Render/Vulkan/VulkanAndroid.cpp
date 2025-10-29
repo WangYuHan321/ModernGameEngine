@@ -1,10 +1,9 @@
-#include "VulkanAndroid.h"
-
 #if defined __ANDROID__
+
+#include "VulkanAndroid.h"
 #include <android/log.h>
 #include <dlfcn.h>
 #include <android/native_window_jni.h>
-#endif
 
 android_app* androidApp;
 
@@ -475,6 +474,8 @@ namespace Render
 
     }
 }
+
+#endif
 
 
 
