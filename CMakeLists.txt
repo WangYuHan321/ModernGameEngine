@@ -15,12 +15,20 @@ set(GLSLANG_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/deps/glslang/glslang/include
 
 if(WIN32)
     message(STATUS "current platform is Window Os !!!")
-elseif(UNIX AND NOT APPLE)
+elseif(LINUX)
     message(STATUS "current platform is Linux Os !!!")
 elseif(APPLE)
-    message(STATUS "current platform is Mac Os !!!")
-else()
+    message(STATUS "current platform is Apple !!!")
+    set(CMAKE_SUPPRESS_REGENERATION ON)
+    set(CMAKE_XCODE_GENERATE_SCHEME ON)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DVK_USE_PLATFORM_METAL_EXT -DVK_EXAMPLE_XCODE_GENERATED")
+    link_libraries(${Vulkan_LIBRARY} "-framework AppKit" "-framework QuartzCore")
 
+    if(CMAKE_GENERATOR MATCHES "Makefiles" OR CMAKE_GENERATOR MATCHES "Ninja")
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc -ObjC++")
+	else() # SRS - use objective-c++ language flag vs. ObjC++ for Xcode builds
+		SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fobjc-arc -xobjective-c++")
+	endif()
 endif(WIN32)
 
 include(cmake/FindVulkan.cmake)
