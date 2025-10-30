@@ -2583,10 +2583,9 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
             vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
                 m_baseScenePass.PipelineLayout, 0, 1, &m_baseScenePass.RenderObjects[0].mat.DescriptorSets[m_currentFrame], 0, nullptr);
             vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(item.meshData.Indices.size()), 1, 0, 0, 0);
-
-            vkCmdEndRenderPass(commandBuffer);
-
         }
+
+        vkCmdEndRenderPass(commandBuffer);
     }
 
     if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
