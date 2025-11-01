@@ -39,6 +39,23 @@ void android_main(android_app* state)
 	delete(app);
 }
 
+#elif (defined(VK_USE_PLATFORM_MACOS_MVK) || defined(VK_USE_PLATFORM_METAL_EXT)) && defined(VK_EXAMPLE_XCODE_GENERATED)
+
+ApplicationWin* app;
+int main(const int argc, const char *argv[])
+{
+    @autoreleasepool //只释放 继承自NSObject的对象
+    {
+        app = new ApplicationWin();
+        app->InitVulkan();
+        app->SetUpWindow(nullptr);
+        app->Prepare();
+        app->RenderLoop();
+        delete(app);
+    }
+    return 0;
+}
+
 #endif
 
 

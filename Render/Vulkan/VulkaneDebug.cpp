@@ -1,4 +1,4 @@
-﻿#include "VulkaneDebug.h"
+#include "VulkaneDebug.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string>
@@ -17,7 +17,9 @@ bool Render::Vulkan::Debug::mblogToFile{ false };
     std::string Render::Vulkan::Debug::mlogFileName{ "window_log.txt" };
 #elif(IOS)
     std::string Render::Vulkan::Debug::mlogFileName{ "ios_log.txt" };
-#endif // 
+#elif(__APPLE__)
+    std::string Render::Vulkan::Debug::mlogFileName{ "mac_log.txt" };
+#endif //
 
 
 namespace Render

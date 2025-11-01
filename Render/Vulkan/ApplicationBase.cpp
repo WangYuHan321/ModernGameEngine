@@ -1,4 +1,10 @@
-﻿#include "ApplicationBase.h"
+#include "ApplicationBase.h"
+
+#if (defined(VK_USE_PLATFORM_METAL_EXT))
+#include <Cocoa/Cocoa.h>
+#include <QuartzCore/CAMetalLayer.h>
+#include <CoreVideo/CVDisplayLink.h>
+#endif
 
 std::string ApplicationBase::GetWindowTitle() const
 {
@@ -12,6 +18,7 @@ bool ApplicationBase::InitVulkan()
 	if (result != VK_SUCCESS)
 	{
 		std::runtime_error("Create Instance !!!");
+        return false;
 	}
 
 	if (debugVulkan)
@@ -98,6 +105,8 @@ VkResult ApplicationBase::CreateInstance()
 
 #if defined (_WIN32)
 	instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_METAL_EXT)
+    instanceExtensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
 #endif
 
 	uint32_t extCount = 0;
@@ -113,6 +122,14 @@ VkResult ApplicationBase::CreateInstance()
 			}
 		}
 	}
+    
+#if (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK) || defined(VK_USE_PLATFORM_METAL_EXT))
+    // SRS - When running on iOS/macOS with MoltenVK, enable VK_KHR_get_physical_device_properties2 if not already enabled by the example (required by VK_KHR_portability_subset)
+    if (std::find(m_enabledInstanceExtensions.begin(), m_enabledInstanceExtensions.end(), VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME) == m_enabledInstanceExtensions.end())
+    {
+        m_enabledInstanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    }
+#endif
 
 	if (!m_enabledInstanceExtensions.empty())
 	{
@@ -161,6 +178,14 @@ VkResult ApplicationBase::CreateInstance()
 	if (debugVulkan || std::find(m_supportedInstanceExtensions.begin(), m_supportedInstanceExtensions.end(), VK_EXT_DEBUG_UTILS_EXTENSION_NAME) != m_supportedInstanceExtensions.end()) {
 		instanceExtensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	}
+    
+#if (defined(VK_USE_PLATFORM_IOS_MVK) || defined(VK_USE_PLATFORM_MACOS_MVK) || defined(VK_USE_PLATFORM_METAL_EXT)) && defined(VK_KHR_portability_enumeration)
+    if (std::find(m_supportedInstanceExtensions.begin(), m_supportedInstanceExtensions.end(), VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME) != m_supportedInstanceExtensions.end())
+    {
+        instanceExtensions.push_back(VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+        instanceCreateInfo.flags |= VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
+    }
+#endif
 
 	if (!instanceExtensions.empty()) {
 		instanceCreateInfo.enabledExtensionCount = (uint32_t)instanceExtensions.size();
@@ -211,6 +236,10 @@ void ApplicationBase::CreateSurface()
 {
 #if defined (_WIN32)
 	m_swapChain.InitSurface(windowInstance, window);
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+    m_swapChain.InitSurface(metalLayer);
+#elif defined(VK_USE_PLATFORM_METAL_EXT)
+    m_swapChain.InitSurface(metalLayer);
 #endif
 }
 
@@ -506,6 +535,8 @@ void ApplicationBase::RenderLoop()
 			NextFrame();
 		}
 	}
+#elif defined(VK_USE_PLATFORM_METAL_EXT)
+    [NSApp run];
 #endif
 }
 
@@ -826,4 +857,82 @@ int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* e
     }
 }
 
+#elif defined(VK_USE_PLATFORM_METAL_EXT)
+@interface AppDelegate : NSObject<NSApplicationDelegate>
+{
+@public
+    ApplicationBase* theApp;
+}
+
+@end
+
+
+@implementation AppDelegate
+{
+    
+}
+
+@end
+
+/*
+dispatch_group_t concurrentGroup;
+- (void) applicationDidFinishLaunching:(NSNotification *)aNotification
+{
+    [NSApp activateIgnoringOtherApps:YES];
+    
+    concurrentGroup = dispatch_group_create();
+    dispatch_queue_t concurrentQueue = dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE, 0);
+    dispatch_group_async(concurrentGroup, concurrentQueue, ^{
+
+        while (!theApp->quit) {
+            theApp->DisplayLinkOutputCb();
+        }
+    });
+
+    // SRS - When benchmarking, set up termination notification on main thread when concurrent queue completes
+    if (true) {
+        dispatch_queue_t notifyQueue = dispatch_get_main_queue();
+        dispatch_group_notify(concurrentGroup, notifyQueue, ^{ [NSApp terminate:nil]; });
+    }
+    
+}
+*/
+ 
+void* ApplicationBase::SetUpWindow(void* view)
+{
+#if defined(VK_EXAMPLE_XCODE_GENERATED)
+    NSApp = [NSApplication sharedApplication];
+    [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+    auto nsAppDelegate = [AppDelegate new];
+    
+    
+    
+    
 #endif
+    
+    
+}
+
+void ApplicationBase::DisplayLinkOutputCb()
+{
+    if(prepared)
+        NextFrame();
+}
+
+void ApplicationBase::MouseDragged(float x, float y)
+{
+    
+}
+
+void ApplicationBase::WindowWillResize(float x, float y)
+{
+    if (prepared)
+    {
+        destWidth = x;
+        destHeight = y;
+        WindowResize();
+    }
+}
+
+#endif
+
