@@ -31,6 +31,10 @@ bool ApplicationBase::InitVulkan()
 		Render::Vulkan::Debug::SetupDebugging(m_instance);
 	}
 
+#if defined(VK_USE_PLATFORM_ANDROID_KHR)
+    Render::Vulkan::android::LoadVulkanFunctions(m_instance);
+#endif
+
 	// Physical device
 	uint32_t gpuCount = 0;
 	// Get number of available physical devices
@@ -110,6 +114,8 @@ VkResult ApplicationBase::CreateInstance()
 
 #if defined (_WIN32)
 	instanceExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
+#elif defined(VK_USE_PLATFORM_ANDROID_KHR)
+    instanceExtensions.push_back(VK_KHR_ANDROID_SURFACE_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
     instanceExtensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
 #endif
@@ -543,8 +549,40 @@ void ApplicationBase::RenderLoop()
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
     [NSApp run];
 #elif defined(__ANDROID__)
+
     while(true)
     {
+        int ident;
+        int events;
+        struct android_poll_source* source;
+        bool destroy = false;
+
+        focused = true;
+
+
+        while ((ident = ALooper_pollOnce(focused ? 0 : -1, nullptr, &events, (void**)&source)) > ALOOPER_POLL_TIMEOUT)
+        {
+            if (source != nullptr)
+            {
+                source->process(androidApp, source);
+            }
+            if (androidApp->destroyRequested != 0)
+            {
+                LOGD("Android app destroy requested");
+                destroy = true;
+                break;
+            }
+        }
+
+        if (destroy)
+        {
+            ANativeActivity_finish(androidApp->activity);
+            break;
+        }
+
+
+
+
         if(prepared)
         {
             Render();
@@ -898,6 +936,7 @@ void ApplicationBase::HandleAppCommand(android_app * app, int32_t cmd)
                 }
                 else {
                     LOGE("Could not initialize Vulkan, exiting!");
+                    androidApp->destroyRequested = 1;
                 }
             }
             else
@@ -907,9 +946,11 @@ void ApplicationBase::HandleAppCommand(android_app * app, int32_t cmd)
             break;
         case APP_CMD_LOST_FOCUS:
             LOGD("APP_CMD_LOST_FOCUS");
+            p_appBase->focused = false;
             break;
         case APP_CMD_GAINED_FOCUS:
             LOGD("APP_CMD_GAINED_FOCUS");
+            p_appBase->focused = true;
             break;
         case APP_CMD_TERM_WINDOW:
             // Window is hidden or closed, clean up resources

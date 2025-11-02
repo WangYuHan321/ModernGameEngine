@@ -30,12 +30,12 @@ ApplicationWin* app;
 void android_main(android_app* state)
 {
     androidApp = state;
+    app = new ApplicationWin();
 	Render::Vulkan::android::GetDeviceConfig();
-	app = new ApplicationWin();
-	state->userData = app;
+    state->userData = app;
     state->onAppCmd = ApplicationBase::HandleAppCommand;
     state->onInputEvent = ApplicationBase::HandleAppInput;
-	app->RenderLoop();
+    app->RenderLoop();
 	delete(app);
 }
 

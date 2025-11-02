@@ -41,7 +41,22 @@ void Render::Vulkan::UIOverlay::PrepareResource()
 	unsigned char* fontData;
 	int texWidth, texHeight;
 	const std::string filePath = "./Asset/font/PressStart2P-Regular.ttf";
-	io.Fonts->AddFontFromFileTTF(filePath.c_str(), 16.0f * scale);
+
+#if defined(__ANDROID__)
+    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, "PressStart2P-Regular.ttf", AASSET_MODE_STREAMING);
+    if (asset) {
+        size_t size = AAsset_getLength(asset);
+        assert(size > 0);
+        char *fontAsset = new char[size];
+        AAsset_read(asset, fontAsset, size);
+        AAsset_close(asset);
+        io.Fonts->AddFontFromMemoryTTF(fontAsset, size, 14.0f * scale);
+        delete[] fontAsset;
+    }
+#else
+    io.Fonts->AddFontFromFileTTF(filePath.c_str(), 16.0f * scale);
+#endif
+
 	io.Fonts->GetTexDataAsRGBA32(&fontData, &texWidth, &texHeight);
 	VkDeviceSize uploadSize = texWidth * texHeight * 4 * sizeof(char);
 

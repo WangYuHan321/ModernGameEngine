@@ -105,6 +105,8 @@ void Render::Vulkan::VulkanSwapChain::InitSurface(ANativeWindow* pwindow)
     VkAndroidSurfaceCreateInfoKHR surfaceCreateInfo{};
     surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_ANDROID_SURFACE_CREATE_INFO_KHR;
     surfaceCreateInfo.window = pwindow;
+
+    err = vkCreateAndroidSurfaceKHR(instance, &surfaceCreateInfo, NULL, &surface);
     if(err != VK_SUCCESS)
     {
         std::runtime_error("Could not create surface !");
@@ -112,7 +114,7 @@ void Render::Vulkan::VulkanSwapChain::InitSurface(ANativeWindow* pwindow)
 
     uint32_t queueCount;
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, NULL);
-    assert(queueCount > 1);
+    assert(queueCount >= 1);
 
     std::vector<VkQueueFamilyProperties> queueProps(queueCount);
     vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueCount, queueProps.data());
