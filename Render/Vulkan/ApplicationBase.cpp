@@ -6,6 +6,11 @@
 #include <CoreVideo/CVDisplayLink.h>
 #endif
 
+#if defined(VK_USE_PLATFORM_METAL_EXT)
+// SRS - Metal layer is defined externally when using iOS/macOS displayLink-driven examples project
+extern CAMetalLayer* layer;
+#endif
+
 std::string ApplicationBase::GetWindowTitle() const
 {
 	std::string windowTitle{ title + " - " + m_deviceProperties.deviceName };
@@ -237,7 +242,7 @@ void ApplicationBase::CreateSurface()
 #if defined (_WIN32)
 	m_swapChain.InitSurface(windowInstance, window);
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
-    m_swapChain.InitSurface(metalLayer);
+    m_swapChain.InitSurface(androidApp->window);
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
     m_swapChain.InitSurface(metalLayer);
 #endif
@@ -537,6 +542,15 @@ void ApplicationBase::RenderLoop()
 	}
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
     [NSApp run];
+#elif defined(__ANDROID__)
+    while(true)
+    {
+        if(prepared)
+        {
+            Render();
+            UpdateOverlay();
+        }
+    }
 #endif
 }
 
@@ -586,6 +600,9 @@ ApplicationBase::ApplicationBase()
 	{
 		SetupConsole("Debug Console");
 	}
+#elif defined(__ANDROID__)
+    bool libLoaded = Render::Vulkan::android::LoadVulkanLibrary();
+    assert(libLoaded);
 #endif
 
 	m_camera.type = Camera::CameraType::lookat;
@@ -857,6 +874,53 @@ int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* e
     }
 }
 
+void ApplicationBase::HandleAppCommand(android_app * app, int32_t cmd)
+{
+    assert(app->userData != nullptr);
+    ApplicationBase* p_appBase = reinterpret_cast<ApplicationBase*>(app->userData);
+    switch (cmd)
+    {
+        case APP_CMD_SAVE_STATE:
+            LOGD("APP_CMD_SAVE_STATE");
+            /*
+            vulkanExample->app->savedState = malloc(sizeof(struct saved_state));
+            *((struct saved_state*)vulkanExample->app->savedState) = vulkanExample->state;
+            vulkanExample->app->savedStateSize = sizeof(struct saved_state);
+            */
+            break;
+        case APP_CMD_INIT_WINDOW:
+            LOGD("APP_CMD_INIT_WINDOW");
+            if (androidApp->window != nullptr)
+            {
+                if (p_appBase->InitVulkan()) {
+                    p_appBase->Prepare();
+                    assert(p_appBase->prepared);
+                }
+                else {
+                    LOGE("Could not initialize Vulkan, exiting!");
+                }
+            }
+            else
+            {
+                LOGE("No window assigned!");
+            }
+            break;
+        case APP_CMD_LOST_FOCUS:
+            LOGD("APP_CMD_LOST_FOCUS");
+            break;
+        case APP_CMD_GAINED_FOCUS:
+            LOGD("APP_CMD_GAINED_FOCUS");
+            break;
+        case APP_CMD_TERM_WINDOW:
+            // Window is hidden or closed, clean up resources
+            LOGD("APP_CMD_TERM_WINDOW");
+            if (p_appBase->prepared) {
+                p_appBase->m_swapChain.CleanUp();
+            }
+            break;
+    }
+}
+
 #elif defined(VK_USE_PLATFORM_METAL_EXT)
 @interface AppDelegate : NSObject<NSApplicationDelegate>
 {
@@ -869,7 +933,42 @@ int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* e
 
 @implementation AppDelegate
 {
+}
+
+dispatch_group_t concurrentGroup;
+
+- (void)applicationDidFinishLaunching:(NSNotification *)aNotification
+{
+    [NSApp activateIgnoringOtherApps:YES];
     
+    concurrentGroup = dispatch_group_create();
+    dispatch_queue_t concurrentQueue = dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE, 0);
+    dispatch_group_async(concurrentGroup, concurrentQueue, ^{
+
+        while (!theApp->quit) {
+            theApp->DisplayLinkOutputCb();
+        }
+    });
+
+    // SRS - When benchmarking, set up termination notification on main thread when concurrent queue completes
+    if (true) {
+        dispatch_queue_t notifyQueue = dispatch_get_main_queue();
+        dispatch_group_notify(concurrentGroup, notifyQueue, ^{ [NSApp terminate:nil]; });
+    }
+}
+
+- (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication *)sender
+{
+    return YES;
+}
+
+// SRS - Tell rendering loop to quit, then wait for concurrent queue to terminate before deleting vulkanExample
+- (void)applicationWillTerminate:(NSNotification *)aNotification
+{
+    theApp->quit = YES;
+    dispatch_group_wait(concurrentGroup, DISPATCH_TIME_FOREVER);
+    vkDeviceWaitIdle(theApp->vulkanDevice->logicalDevice);
+    delete(theApp);
 }
 
 @end
@@ -897,6 +996,161 @@ dispatch_group_t concurrentGroup;
     
 }
 */
+
+static CVReturn displayLinkOutputCallback(CVDisplayLinkRef displayLink, const CVTimeStamp *inNow,
+    const CVTimeStamp *inOutputTime, CVOptionFlags flagsIn, CVOptionFlags *flagsOut,
+    void *displayLinkContext)
+{
+    @autoreleasepool
+    {
+        auto appBase = static_cast<ApplicationBase*>(displayLinkContext);
+        appBase->DisplayLinkOutputCb();
+    }
+    return kCVReturnSuccess;
+}
+
+@interface View : NSView<NSWindowDelegate>
+{
+@public
+    ApplicationBase *vulkanExample;
+}
+
+@end
+
+@implementation View
+{
+    CVDisplayLinkRef displayLink;
+}
+
+- (instancetype)initWithFrame:(NSRect)frameRect
+{
+    self = [super initWithFrame:(frameRect)];
+    if (self)
+    {
+        self.wantsLayer = YES;
+        self.layer = [CAMetalLayer layer];
+    }
+    return self;
+}
+
+- (void)viewDidMoveToWindow
+{
+    CVDisplayLinkCreateWithActiveCGDisplays(&displayLink);
+    // SRS - Disable displayLink vsync rendering in favour of max frame rate concurrent rendering
+    //     - vsync command line option (-vs) on macOS now works like other platforms (using VK_PRESENT_MODE_FIFO_KHR)
+    //CVDisplayLinkSetOutputCallback(displayLink, &displayLinkOutputCallback, vulkanExample);
+    CVDisplayLinkStart(displayLink);
+}
+
+- (BOOL)acceptsFirstResponder
+{
+    return YES;
+}
+
+- (BOOL)acceptsFirstMouse:(NSEvent *)event
+{
+    return YES;
+}
+
+- (void)keyDown:(NSEvent*)event
+{
+    switch (event.keyCode)
+    {
+        
+        default:
+            break;
+    }
+}
+
+- (void)keyUp:(NSEvent*)event
+{
+    switch (event.keyCode)
+    {
+        default:
+            break;
+    }
+}
+
+- (NSPoint)getMouseLocalPoint:(NSEvent*)event
+{
+    NSPoint location = [event locationInWindow];
+    NSPoint point = [self convertPoint:location fromView:nil];
+    point.y = self.frame.size.height - point.y;
+    return point;
+}
+
+- (void)mouseDown:(NSEvent *)event
+{
+}
+
+- (void)mouseUp:(NSEvent *)event
+{
+}
+
+- (void)rightMouseDown:(NSEvent *)event
+{
+}
+
+- (void)rightMouseUp:(NSEvent *)event
+{
+}
+
+- (void)otherMouseDown:(NSEvent *)event
+{
+
+}
+
+- (void)otherMouseUp:(NSEvent *)event
+{
+}
+
+- (void)mouseDragged:(NSEvent *)event
+{
+
+}
+
+- (void)rightMouseDragged:(NSEvent *)event
+{
+
+}
+
+- (void)otherMouseDragged:(NSEvent *)event
+{
+
+}
+
+- (void)mouseMoved:(NSEvent *)event
+{
+
+}
+
+- (void)scrollWheel:(NSEvent *)event
+{
+
+}
+
+- (void)windowWillEnterFullScreen:(NSNotification *)notification
+{
+    
+}
+
+- (void)windowWillExitFullScreen:(NSNotification *)notification
+{
+  
+}
+
+- (BOOL)windowShouldClose:(NSWindow *)sender
+{
+    return TRUE;
+}
+
+- (void)windowWillClose:(NSNotification *)notification
+{
+    CVDisplayLinkStop(displayLink);
+    CVDisplayLinkRelease(displayLink);
+}
+
+@end
  
 void* ApplicationBase::SetUpWindow(void* view)
 {
@@ -904,9 +1158,31 @@ void* ApplicationBase::SetUpWindow(void* view)
     NSApp = [NSApplication sharedApplication];
     [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
     auto nsAppDelegate = [AppDelegate new];
+    nsAppDelegate->theApp = this;
+    [NSApp setDelegate:nsAppDelegate];
     
-    
-    
+    const auto kContentRect = NSMakeRect(0.0f, 0.0f, width, height);
+    const auto kWindowStyle = NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable;
+    auto window = [[NSWindow alloc] initWithContentRect:kContentRect
+                                              styleMask:kWindowStyle
+                                                backing:NSBackingStoreBuffered
+                                                  defer:NO];
+    [window setTitle:@(title.c_str())];
+    [window setAcceptsMouseMovedEvents:YES];
+    [window center];
+    [window makeKeyAndOrderFront:nil];
+    if (useFullScreen) {
+        [window toggleFullScreen:nil];
+    }
+
+    auto nsView = [[View alloc] initWithFrame:kContentRect];
+    nsView->vulkanExample = this;
+    [window setDelegate:nsView];
+    [window setContentView:nsView];
+    //this->view = (__bridge void*)nsView;
+#if defined(VK_USE_PLATFORM_METAL_EXT)
+    //this->metalLayer = (CAMetalLayer*)layer;
+#endif
     
 #endif
     

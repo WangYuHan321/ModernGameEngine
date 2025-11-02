@@ -33,7 +33,7 @@ void android_main(android_app* state)
 	Render::Vulkan::android::GetDeviceConfig();
 	app = new ApplicationWin();
 	state->userData = app;
-    //state->onAppCmd = ???
+    state->onAppCmd = ApplicationBase::HandleAppCommand;
     state->onInputEvent = ApplicationBase::HandleAppInput;
 	app->RenderLoop();
 	delete(app);

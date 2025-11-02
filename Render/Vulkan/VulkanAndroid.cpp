@@ -151,7 +151,7 @@ namespace Render
             //load vulkan库
             libVulkan = dlopen("libvulkan.so", RTLD_NOW | RTLD_LOCAL);
 
-            if (libVulkan) {
+            if (!libVulkan) {
                 __android_log_print(ANDROID_LOG_INFO, "vulkanandroid",
                                     "Could mpt load vulkan library : %s \n", dlerror());
                 return false;
