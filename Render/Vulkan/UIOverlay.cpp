@@ -43,7 +43,7 @@ void Render::Vulkan::UIOverlay::PrepareResource()
 	const std::string filePath = "./Asset/font/PressStart2P-Regular.ttf";
 
 #if defined(__ANDROID__)
-    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, "PressStart2P-Regular.ttf", AASSET_MODE_STREAMING);
+    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, "font/PressStart2P-Regular.ttf", AASSET_MODE_STREAMING);
     if (asset) {
         size_t size = AAsset_getLength(asset);
         assert(size > 0);

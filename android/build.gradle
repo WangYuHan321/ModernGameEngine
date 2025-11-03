@@ -43,6 +43,7 @@ ext {
     targetSdkVersion = 36
     compileSdkVersion = 36
 	assetPath = '../../../Asset'
+	fontPath = '../../../Asset/font'
     shaderPath = '../../../Asset/shader/'
     meshPath = '../../../Asset/mesh/'
 }

@@ -42,6 +42,12 @@ task copyTask {
         include 'icon.png'
     }
 
+	copy {
+       from rootProject.ext.fontPath
+       into 'assets/font'
+       include '*.ttf'
+    }
+
     copy {
         from rootProject.ext.shaderPath + 'glsl/base'
         into 'assets/shaders/glsl/base'

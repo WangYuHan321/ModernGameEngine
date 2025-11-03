@@ -591,12 +591,20 @@ void ApplicationWin::CreatePipelines()
 	// Shaders
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 
+#if defined( __ANDROID__)
+    std::string  vertexShaderPath = "shaders/glsl/triangle/triangle.vert.spv";
+    std::string  fragShaderPath = "shaders/glsl/triangle/triangle.frag.spv";
+#else
+    std::string  vertexShaderPath = "./Asset/shader/glsl/triangle/triangle.vert.spv";
+    std::string  fragShaderPath = "./Asset/shader/glsl/triangle/triangle.frag.spv";
+#endif
+
 	// Vertex shader
 	shaderStages[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	// Set pipeline stage for this shader
 	shaderStages[0].stage = VK_SHADER_STAGE_VERTEX_BIT;
 	// Load binary SPIR-V shader
-	shaderStages[0].module = LoadSPIRVShader("./Asset/shader/glsl/triangle/triangle.vert.spv");
+	shaderStages[0].module = LoadSPIRVShader(vertexShaderPath.c_str());
 	// Main entry point for the shader
 	shaderStages[0].pName = "main";
 	assert(shaderStages[0].module != VK_NULL_HANDLE);
@@ -606,7 +614,7 @@ void ApplicationWin::CreatePipelines()
 	// Set pipeline stage for this shader
 	shaderStages[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 	// Load binary SPIR-V shader
-	shaderStages[1].module = LoadSPIRVShader("./Asset/shader/glsl/triangle/triangle.frag.spv");
+	shaderStages[1].module = LoadSPIRVShader(fragShaderPath.c_str());
 	// Main entry point for the shader
 	shaderStages[1].pName = "main";
 	assert(shaderStages[1].module != VK_NULL_HANDLE);
