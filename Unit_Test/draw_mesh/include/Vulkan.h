@@ -177,9 +177,9 @@ struct InstanceMesh
     std::vector<Vertex> Vertices;
     std::vector<uint32_t> Indices;
     VkBuffer VertexBuffer;
-    VkDeviceMemory VertexBufferMemory;                
-    VkBuffer IndexBuffer;                              
-    VkDeviceMemory IndexBufferMemory;                  
+    VkDeviceMemory VertexBufferMemory;
+    VkBuffer IndexBuffer;
+    VkDeviceMemory IndexBufferMemory;
 
     // only init with instanced mesh
     VkBuffer InstancedBuffer;                            // Instanced buffer
@@ -198,16 +198,18 @@ struct Mesh
 
 struct Material
 {
-    std::vector<VkImage> TextureImages;                  
-    std::vector<VkDeviceMemory> TextureImageMemorys;     
-    std::vector<VkImageView> TextureImageViews;         
-    std::vector<VkSampler> TextureSamplers;  
+    std::vector<VkImage> TextureImages;
+    std::vector<VkDeviceMemory> TextureImageMemorys;
+    std::vector<VkImageView> TextureImageViews;
+    std::vector<VkSampler> TextureSamplers;
 
     VkDescriptorPool DescriptorPool;
     std::vector<VkDescriptorSet> DescriptorSets;
+
+    std::vector<std::string> strFileName;
 };
 
-struct RenderInstanceObject 
+struct RenderInstanceObject
 {
     Material mat;
     InstanceMesh MeshData;
@@ -235,7 +237,7 @@ struct GlobalConstants {
         specConstants = 0;
         specConstantsCount = 9;
     }
-} ;
+};
 
 struct RenderIndirectObject
 {
@@ -258,11 +260,11 @@ struct GeometryBuffer
 {
     //depth
     VkFormat DepthStencilFormat;
-	VkImage DepthStencilImage;
-	VkDeviceMemory DepthStencilMemory;
-	VkImageView DepthStencilView;
-	VkSampler DepthStencilSampler;
-    
+    VkImage DepthStencilImage;
+    VkDeviceMemory DepthStencilMemory;
+    VkImageView DepthStencilView;
+    VkSampler DepthStencilSampler;
+
     //SceneCOlor
     VkFormat SceneColorFormat;
     VkImage SceneColorImage;
@@ -270,7 +272,7 @@ struct GeometryBuffer
     VkImageView SceneColorImageView;
     VkSampler SceneColorSampler;
 
-	//GBUFFER Normal
+    //GBUFFER Normal
     VkFormat GBufferAFormat;
     VkImage GBufferAImage;
     VkDeviceMemory GBufferAMemory;
@@ -284,7 +286,7 @@ struct GeometryBuffer
     VkDeviceMemory GBufferBMemory;
     VkImageView GBufferBImageView;
     VkSampler GBufferBSampler;
-    
+
     // BaseColor+AO
     VkFormat GBufferCFormat;
     VkImage GBufferCImage;
@@ -303,27 +305,27 @@ struct GeometryBuffer
 struct ShadowPass
 {
     std::vector<RenderObject*> renderObjects;
-	std::vector<RenderInstanceObject*> renderInstanceObjects;
-	std::vector<RenderIndirectObject*> renderIndirectObjects;
-	std::vector<RenderIndirectInstancedObject*> renderIndirectInstancedObjects;
+    std::vector<RenderInstanceObject*> renderInstanceObjects;
+    std::vector<RenderIndirectObject*> renderIndirectObjects;
+    std::vector<RenderIndirectInstancedObject*> renderIndirectInstancedObjects;
 
     float zNear, zFar;
     int32_t Width, Height;
     VkFormat Format;
-	VkFramebuffer FrameBuffer;
+    VkFramebuffer FrameBuffer;
     VkRenderPass RenderPass;
     VkImage Image;
     VkDeviceMemory Memory;
     VkImageView ImageView;
     VkSampler Sampler;
-	VkDescriptorSetLayout DescriptionSetLayout;
-	VkDescriptorPool DescriptorPool;
-	VkPipelineLayout PipelineLayout;
-	VkPipeline Pipeline;
+    VkDescriptorSetLayout DescriptionSetLayout;
+    VkDescriptorPool DescriptorPool;
+    VkPipelineLayout PipelineLayout;
+    VkPipeline Pipeline;
     VkPipeline PipelineInstanced;
     std::vector<VkDescriptorSet> DescriptorSets;
     std::vector<VkBuffer> UniformBuffers;
-	std::vector<VkDeviceMemory> UniformBuffersMemory;
+    std::vector<VkDeviceMemory> UniformBuffersMemory;
 };
 
 class BackgroundPass
@@ -333,13 +335,13 @@ class BackgroundPass
     VkDeviceMemory Memory;
     VkSampler Sampler;
     VkRenderPass RenderPass;
-	VkDescriptorSetLayout DescriptorSetLayout;
+    VkDescriptorSetLayout DescriptorSetLayout;
     VkDescriptorPool DescriptorPool;
-	std::vector<VkDescriptorSet> DescriptorSets;
+    std::vector<VkDescriptorSet> DescriptorSets;
     VkPipelineLayout PipelineLayout;
-	VkPipeline PipelineInstanced;
-	std::vector<VkPipeline> Pipelines;
-} ;
+    VkPipeline PipelineInstanced;
+    std::vector<VkPipeline> Pipelines;
+};
 
 class SkyboxPass
 {
@@ -360,10 +362,10 @@ struct BaseScenePass
 {
     std::vector<RenderObject> RenderObjects;
     std::vector<RenderInstanceObject> RenderInstanceObjects;
-	VkDescriptorSetLayout DescriptorSetLayout;
-	VkPipelineLayout PipelineLayout;
-	std::vector<VkPipeline> Pipelines;
-	std::vector<VkPipeline> PipelinesInstanced;
+    VkDescriptorSetLayout DescriptorSetLayout;
+    VkPipelineLayout PipelineLayout;
+    std::vector<VkPipeline> Pipelines;
+    std::vector<VkPipeline> PipelinesInstanced;
 };
 
 struct BaseSceneIndirectPass
@@ -392,6 +394,82 @@ struct BaseSceneDeferredRenderingPass
     VkPipelineLayout LightingPipelineLayout;
     std::vector<VkPipeline> LightingPipelines;
 };
+
+struct GlobalInput {
+    glm::vec3 CameraPos;
+    glm::vec3 CameraLookat;
+    float CameraSpeed;
+    float CameraFOV;
+    float zNear;
+    float zFar;
+
+    float CameraArm;
+    float CameraYaw;
+    float CameraPitch;
+
+    bool bFocusCamera;
+    bool bUpdateCamera;
+
+    float CurrentTime;
+    float DeltaTime;
+    bool bFirstInit;
+    double LastMouseX, LastMouseY;
+    bool bPlayStageRoll;
+    float RollStage;
+    bool bPlayLightRoll;
+    float RollLight;
+
+    GlobalInput() { ResetToFocus(); }
+
+    void ResetToFocus()
+    {
+        CameraPos = glm::vec3(2.0, 2.0, 2.0);
+        CameraLookat = glm::vec3(0.0, 0.0, 0.0);
+        CameraSpeed = 2.5;
+        CameraFOV = 45.0;
+        zNear = 0.1f;
+        zFar = 800.0f;
+
+        glm::mat4 transform = glm::lookAt(CameraPos, CameraLookat, glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::quat rotation(transform);
+        glm::vec3 Direction = glm::normalize(CameraLookat - CameraPos);
+        CameraYaw = 30.0; //glm::degrees(glm::atan(Direction.x, Direction.y));
+        CameraPitch = 60.0; //glm::degrees(glm::asin(Direction.z));
+        CameraArm = 10.0;
+        bUpdateCamera = false;
+        bFocusCamera = true;
+
+        CameraPos.x = cos(glm::radians(CameraYaw)) * cos(glm::radians(CameraPitch)) * CameraArm;
+        CameraPos.y = sin(glm::radians(CameraYaw)) * cos(glm::radians(CameraPitch)) * CameraArm;
+        CameraPos.z = sin(glm::radians(CameraPitch)) * CameraArm;
+    }
+    void ResetToTravel()
+    {
+        CameraPos = glm::vec3(2.0, 0.0, 0.0);
+        CameraLookat = glm::vec3(0.0, 0.0, 0.0);
+        CameraSpeed = 2.5;
+        CameraFOV = 45.0;
+        zNear = 0.1f;
+        zFar = 45.0f;
+
+        CameraArm = (float)(CameraLookat - CameraPos).length();
+        glm::mat4 transform = glm::lookAt(CameraPos, CameraLookat, glm::vec3(0.0f, 0.0f, 1.0f));
+        glm::quat rotation(transform);
+        CameraYaw = -90.0f;;
+        CameraPitch = 0.0;
+        bUpdateCamera = false;
+        bFocusCamera = false;
+    }
+    void ResetAnimation()
+    {
+        bPlayStageRoll = false;
+        RollStage = 0.0;
+        bPlayLightRoll = false;
+        RollLight = 0.0;
+    }
+};
+
+extern GlobalInput g_globalInput;
 
 class RHIVulkan
 {
@@ -427,7 +505,7 @@ private:
     VkDevice m_vkDevice;
     VkDebugUtilsMessengerEXT m_debugMessenger; //Debug
 
-	BaseScenePass m_baseScenePass;
+    BaseScenePass m_baseScenePass;
     ShadowPass m_shadowmapPass;
 
     std::vector<VkCommandBuffer> m_commandBuffers;
@@ -470,7 +548,7 @@ private:
     VkDeviceMemory m_textureImageMemory;
     VkImageView m_textureImageView;
     VkSampler m_textureSampler;
-    
+
     VkImage m_depthImage;
     VkDeviceMemory m_depthImageMemory;
     VkImageView m_depthImageView;
@@ -500,7 +578,6 @@ private:
         std::vector<VkSurfaceFormatKHR> formats;
         std::vector<VkPresentModeKHR> presentModes;
     };
-
 
     std::vector<const char*> GetRequiredExtensions();
     void PopulateDebugMessagerCreateInfo(VkDebugUtilsMessengerCreateInfoEXT& createInfo);
@@ -541,7 +618,7 @@ private:
 
     void CreateGeometry(std::vector<RenderObject>& outRenderObj, const std::string& fileName);
     void CreateShadowmapPass();
-	void CreateBaseScenePass();
+    void CreateBaseScenePass();
     void CreateDescriptorSets(std::vector<VkDescriptorSet>& outDescriptorSets, const VkDescriptorPool& inDescriptorPool, const VkDescriptorSetLayout& inDescriptorSetLayout, const std::vector<VkImageView>& inImageViews, const std::vector<VkSampler>& inSamplers);
     void CreateDescriptorPool(VkDescriptorPool& outDescriptorPool, uint32_t sampler_num = 1);
     void CreateDescriptorSetLayout(VkDescriptorSetLayout& outDescriptorSetLayout, uint32_t sampler_number = 1);

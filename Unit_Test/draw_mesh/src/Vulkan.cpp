@@ -9,6 +9,84 @@
 
 #define SHADOW_DIM 1024
 
+GlobalInput g_globalInput;
+
+static void KeyboardCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+}
+
+static void MouseButtonCallback(GLFWwindow* window, int button, int action, int mods)
+{
+    GlobalInput* input = &g_globalInput;
+
+    if (action == GLFW_PRESS && button == GLFW_MOUSE_BUTTON_RIGHT)
+    {
+        input->bUpdateCamera = true;
+        input->bFirstInit = true;
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+    if (action == GLFW_RELEASE && button == GLFW_MOUSE_BUTTON_RIGHT)
+    {
+        input->bUpdateCamera = false;
+        input->bFirstInit = true;
+        glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    }
+}
+
+static void MousePositionCallback(GLFWwindow* window, double xpos, double ypos)
+{
+    GlobalInput* input = &g_globalInput;
+
+    if (!input->bUpdateCamera)
+    {
+        return;
+    }
+
+    if (input->bFirstInit)
+    {
+        input->LastMouseX = xpos;
+        input->LastMouseY = ypos;
+        input->bFirstInit = false;
+    }
+
+    float CameraYaw = input->CameraYaw;
+    float CameraPitch = input->CameraPitch;
+
+    float xoffset = (float)(xpos - input->LastMouseX);
+    float yoffset = (float)(ypos - input->LastMouseY);
+    input->LastMouseX = xpos;
+    input->LastMouseY = ypos;
+
+    float sensitivityX = 1.0;
+    float sensitivityY = 0.5;
+    xoffset *= sensitivityX;
+    yoffset *= sensitivityY;
+
+    CameraYaw -= xoffset;
+    CameraPitch += yoffset;
+    if (CameraPitch > 89.0)
+        CameraPitch = 89.0;
+    if (CameraPitch < -89.0)
+        CameraPitch = -89.0;
+
+    if (input->bFocusCamera)
+    {
+        glm::vec3 CameraPos = input->CameraPos;
+        float CameraArm = input->CameraArm;
+        CameraPos.x = cos(glm::radians(CameraYaw)) * cos(glm::radians(CameraPitch)) * CameraArm;
+        CameraPos.y = sin(glm::radians(CameraYaw)) * cos(glm::radians(CameraPitch)) * CameraArm;
+        CameraPos.z = sin(glm::radians(CameraPitch)) * CameraArm;
+        input->CameraPos = CameraPos;
+        input->CameraYaw = CameraYaw;
+        input->CameraPitch = CameraPitch;
+    }
+    else
+    {
+        // @TODO: 鼠标右键控制相机的旋转
+    }
+}
+
+
 // 接收调试信息的回调函数：必须加上那两个宏定义，才能确保被Vulkan库调用
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -459,6 +537,10 @@ void RHIVulkan::CreateSurface()
     {
         throw std::runtime_error("failed to create window surface!");
     }
+
+    glfwSetKeyCallback(m_glfwWindow, KeyboardCallback);
+    glfwSetMouseButtonCallback(m_glfwWindow, MouseButtonCallback);
+    glfwSetCursorPosCallback(m_glfwWindow, MousePositionCallback);
 }
 
 void RHIVulkan::PickPhysicalDevice()
@@ -598,15 +680,15 @@ void RHIVulkan::ReCreateSwapChain()
 {
     int width = 0, height = 0;
     glfwGetFramebufferSize(m_glfwWindow, &width, &height);
-    
-    
+
+
     vkDeviceWaitIdle(m_vkDevice);
     CleanSwapChain();
-    
+
     CreateSwapChain();
     CreateImageViews();
     CreateFrameBuffer();
-    
+
 }
 
 void RHIVulkan::CleanSwapChain()
@@ -630,12 +712,12 @@ void RHIVulkan::CreateImageViews()
 {
     m_vkSwapChainImageViews.resize(m_vkSwapChainImages.size());
 
-    
-    for(size_t i =0; i< m_vkSwapChainImages.size(); i++)
+
+    for (size_t i = 0; i < m_vkSwapChainImages.size(); i++)
     {
         m_vkSwapChainImageViews[i] = CreateImageView(m_vkSwapChainImages[i], m_vkSwapChainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
     }
-    
+
     /*
     for (uint32_t i = 0; i < m_vkSwapChainImages.size(); i++) {
         VkImageViewCreateInfo createInfo = {};
@@ -657,14 +739,14 @@ void RHIVulkan::CreateImageViews()
             throw std::runtime_error("failed to create image views!");
         }
     }
-     
+
      */
 }
 
-static void PrintNodes(const tinygltf::Scene &scene) {
-  for (size_t i = 0; i < scene.nodes.size(); i++) {
-    std::cout << "node.name : " << scene.nodes[i] << std::endl;
-  }
+static void PrintNodes(const tinygltf::Scene& scene) {
+    for (size_t i = 0; i < scene.nodes.size(); i++) {
+        std::cout << "node.name : " << scene.nodes[i] << std::endl;
+    }
 }
 
 
@@ -674,56 +756,58 @@ void RHIVulkan::ReadModelResource()
     tinygltf::Model model;
     std::string error;
     std::string warning;
-    loader.LoadASCIIFromFile(&model, &error, &warning, "./Asset/mesh/Avocado/Avocado.gltf");
-    
+    loader.LoadASCIIFromFile(&model, &error, &warning, "./Asset/mesh/Sponza/Sponza.gltf");
+
     for (const auto& mesh : model.meshes) {
-            for (const auto& primitive : mesh.primitives) {
-                // --- LOAD VERTEX POSITIONS ---
-                if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
-                    const tinygltf::Accessor& accessor = model.accessors[primitive.attributes.at("POSITION")];
-                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+        for (const auto& primitive : mesh.primitives) {
+            // --- LOAD VERTEX POSITIONS ---
+            if (primitive.attributes.find("POSITION") != primitive.attributes.end()) {
+                const tinygltf::Accessor& accessor = model.accessors[primitive.attributes.at("POSITION")];
+                const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-                    const float* positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
+                const float* positions = reinterpret_cast<const float*>(&buffer.data[bufferView.byteOffset + accessor.byteOffset]);
 
-                    std::cout << "Loading " << accessor.count << " vertices..." << std::endl;
-                    for (size_t i = 0; i < accessor.count; i++) {
-                        // Positions are 3-component vectors (x, y, z)
-                        size_t stride = accessor.ByteStride(bufferView);
-                        const float* pos = (const float*)((const char*)positions + i * stride);
-                        //std::cout << "  Vertex " << i << ": (" << pos[0] << ", " << pos[1] << ", " << pos[2] << ")" << std::endl;
-                    }
+                std::cout << "Loading " << accessor.count << " vertices..." << std::endl;
+                for (size_t i = 0; i < accessor.count; i++) {
+                    // Positions are 3-component vectors (x, y, z)
+                    size_t stride = accessor.ByteStride(bufferView);
+                    const float* pos = (const float*)((const char*)positions + i * stride);
+                    //std::cout << "  Vertex " << i << ": (" << pos[0] << ", " << pos[1] << ", " << pos[2] << ")" << std::endl;
                 }
+            }
 
-                // --- LOAD INDICES ---
-                if (primitive.indices >= 0) {
-                    const tinygltf::Accessor& accessor = model.accessors[primitive.indices];
-                    const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
-                    const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
+            // --- LOAD INDICES ---
+            if (primitive.indices >= 0) {
+                const tinygltf::Accessor& accessor = model.accessors[primitive.indices];
+                const tinygltf::BufferView& bufferView = model.bufferViews[accessor.bufferView];
+                const tinygltf::Buffer& buffer = model.buffers[bufferView.buffer];
 
-                    std::cout << "Loading " << accessor.count << " indices..." << std::endl;
-                    
-                    // Get the base pointer to the index data
-                    const uint8_t* indexData = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
+                std::cout << "Loading " << accessor.count << " indices..." << std::endl;
 
-                    for (size_t i = 0; i < accessor.count; i++) {
-                        int index = -1;
-                        // Determine the index data type
-                        if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
-                            index = static_cast<int>(reinterpret_cast<const uint8_t*>(indexData)[i]);
-                        } else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
-                            index = static_cast<int>(reinterpret_cast<const uint16_t*>(indexData)[i]);
-                        } else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
-                            index = static_cast<int>(reinterpret_cast<const uint32_t*>(indexData)[i]);
-                        }
+                // Get the base pointer to the index data
+                const uint8_t* indexData = &buffer.data[bufferView.byteOffset + accessor.byteOffset];
 
-                        if (index != -1) {
-                           // std::cout << "  Index " << i << ": " << index << std::endl;
-                        }
+                for (size_t i = 0; i < accessor.count; i++) {
+                    int index = -1;
+                    // Determine the index data type
+                    if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_BYTE) {
+                        index = static_cast<int>(reinterpret_cast<const uint8_t*>(indexData)[i]);
+                    }
+                    else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_SHORT) {
+                        index = static_cast<int>(reinterpret_cast<const uint16_t*>(indexData)[i]);
+                    }
+                    else if (accessor.componentType == TINYGLTF_COMPONENT_TYPE_UNSIGNED_INT) {
+                        index = static_cast<int>(reinterpret_cast<const uint32_t*>(indexData)[i]);
+                    }
+
+                    if (index != -1) {
+                        // std::cout << "  Index " << i << ": " << index << std::endl;
                     }
                 }
             }
         }
+    }
 }
 
 void RHIVulkan::CreateUniformBuffer()
@@ -736,7 +820,7 @@ void RHIVulkan::CreateUniformBuffer()
     for (size_t i = 0;i < MAX_FRAMES_IN_FLIGHT;i++)
     {
         CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_vkUniformBuffers[i], m_vkUniformBuffersMemory[i]);
-    
+
         // 这里会导致 memory stack overflow，不应该在这里 vkMapMemory
         //vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
     }
@@ -787,7 +871,7 @@ void RHIVulkan::CreateDescriptorSets()
         descriptorWrites[0].dstSet = m_vkDescriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
-        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;                ;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; ;
         descriptorWrites[0].descriptorCount = 1;
         descriptorWrites[0].pBufferInfo = &bufferInfo;//
 
@@ -825,7 +909,7 @@ void RHIVulkan::CreateDescriptorPool()
 void RHIVulkan::CreateDepthResource()
 {
     VkFormat depthFormat = FindDepthFormat();
-    
+
     CreateImage(m_vkSwapChainExtent.width, m_vkSwapChainExtent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_depthImage, m_depthImageMemory);
     m_depthImageView = CreateImageView(m_depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
 }
@@ -931,7 +1015,7 @@ void RHIVulkan::CreateGraphicsPipeline()
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR
     };
-    
+
     VkViewport viewport{};
     viewport.x = 0.0f;
     viewport.y = 0.0f;
@@ -982,7 +1066,7 @@ void RHIVulkan::CreateGraphicsPipeline()
     colorBlending.blendConstants[1] = 0.0f;
     colorBlending.blendConstants[2] = 0.0f;
     colorBlending.blendConstants[3] = 0.0f;
-    
+
     VkPipelineDepthStencilStateCreateInfo depthSencilAttachment;
     depthSencilAttachment.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     depthSencilAttachment.depthTestEnable = VK_TRUE;
@@ -996,7 +1080,7 @@ void RHIVulkan::CreateGraphicsPipeline()
     depthSencilAttachment.pNext = nullptr;
     depthSencilAttachment.front = {}; // Optional
     depthSencilAttachment.back = {}; // Optional
-    
+
     VkPipelineDynamicStateCreateInfo dynamicStateCI{};
     dynamicStateCI.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
     dynamicStateCI.dynamicStateCount = static_cast<uint32_t>(dynamicStates.size());
@@ -1027,7 +1111,7 @@ void RHIVulkan::CreateGraphicsPipeline()
     pipelineInfo.renderPass = m_vkRenderPass;
     pipelineInfo.subpass = 0;
     pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
-    
+
     if (vkCreateGraphicsPipelines(m_vkDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &m_vkGraphicsPipeline) != VK_SUCCESS) {
         throw std::runtime_error("failed to create graphics pipeline!");
     }
@@ -1107,7 +1191,7 @@ void RHIVulkan::CreateGeometry(std::vector<RenderObject>& outRenderObj, const st
                     // Positions are 3-component vectors (x, y, z)
                     size_t stride = accessorPos.ByteStride(bufferViewPos);
                     const float* pos = (const float*)((const char*)positions + i * stride);
-					vertex[i].Position = {pos[0], pos[1], pos[2]};
+                    vertex[i].Position = { pos[0], pos[1], pos[2] };
                 }
             }
 
@@ -1123,7 +1207,7 @@ void RHIVulkan::CreateGeometry(std::vector<RenderObject>& outRenderObj, const st
                     // Positions are 3-component vectors (x, y, z)
                     size_t stride = accessorNor.ByteStride(bufferViewNor);
                     const float* pos = (const float*)((const char*)normals + i * stride);
-					vertex[i].Normal = {pos[0], pos[1], pos[2]};
+                    vertex[i].Normal = { pos[0], pos[1], pos[2] };
                 }
             }
 
@@ -1139,7 +1223,7 @@ void RHIVulkan::CreateGeometry(std::vector<RenderObject>& outRenderObj, const st
                     // Positions are 3-component vectors (x, y, z)
                     size_t stride = accessorNor.ByteStride(bufferViewNor);
                     const float* pos = (const float*)((const char*)normals + i * stride);
-                    vertex[i].Color = {pos[0], pos[1], pos[2]};
+                    vertex[i].Color = { pos[0], pos[1], pos[2] };
                 }
             }
 
@@ -1190,9 +1274,65 @@ void RHIVulkan::CreateGeometry(std::vector<RenderObject>& outRenderObj, const st
                     }
                 }
             }
+
+            std::vector<std::string> tempPng;
+            // --- TEXTURE PROCESSING ---
+            if (primitive.material >= 0 && primitive.material < model.materials.size()) {
+                const auto& material = model.materials[primitive.material];
+
+                // 基础颜色纹理
+                if (material.pbrMetallicRoughness.baseColorTexture.index >= 0) {
+                    int texIndex = material.pbrMetallicRoughness.baseColorTexture.index;
+                    if (texIndex < model.textures.size()) {
+                        const auto& texture = model.textures[texIndex];
+                        if (texture.source >= 0 && texture.source < model.images.size()) {
+                            const auto& image = model.images[texture.source];
+                            if (!image.uri.empty()) {
+                                std::string fullPath = "./Asset/mesh/Sponza/" + image.uri;
+                                tempPng.push_back(fullPath);
+                                std::cout << "Added base color texture: " << fullPath << std::endl;
+                            }
+                        }
+                    }
+                }
+
+                // 法线纹理
+                if (material.normalTexture.index >= 0) {
+                    int texIndex = material.normalTexture.index;
+                    if (texIndex < model.textures.size()) {
+                        const auto& texture = model.textures[texIndex];
+                        if (texture.source >= 0 && texture.source < model.images.size()) {
+                            const auto& image = model.images[texture.source];
+                            if (!image.uri.empty()) {
+                                std::string fullPath = "./Asset/mesh/Sponza/" + image.uri;
+                                tempPng.push_back(fullPath);
+                                std::cout << "Added normal texture: " << fullPath << std::endl;
+                            }
+                        }
+                    }
+                }
+
+                // 金属粗糙度纹理
+                if (material.pbrMetallicRoughness.metallicRoughnessTexture.index >= 0) {
+                    int texIndex = material.pbrMetallicRoughness.metallicRoughnessTexture.index;
+                    if (texIndex < model.textures.size()) {
+                        const auto& texture = model.textures[texIndex];
+                        if (texture.source >= 0 && texture.source < model.images.size()) {
+                            const auto& image = model.images[texture.source];
+                            if (!image.uri.empty()) {
+                                std::string fullPath = "./Asset/mesh/Sponza/" + image.uri;
+                                tempPng.push_back(fullPath);
+                                std::cout << "Added metallic roughness texture: " << fullPath << std::endl;
+                            }
+                        }
+                    }
+                }
+            }
+
             RenderObject renderObjectTemp;
             renderObjectTemp.meshData.Vertices = vertex;
             renderObjectTemp.meshData.Indices = vertexIndex;
+            renderObjectTemp.mat.strFileName = tempPng;
             outRenderObj.push_back(renderObjectTemp);
         }
     }
@@ -1201,10 +1341,10 @@ void RHIVulkan::CreateGeometry(std::vector<RenderObject>& outRenderObj, const st
 void RHIVulkan::CreateShadowmapPass()
 {
     m_shadowmapPass.Width = SHADOW_DIM;
-	m_shadowmapPass.Height = SHADOW_DIM;
-	m_shadowmapPass.Format = FindDepthFormat();
-    CreateImage(m_shadowmapPass.Width, m_shadowmapPass.Height, m_shadowmapPass.Format, VK_IMAGE_TILING_OPTIMAL, 
-        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,m_shadowmapPass.Image, m_shadowmapPass.Memory);
+    m_shadowmapPass.Height = SHADOW_DIM;
+    m_shadowmapPass.Format = FindDepthFormat();
+    CreateImage(m_shadowmapPass.Width, m_shadowmapPass.Height, m_shadowmapPass.Format, VK_IMAGE_TILING_OPTIMAL,
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, m_shadowmapPass.Image, m_shadowmapPass.Memory);
     m_shadowmapPass.ImageView = CreateImageView(m_shadowmapPass.Image, m_shadowmapPass.Format, VK_IMAGE_ASPECT_DEPTH_BIT);
     CreateSampler(m_shadowmapPass.Sampler,
         VK_FILTER_LINEAR,
@@ -1213,51 +1353,51 @@ void RHIVulkan::CreateShadowmapPass()
         VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE);
 
-	// create uniform buffer for shadowmap
+    // create uniform buffer for shadowmap
     VkDeviceSize bufferSize = sizeof(UniformBufferObject);
     m_shadowmapPass.UniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-	m_shadowmapPass.UniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-    for(size_t i= 0;i<MAX_FRAMES_IN_FLIGHT;i++)
+    m_shadowmapPass.UniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+    for (size_t i = 0;i < MAX_FRAMES_IN_FLIGHT;i++)
     {
         CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_shadowmapPass.UniformBuffers[i], m_shadowmapPass.UniformBuffersMemory[i]);
-	}
+    }
 
     //create descriptorsetlayout
-	VkDescriptorSetLayoutBinding uboLayoutBinding{};
-	uboLayoutBinding.binding = 0;
-	uboLayoutBinding.descriptorCount = 1;
-	uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	uboLayoutBinding.pImmutableSamplers = nullptr;
-	uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	std::array<VkDescriptorSetLayoutBinding, 1> bindings = { uboLayoutBinding };
-	VkDescriptorSetLayoutCreateInfo layoutInfo{};
-	layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
-	layoutInfo.pBindings = bindings.data();
+    VkDescriptorSetLayoutBinding uboLayoutBinding{};
+    uboLayoutBinding.binding = 0;
+    uboLayoutBinding.descriptorCount = 1;
+    uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    uboLayoutBinding.pImmutableSamplers = nullptr;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    std::array<VkDescriptorSetLayoutBinding, 1> bindings = { uboLayoutBinding };
+    VkDescriptorSetLayoutCreateInfo layoutInfo{};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
+    layoutInfo.pBindings = bindings.data();
     if (vkCreateDescriptorSetLayout(m_vkDevice, &layoutInfo, nullptr, &m_shadowmapPass.DescriptionSetLayout) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor set layout!");
     }
 
-	//create descriptorpool
-	std::array<VkDescriptorPoolSize, 1> poolSizes{};
-	poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-	VkDescriptorPoolCreateInfo poolInfo{};
-	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
-	poolInfo.pPoolSizes = poolSizes.data();
-	poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    //create descriptorpool
+    std::array<VkDescriptorPoolSize, 1> poolSizes{};
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+    poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+    VkDescriptorPoolCreateInfo poolInfo{};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
     if (vkCreateDescriptorPool(m_vkDevice, &poolInfo, nullptr, &m_shadowmapPass.DescriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("failed to create descriptor pool!");
-	}
+    }
 
-	//create descriptorsets
-	std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_shadowmapPass.DescriptionSetLayout);
-	VkDescriptorSetAllocateInfo allocInfo{};
-	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = m_shadowmapPass.DescriptorPool;
+    //create descriptorsets
+    std::vector<VkDescriptorSetLayout> layouts(MAX_FRAMES_IN_FLIGHT, m_shadowmapPass.DescriptionSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = m_shadowmapPass.DescriptorPool;
     allocInfo.descriptorSetCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-	allocInfo.pSetLayouts = layouts.data();
+    allocInfo.pSetLayouts = layouts.data();
     m_shadowmapPass.DescriptorSets.resize(MAX_FRAMES_IN_FLIGHT);
 
     if (vkAllocateDescriptorSets(m_vkDevice, &allocInfo, m_shadowmapPass.DescriptorSets.data()) != VK_SUCCESS) {
@@ -1268,40 +1408,40 @@ void RHIVulkan::CreateShadowmapPass()
     for (size_t i = 0;i < MAX_FRAMES_IN_FLIGHT;i++)
     {
         std::array<VkWriteDescriptorSet, 1> descriptorWrites{};
-		VkDescriptorBufferInfo bufferInfo{};
+        VkDescriptorBufferInfo bufferInfo{};
         bufferInfo.buffer = m_shadowmapPass.UniformBuffers[i];
-		bufferInfo.offset = 0;
+        bufferInfo.offset = 0;
         bufferInfo.range = sizeof(UniformBufferObject);
         descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         descriptorWrites[0].dstSet = m_shadowmapPass.DescriptorSets[i];
         descriptorWrites[0].dstBinding = 0;
         descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &bufferInfo;
+        descriptorWrites[0].pBufferInfo = &bufferInfo;
         vkUpdateDescriptorSets(m_vkDevice, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
     }
 
     VkAttachmentDescription attachmentDescription{};
-	attachmentDescription.format = m_shadowmapPass.Format;
-	attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+    attachmentDescription.format = m_shadowmapPass.Format;
+    attachmentDescription.samples = VK_SAMPLE_COUNT_1_BIT;
     attachmentDescription.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    attachmentDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     attachmentDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    attachmentDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     attachmentDescription.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     attachmentDescription.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_STENCIL_READ_ONLY_OPTIMAL;
 
-	VkAttachmentReference depthReference{};
-	depthReference.attachment = 0;
-	depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentReference depthReference{};
+    depthReference.attachment = 0;
+    depthReference.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkSubpassDescription subPass{};
     subPass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subPass.colorAttachmentCount = 0;
     subPass.pDepthStencilAttachment = &depthReference;
 
-	//use subpass dependency for layout transition
+    //use subpass dependency for layout transition
     std::array<VkSubpassDependency, 2> dependencies;
 
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -1344,7 +1484,7 @@ void RHIVulkan::CreateShadowmapPass()
     bufCreateInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     bufCreateInfo.renderPass = m_shadowmapPass.RenderPass;
     bufCreateInfo.attachmentCount = 1;
-	bufCreateInfo.pAttachments = &m_shadowmapPass.ImageView;
+    bufCreateInfo.pAttachments = &m_shadowmapPass.ImageView;
     bufCreateInfo.width = m_shadowmapPass.Width;
     bufCreateInfo.height = m_shadowmapPass.Height;
     bufCreateInfo.layers = 1;
@@ -1364,7 +1504,7 @@ void RHIVulkan::CreateShadowmapPass()
     rasterizationStateCI.rasterizerDiscardEnable = VK_FALSE;
     rasterizationStateCI.polygonMode = VK_POLYGON_MODE_FILL;
     rasterizationStateCI.lineWidth = 1.0f;
-    rasterizationStateCI.cullMode = VK_CULL_MODE_BACK_BIT;
+    rasterizationStateCI.cullMode = VK_FALSE; //VK_CULL_MODE_BACK_BIT;
     rasterizationStateCI.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
     rasterizationStateCI.depthBiasEnable = VK_FALSE;
     VkPipelineColorBlendAttachmentState blendAttachmentState{};
@@ -1496,23 +1636,35 @@ void RHIVulkan::CreateBaseScenePass()
         "./Asset/shader/glsl/draw_mesh/draw_mesh_base_vert.spv",
         "./Asset/shader/glsl/draw_mesh/draw_mesh_base_frag.spv");
 
-    CreateGeometry(m_baseScenePass.RenderObjects, "./Asset/mesh/Avocado/Avocado.gltf");
-    std::vector<std::string> pngFiles;
-    pngFiles.push_back("./Asset/mesh/Avocado/Avocado_baseColor.png");
-    pngFiles.push_back("./Asset/mesh/Avocado/Avocado_normal.png");
-    pngFiles.push_back("./Asset/mesh/Avocado/Avocado_roughnessMetallic.png");
+    CreateGeometry(m_baseScenePass.RenderObjects, "./Asset/mesh/Sponza/Sponza.gltf");
 
-    m_baseScenePass.RenderObjects[0].mat.TextureImageViews.resize(pngFiles.size());
-    m_baseScenePass.RenderObjects[0].mat.TextureSamplers.resize(pngFiles.size());
-    m_baseScenePass.RenderObjects[0].mat.TextureImages.resize(pngFiles.size());
-    m_baseScenePass.RenderObjects[0].mat.TextureImageMemorys.resize(pngFiles.size());
-    m_baseScenePass.RenderObjects[0].mat.TextureSamplers.resize(pngFiles.size());
+    for (auto item : m_baseScenePass.RenderObjects)
+        for (auto it : item.mat.strFileName)
+            printf("%s \n", it.c_str());
 
-    for (int i = 0;i < pngFiles.size(); i++)
+    //pngFiles.push_back("./Asset/mesh/Avocado/Avocado_baseColor.png");
+    //pngFiles.push_back("./Asset/mesh/Avocado/Avocado_normal.png");
+    //pngFiles.push_back("./Asset/mesh/Avocado/Avocado_roughnessMetallic.png");
+
+
+
+
+
+    for (auto& item : m_baseScenePass.RenderObjects)
     {
-        CreateImageContext(m_baseScenePass.RenderObjects[0].mat.TextureImages[i], m_baseScenePass.RenderObjects[0].mat.TextureImageMemorys[0],
-            m_baseScenePass.RenderObjects[0].mat.TextureImageViews[i], m_baseScenePass.RenderObjects[0].mat.TextureSamplers[i], pngFiles[i], true);
+        item.mat.TextureImageViews.resize(3);
+        item.mat.TextureSamplers.resize(3);
+        item.mat.TextureImages.resize(3);
+        item.mat.TextureImageMemorys.resize(3);
+        item.mat.TextureSamplers.resize(3);
+
+        for (int i = 0;i < 3; i++)
+        {
+            CreateImageContext(item.mat.TextureImages[i], item.mat.TextureImageMemorys[0],
+                item.mat.TextureImageViews[i], item.mat.TextureSamplers[i], item.mat.strFileName[(item.mat.strFileName.size() == 1) ? 0 : i], true);
+        }
     }
+
 
     int i = 0;
     for (auto& item : m_baseScenePass.RenderObjects)
@@ -1699,6 +1851,10 @@ void RHIVulkan::CreateImageContext(
     VkSampler& outSampler,
     const std::string& filename, bool sRGB)
 {
+    if (filename == "./Asset/mesh/Sponza/white.png")
+    {
+        printf("err");
+    }
     int texWidth, texHeight, texChannels, mipLevels;
     stbi_uc* pixels = readTextureAsset(filename, texWidth, texHeight, texChannels, mipLevels);
 
@@ -1882,7 +2038,7 @@ void RHIVulkan::CreateDescriptorSets(std::vector<VkDescriptorSet>& outDescriptor
     }
 }
 
-void RHIVulkan::CreateDescriptorPool(VkDescriptorPool& outDescriptorPool, uint32_t sampler_num )
+void RHIVulkan::CreateDescriptorPool(VkDescriptorPool& outDescriptorPool, uint32_t sampler_num)
 {
     std::vector<VkDescriptorPoolSize> poolSizes;
     poolSizes.resize(sampler_num + 2); // 这里3是2个UniformBuffer和一个环境Cubemap贴图
@@ -1934,7 +2090,7 @@ void RHIVulkan::CreateDescriptorSetLayout(VkDescriptorSetLayout& outDescriptorSe
     shadowmapLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
     std::vector<VkDescriptorSetLayoutBinding> bindings;
-    bindings.resize(sampler_number + 3); 
+    bindings.resize(sampler_number + 3);
     bindings[0] = baseUBOLayoutBinding;
     bindings[1] = viewUBOLayoutBinding;
     bindings[2] = shadowmapLayoutBinding;
@@ -2167,12 +2323,12 @@ void RHIVulkan::CreateDescriptorSetLayout()
 
 void RHIVulkan::UpdateUniformBuffer(uint32_t currentImage)
 {
-	glm::vec3 camPos = glm::vec3(0.0f, 0.0f, -0.2f);
-	glm::vec3 camView = glm::vec3(0.0f, 0.0f, 1.0f);
-	glm::vec3 camUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    float cameraFOV = 45;
-    float zNear = 0.1;
-    float zFar = 100;
+    glm::vec3 camPos = g_globalInput.CameraPos;
+    glm::vec3 camView = g_globalInput.CameraLookat;
+    glm::vec3 camUp = glm::vec3(0.0f, 0.0f, 1.0f);
+    float cameraFOV = g_globalInput.CameraFOV;
+    float zNear = g_globalInput.zNear;
+    float zFar = g_globalInput.zFar;
 
     static auto startTime = std::chrono::high_resolution_clock::now();
 
@@ -2195,7 +2351,7 @@ void RHIVulkan::UpdateUniformBuffer(uint32_t currentImage)
     light.direction = glm::vec4(lightDir, 0.0);
     light.info = glm::vec4(0.0, 0.0, 0.0, 0.0);
 
-    glm::mat4 localToWorld = glm::rotate(glm::mat4(1.0f), rollLight, glm::vec3(0.0f, 0.0f, 1.0f));
+    glm::mat4 localToWorld = glm::scale(glm::mat4(1.0f), glm::vec3(0.01f));
     glm::mat4 shadowView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
     glm::mat4 shadowProjection = glm::perspective(glm::radians(cameraFOV), 1.0f, m_shadowmapPass.zNear, m_shadowmapPass.zFar);
 
@@ -2299,7 +2455,7 @@ void RHIVulkan::CreateImage(uint32_t width, uint32_t height, VkFormat format, Vk
 void RHIVulkan::CreateTextureImage()
 {
     int texWidth, texHeight, texChannels;
-    unsigned char *pixels = stbi_load("./Asset/texture/CesiumLogoFlat.png", &texWidth, &texHeight, 0, STBI_rgb_alpha);
+    unsigned char* pixels = stbi_load("./Asset/texture/CesiumLogoFlat.png", &texWidth, &texHeight, 0, STBI_rgb_alpha);
     VkDeviceSize imageSize = texWidth * texHeight * 4;
 
     if (!pixels)
@@ -2482,7 +2638,7 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
 
     //shadow map
     {
-        
+
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = m_shadowmapPass.RenderPass;
@@ -2538,7 +2694,6 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
         vkCmdEndRenderPass(commandBuffer);
     }
 
-
     {
         VkRenderPassBeginInfo renderPassInfo{};
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
@@ -2581,10 +2736,9 @@ void RHIVulkan::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imag
             vkCmdBindIndexBuffer(commandBuffer, item.meshData.IndexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
             vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                m_baseScenePass.PipelineLayout, 0, 1, &m_baseScenePass.RenderObjects[0].mat.DescriptorSets[m_currentFrame], 0, nullptr);
+                m_baseScenePass.PipelineLayout, 0, 1, &item.mat.DescriptorSets[m_currentFrame], 0, nullptr);
             vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(item.meshData.Indices.size()), 1, 0, 0, 0);
         }
-
         vkCmdEndRenderPass(commandBuffer);
     }
 
@@ -2805,11 +2959,11 @@ void RHIVulkan::DrawFrame() {
     vkWaitForFences(m_vkDevice, 1, &m_vkInFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex;
-    VkResult result =vkAcquireNextImageKHR(
+    VkResult result = vkAcquireNextImageKHR(
         m_vkDevice, m_vkSwapChain, UINT64_MAX, m_vkImageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex
     );
-    
-    if(result == VK_ERROR_OUT_OF_DATE_KHR)
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR)
     {
         ReCreateSwapChain();
         return;
@@ -2817,7 +2971,7 @@ void RHIVulkan::DrawFrame() {
 
     UpdateUniformBuffer(m_currentFrame);
     vkResetFences(m_vkDevice, 1, &m_vkInFlightFences[m_currentFrame]);
-    
+
     vkResetCommandBuffer(m_vkCommandBuffer[m_currentFrame], 0);
     RecordCommandBuffer(m_vkCommandBuffer[m_currentFrame], imageIndex);
 
@@ -2883,11 +3037,11 @@ void RHIVulkan::Cleanup() {
     vkFreeMemory(m_vkDevice, m_vertBufferMemory, nullptr);
     vkDestroyBuffer(m_vkDevice, m_indexBuffers, nullptr);
     vkFreeMemory(m_vkDevice, m_indexBufferMemory, nullptr);
-    
+
     vkDestroyImageView(m_vkDevice, m_depthImageView, nullptr);
     vkDestroyImage(m_vkDevice, m_depthImage, nullptr);
     vkFreeMemory(m_vkDevice, m_depthImageMemory, nullptr);
-    
+
     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
         vkDestroyBuffer(m_vkDevice, m_vkUniformBuffers[i], nullptr);
         vkFreeMemory(m_vkDevice, m_vkUniformBuffersMemory[i], nullptr);
