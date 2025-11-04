@@ -439,7 +439,7 @@ VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
 		is.close();
 		assert(shaderSize > 0);
 	}
-
+#endif
 	if (shaderCode)
 	{
 		// Create a new shader module that will be used for pipeline creation
@@ -460,7 +460,6 @@ VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
 		std::cerr << "Error: Could not open shader file \"" << filename << "\"" << std::endl;
 		return VK_NULL_HANDLE;
 	}
-#endif
 }
 
 void ApplicationWin::CreatePipelines()
