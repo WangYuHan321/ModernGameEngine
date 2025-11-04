@@ -43,7 +43,7 @@ void Render::Vulkan::UIOverlay::PrepareResource()
 	const std::string filePath = "./Asset/font/PressStart2P-Regular.ttf";
 
 #if defined(__ANDROID__)
-    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, "font/PressStart2P-Regular.ttf", AASSET_MODE_STREAMING);
+    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, "font/Roboto-Medium.ttf", AASSET_MODE_STREAMING);
     if (asset) {
         size_t size = AAsset_getLength(asset);
         assert(size > 0);
@@ -184,93 +184,86 @@ void Render::Vulkan::UIOverlay::PrepareResource()
 
 void Render::Vulkan::UIOverlay::PreparePipeline(const VkPipelineCache pipelineCache, const VkRenderPass renderPass, const VkFormat colorFormat, const VkFormat depthFormat)
 {
-	VkPushConstantRange pushConstantRange = Render::Vulkan::Initializer::PushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, sizeof(PushConstBlock), 0);
-	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(&descriptorSetLayout, 1);
-	pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-	pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
-	VK_CHECK_RESULT(vkCreatePipelineLayout(device->logicalDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+    // Pipeline layout
+    // Push constants for UI rendering parameters
+    VkPushConstantRange pushConstantRange{ .stageFlags = VK_SHADER_STAGE_VERTEX_BIT, .size = sizeof(PushConstBlock) };
+    VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 1,
+            .pSetLayouts = &descriptorSetLayout,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges = &pushConstantRange
+    };
+    VK_CHECK_RESULT(vkCreatePipelineLayout(device->logicalDevice, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
-	VkPipelineInputAssemblyStateCreateInfo iputAssemblyState = Render::Vulkan::Initializer::PipelineInputAssemblyStateCreateInfo
-	(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+    // Setup graphics pipeline for UI rendering
+    VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = Render::Vulkan::Initializer::PipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+    VkPipelineRasterizationStateCreateInfo rasterizationState = Render::Vulkan::Initializer::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
 
-	VkPipelineRasterizationStateCreateInfo rasterizationState = Render::Vulkan::Initializer::PipelineRasterizationStateCreateInfo
-	(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+    // Enable blending
+    VkPipelineColorBlendAttachmentState blendAttachmentState{
+            .blendEnable = VK_TRUE,
+            .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .colorBlendOp = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .alphaBlendOp = VK_BLEND_OP_ADD,
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT
+    };
 
-	VkPipelineColorBlendAttachmentState blendAttachemntState{};
-	blendAttachemntState.blendEnable = VK_TRUE;
-	blendAttachemntState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	blendAttachemntState.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-	blendAttachemntState.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	blendAttachemntState.colorBlendOp = VK_BLEND_OP_ADD;
-	blendAttachemntState.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	blendAttachemntState.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	blendAttachemntState.alphaBlendOp = VK_BLEND_OP_ADD;
+    // Vertex bindings an attributes based on ImGui vertex definition
+    std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
+            { .binding = 0, .stride = sizeof(ImDrawVert), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX }
+    };
+    std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
+            { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = offsetof(ImDrawVert, pos) },
+            { .location = 1, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT, .offset = offsetof(ImDrawVert, uv) },
+            { .location = 2, .binding = 0, .format = VK_FORMAT_R8G8B8A8_UNORM, .offset = offsetof(ImDrawVert, col) },
+    };
+    VkPipelineVertexInputStateCreateInfo vertexInputState = Render::Vulkan::Initializer::PipelineVertexInputStateCreateInfo();
+    vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindings.size());
+    vertexInputState.pVertexBindingDescriptions = vertexInputBindings.data();
+    vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
+    vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
 
-	VkPipelineColorBlendStateCreateInfo colorBlendState =
-		Render::Vulkan::Initializer::PipelineColorBlendStateCreateInfo(1, &blendAttachemntState);
-
-	VkPipelineDepthStencilStateCreateInfo depthStencilState =
-		Render::Vulkan::Initializer::PipelineDepthStencilStateCreateInfo(VK_FALSE, VK_FALSE, VK_COMPARE_OP_ALWAYS);
-
-	VkPipelineViewportStateCreateInfo viewportState =
-		Render::Vulkan::Initializer::PipelineViewportStateCreateInfo(1, 1, 0);
-
-	VkPipelineMultisampleStateCreateInfo multisampleState =
-		Render::Vulkan::Initializer::PipelineMultisampleStateCreateInfo(rasterizaationSamples);
-
-	std::vector<VkDynamicState> dynamicStateEnables = {
-		VK_DYNAMIC_STATE_VIEWPORT,
-		VK_DYNAMIC_STATE_SCISSOR
-	};
-
-	VkPipelineDynamicStateCreateInfo dynamicState =
-		Render::Vulkan::Initializer::PipelineDynamicStateCreateInfo(dynamicStateEnables);
-
-	VkGraphicsPipelineCreateInfo pipelineCreateInfo =
-		Render::Vulkan::Initializer::PipelineCreateInfo(pipelineLayout, renderPass);
-
-	pipelineCreateInfo.pInputAssemblyState = &iputAssemblyState;
-	pipelineCreateInfo.pRasterizationState = &rasterizationState;
-	pipelineCreateInfo.pColorBlendState = &colorBlendState;
-	pipelineCreateInfo.pMultisampleState = &multisampleState;
-	pipelineCreateInfo.pViewportState = &viewportState;
-	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
-	pipelineCreateInfo.pDynamicState = &dynamicState;
-	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaders.size());
-	pipelineCreateInfo.pStages = shaders.data();
-	pipelineCreateInfo.subpass = subPass;
-
+    VkPipelineColorBlendStateCreateInfo colorBlendState = Render::Vulkan::Initializer::PipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
+    VkPipelineDepthStencilStateCreateInfo depthStencilState = Render::Vulkan::Initializer::PipelineDepthStencilStateCreateInfo(VK_FALSE, VK_FALSE, VK_COMPARE_OP_ALWAYS);
+    VkPipelineViewportStateCreateInfo viewportState = Render::Vulkan::Initializer::PipelineViewportStateCreateInfo(1, 1, 0);
+    VkPipelineMultisampleStateCreateInfo multisampleState = Render::Vulkan::Initializer::PipelineMultisampleStateCreateInfo(rasterizationSamples);
+    std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+    VkPipelineDynamicStateCreateInfo dynamicState = Render::Vulkan::Initializer::PipelineDynamicStateCreateInfo(dynamicStateEnables);
+    VkGraphicsPipelineCreateInfo pipelineCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+            .stageCount = static_cast<uint32_t>(shaders.size()),
+            .pStages = shaders.data(),
+            .pVertexInputState = &vertexInputState,
+            .pInputAssemblyState = &inputAssemblyState,
+            .pViewportState = &viewportState,
+            .pRasterizationState = &rasterizationState,
+            .pMultisampleState = &multisampleState,
+            .pDepthStencilState = &depthStencilState,
+            .pColorBlendState = &colorBlendState,
+            .pDynamicState = &dynamicState,
+            .layout = pipelineLayout,
+            .renderPass = renderPass,
+            .subpass = subPass,
+    };
 #if defined(VK_KHR_dynamic_rendering)
-	// SRS - if we are using dynamic rendering (i.e. renderPass null), must define color, depth and stencil attachments at pipeline create time
-	VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo = {};
-	if (renderPass == VK_NULL_HANDLE) {
-		pipelineRenderingCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO;
-		pipelineRenderingCreateInfo.colorAttachmentCount = 1;
-		pipelineRenderingCreateInfo.pColorAttachmentFormats = &colorFormat;
-		pipelineRenderingCreateInfo.depthAttachmentFormat = depthFormat;
-		pipelineRenderingCreateInfo.stencilAttachmentFormat = depthFormat;
-		pipelineCreateInfo.pNext = &pipelineRenderingCreateInfo;
-	}
+    // If we are using dynamic rendering (renderPass is null), we must define color, depth and stencil attachments at pipeline create time
+    VkPipelineRenderingCreateInfo pipelineRenderingCreateInfo{};
+    if (renderPass == VK_NULL_HANDLE) {
+        pipelineRenderingCreateInfo = {
+                .sType = VK_STRUCTURE_TYPE_PIPELINE_RENDERING_CREATE_INFO,
+                .colorAttachmentCount = 1,
+                .pColorAttachmentFormats = &colorFormat,
+                .depthAttachmentFormat = depthFormat,
+                .stencilAttachmentFormat = depthFormat
+        };
+        pipelineCreateInfo.pNext = &pipelineRenderingCreateInfo;
+    }
 #endif
-
-	// Vertex bindings an attributes based on ImGui vertex definition
-	std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
-		Render::Vulkan::Initializer::VertexInputBindingDescription(0, sizeof(ImDrawVert), VK_VERTEX_INPUT_RATE_VERTEX),
-	};
-	std::vector<VkVertexInputAttributeDescription> vertexInputAttributes = {
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0, 0, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, pos)),	// Location 0: Position
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0, 1, VK_FORMAT_R32G32_SFLOAT, offsetof(ImDrawVert, uv)),	// Location 1: UV
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0, 2, VK_FORMAT_R8G8B8A8_UNORM, offsetof(ImDrawVert, col)),	// Location 0: Color
-	};
-	VkPipelineVertexInputStateCreateInfo vertexInputState = Render::Vulkan::Initializer::PipelineVertexInputStateCreateInfo();
-	vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindings.size());
-	vertexInputState.pVertexBindingDescriptions = vertexInputBindings.data();
-	vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttributes.size());
-	vertexInputState.pVertexAttributeDescriptions = vertexInputAttributes.data();
-
-	pipelineCreateInfo.pVertexInputState = &vertexInputState;
-
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(device->logicalDevice, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(device->logicalDevice, pipelineCache, 1, &pipelineCreateInfo, nullptr, &pipeline));
 }
 
 bool Render::Vulkan::UIOverlay::Update()

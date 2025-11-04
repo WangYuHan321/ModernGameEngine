@@ -81,7 +81,12 @@ namespace Render
 
 			VkBool32 GetSupportedDepthFormat(VkPhysicalDevice physicalDevice, VkFormat* depthFormat);
 
-			VkShaderModule LoadShader(const char* fileName, VkDevice device);
+#if defined (__ANDROID__)
+            VkShaderModule LoadShader(AAssetManager* assetManager, const char* fileName, VkDevice device);
+#else
+            VkShaderModule LoadShader(const char* fileName, VkDevice device);
+#endif
+
 
 			std::string ErrorString(VkResult errorCode);
 		}

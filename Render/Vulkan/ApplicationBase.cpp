@@ -494,13 +494,13 @@ void ApplicationBase::Prepare()
 	VkPipelineShaderStageCreateInfo shaderVertStage = {};
 	shaderVertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderVertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderVertStage.module = Render::Vulkan::Tool::LoadShader("./Asset/shader/glsl/base/uioverlay.vert.spv",m_device);
+	shaderVertStage.module = Render::Vulkan::Tool::LoadShader(androidApp->activity->assetManager, "shaders/glsl/base/uioverlay.vert.spv",m_device);
 	shaderVertStage.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderFragStage = {};
 	shaderFragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderFragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderFragStage.module = Render::Vulkan::Tool::LoadShader("./Asset/shader/glsl/base/uioverlay.frag.spv", m_device);
+	shaderFragStage.module = Render::Vulkan::Tool::LoadShader(androidApp->activity->assetManager, "shaders/glsl/base/uioverlay.frag.spv", m_device);
 	shaderFragStage.pName = "main";
 
 	ui.device = vulkanDevice;
@@ -559,15 +559,13 @@ void ApplicationBase::RenderLoop()
 
         focused = true;
 
-
-        while ((ident = ALooper_pollOnce(focused ? 0 : -1, nullptr, &events, (void**)&source)) > ALOOPER_POLL_TIMEOUT)
-        {
-            if (source != nullptr)
-            {
+        while ((ident = ALooper_pollOnce(focused ? 0 : -1, nullptr, &events,
+                                         (void **) &source)) > ALOOPER_POLL_TIMEOUT) {
+            if (source != nullptr) {
                 source->process(androidApp, source);
+                break;
             }
-            if (androidApp->destroyRequested != 0)
-            {
+            if (androidApp->destroyRequested != 0) {
                 LOGD("Android app destroy requested");
                 destroy = true;
                 break;
@@ -579,8 +577,6 @@ void ApplicationBase::RenderLoop()
             ANativeActivity_finish(androidApp->activity);
             break;
         }
-
-
 
 
         if(prepared)
@@ -930,7 +926,8 @@ void ApplicationBase::HandleAppCommand(android_app * app, int32_t cmd)
             LOGD("APP_CMD_INIT_WINDOW");
             if (androidApp->window != nullptr)
             {
-                if (p_appBase->InitVulkan()) {
+                if (p_appBase->InitVulkan())
+                {
                     p_appBase->Prepare();
                     assert(p_appBase->prepared);
                 }

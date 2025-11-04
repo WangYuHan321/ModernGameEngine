@@ -275,6 +275,37 @@ VkBool32 Render::Vulkan::Tool::GetSupportedDepthFormat(VkPhysicalDevice physical
     return false;
 }
 
+#if defined (__ANDROID__)
+
+VkShaderModule Render::Vulkan::Tool::LoadShader(AAssetManager* assetManager, const char *fileName, VkDevice device)
+{
+    // Load shader from compressed asset
+    AAsset* asset = AAssetManager_open(assetManager, fileName, AASSET_MODE_STREAMING);
+    assert(asset);
+    size_t size = AAsset_getLength(asset);
+    assert(size > 0);
+
+    char *shaderCode = new char[size];
+    AAsset_read(asset, shaderCode, size);
+    AAsset_close(asset);
+
+    VkShaderModule shaderModule;
+    VkShaderModuleCreateInfo moduleCreateInfo;
+    moduleCreateInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+    moduleCreateInfo.pNext = NULL;
+    moduleCreateInfo.codeSize = size;
+    moduleCreateInfo.pCode = (uint32_t*)shaderCode;
+    moduleCreateInfo.flags = 0;
+
+    VK_CHECK_RESULT(vkCreateShaderModule(device, &moduleCreateInfo, NULL, &shaderModule));
+
+    delete[] shaderCode;
+
+    return shaderModule;
+}
+
+#else
+
 VkShaderModule Render::Vulkan::Tool::LoadShader(const char* fileName, VkDevice device)
 {
     std::ifstream is(fileName, std::ios::binary | std::ios::in | std::ios::ate);
@@ -307,6 +338,8 @@ VkShaderModule Render::Vulkan::Tool::LoadShader(const char* fileName, VkDevice d
         return VK_NULL_HANDLE;
     }
 }
+
+#endif
 
 std::string Render::Vulkan::Tool::ErrorString(VkResult errorCode)
 {

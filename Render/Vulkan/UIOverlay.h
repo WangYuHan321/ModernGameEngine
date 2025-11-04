@@ -22,7 +22,7 @@ namespace Render
             VulkanDevice* device{ nullptr };
             VkQueue queue{ VK_NULL_HANDLE };
 
-            VkSampleCountFlagBits rasterizaationSamples{ VK_SAMPLE_COUNT_1_BIT };
+            VkSampleCountFlagBits rasterizationSamples{ VK_SAMPLE_COUNT_1_BIT };
             uint32_t subPass{ 0 };
 
             Buffer vertexBuffer;
