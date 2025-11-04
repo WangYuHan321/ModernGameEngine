@@ -563,7 +563,6 @@ void ApplicationBase::RenderLoop()
                                          (void **) &source)) > ALOOPER_POLL_TIMEOUT) {
             if (source != nullptr) {
                 source->process(androidApp, source);
-                break;
             }
             if (androidApp->destroyRequested != 0) {
                 LOGD("Android app destroy requested");
@@ -571,6 +570,8 @@ void ApplicationBase::RenderLoop()
                 break;
             }
         }
+
+
 
         if (destroy)
         {
@@ -906,6 +907,8 @@ int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* e
                 break;
         }
     }
+
+    return 0;
 }
 
 void ApplicationBase::HandleAppCommand(android_app * app, int32_t cmd)
