@@ -6,11 +6,6 @@
 #include <CoreVideo/CVDisplayLink.h>
 #endif
 
-#if defined(VK_USE_PLATFORM_METAL_EXT)
-// SRS - Metal layer is defined externally when using iOS/macOS displayLink-driven examples project
-extern CAMetalLayer* layer;
-#endif
-
 std::string ApplicationBase::GetWindowTitle() const
 {
 	std::string windowTitle{ title + " - " + m_deviceProperties.deviceName };
@@ -494,13 +489,23 @@ void ApplicationBase::Prepare()
 	VkPipelineShaderStageCreateInfo shaderVertStage = {};
 	shaderVertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderVertStage.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	shaderVertStage.module = Render::Vulkan::Tool::LoadShader(androidApp->activity->assetManager, "shaders/glsl/base/uioverlay.vert.spv",m_device);
+#if defined (__ANDROID__)
+    shaderVertStage.module = Render::Vulkan::Tool::LoadShader(androidApp->activity->assetManager, "shaders/glsl/base/uioverlay.vert.spv",m_device);
+#else
+    shaderVertStage.module = Render::Vulkan::Tool::LoadShader("./Asset/shader/glsl/base/uioverlay.vert.spv",m_device);
+#endif
+
 	shaderVertStage.pName = "main";
 
 	VkPipelineShaderStageCreateInfo shaderFragStage = {};
 	shaderFragStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	shaderFragStage.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	shaderFragStage.module = Render::Vulkan::Tool::LoadShader(androidApp->activity->assetManager, "shaders/glsl/base/uioverlay.frag.spv", m_device);
+    
+#if defined (__ANDROID__)
+    shaderFragStage.module = Render::Vulkan::Tool::LoadShader(androidApp->activity->assetManager, "shaders/glsl/base/uioverlay.frag.spv", m_device);
+#else
+    shaderFragStage.module = Render::Vulkan::Tool::LoadShader("./Asset/shader/glsl/base/uioverlay.frag.spv", m_device);
+#endif
 	shaderFragStage.pName = "main";
 
 	ui.device = vulkanDevice;
@@ -1220,14 +1225,12 @@ void* ApplicationBase::SetUpWindow(void* view)
     nsView->vulkanExample = this;
     [window setDelegate:nsView];
     [window setContentView:nsView];
-    //this->view = (__bridge void*)nsView;
-#if defined(VK_USE_PLATFORM_METAL_EXT)
-    //this->metalLayer = (CAMetalLayer*)layer;
-#endif
+    this->view = (__bridge void*)nsView;
+    this->metalLayer = (CAMetalLayer*)nsView.layer;
     
 #endif
     
-    
+    return view;
 }
 
 void ApplicationBase::DisplayLinkOutputCb()
