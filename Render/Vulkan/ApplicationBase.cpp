@@ -452,6 +452,11 @@ void ApplicationBase::UpdateOverlay()
 
 	io.DisplaySize = ImVec2((float)width, (float)height);
 
+	io.MousePos = ImVec2(mouseState.position.x, mouseState.position.y);
+	io.MouseDown[0] = mouseState.button.left;
+	io.MouseDown[1] = mouseState.button.right;
+	io.MouseDown[2] = mouseState.button.middle;
+
 	ImGui::NewFrame();
 
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0);
@@ -847,17 +852,25 @@ void ApplicationBase::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 	case WM_KEYUP:
 		break;
 	case WM_LBUTTONDOWN:
+		mouseState.position = glm::vec2(float(LOWORD(lParam)), float(HIWORD(lParam)));
+		mouseState.button.left = true;
 		break;
 	case WM_RBUTTONDOWN:
+		mouseState.position = glm::vec2(float(LOWORD(lParam)), float(HIWORD(lParam)));
+		mouseState.button.right = true;
 		break;
 	case WM_MBUTTONDOWN:
-
+		mouseState.position = glm::vec2(float(LOWORD(lParam)), float(HIWORD(lParam)));
+		mouseState.button.middle = true;
 		break;
 	case WM_LBUTTONUP:
+		mouseState.button.left = false;
 		break;
 	case WM_RBUTTONUP:
+		mouseState.button.right = false;
 		break;
 	case WM_MBUTTONUP:
+		mouseState.button.middle = false;
 		break;
 	case WM_MOUSEWHEEL:
 	{
