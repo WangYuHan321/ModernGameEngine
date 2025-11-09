@@ -836,4 +836,6 @@ void ApplicationWin::Render()
 
 	// Select the next frame to render to, based on the max. no. of concurrent frames
 	m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+
+	vkQueueWaitIdle(m_queue);//wait queue wheter UI destroy is error !!!!
 }
