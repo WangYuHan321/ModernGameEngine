@@ -1,0 +1,39 @@
+{
+  "importers": {
+    "obj": {
+      "flip_uvs": true,
+      "generate_normals_if_missing": true
+    },
+    "gltf": {
+      "load_animations": true,
+      "load_skins": true
+    }
+  },
+  "processing": {
+    "mesh_processing": {
+      "generate_tangents": true,
+      "optimize_meshes": true,
+      "merge_meshes": false,
+      "generate_lods": false
+    },
+    "material_processing": {
+      "generate_materials_if_missing": true,
+      "default_material": {
+        "base_color": [1.0, 1.0, 1.0, 1.0],
+        "metallic": 0.0,
+        "roughness": 1.0
+      }
+    },
+    "texture_processing": {
+      "compress_textures": true,
+      "generate_mipmaps": true,
+      "texture_format": "bc7"
+    }
+  },
+  "platform": "vulkan",
+  "output": {
+    "directory": "assets/imported",
+    "overwrite": true,
+    "log_level": "info"
+  }
+}
