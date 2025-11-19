@@ -638,6 +638,24 @@ void ApplicationBase::WindowResize()
 	prepared = true;
 }
 
+VkPipelineShaderStageCreateInfo ApplicationBase::LoadShader(std::string fileName, VkShaderStageFlagBits stage)
+{
+	VkPipelineShaderStageCreateInfo shaderStage{
+	.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+	.stage = stage,
+	.pName = "main"
+	};
+
+#if defined (__ANDROID__)
+	shaderStage.module = Render::Vulkan::Tool::LoadShader(androidApp->activity->assetManager, fileName.c_str(), m_device);
+#else
+	shaderStage.module = Render::Vulkan::Tool::LoadShader(fileName.c_str(), m_device);
+#endif
+	assert(shaderStage.module != VK_NULL_HANDLE);
+	m_shaderModules.push_back(shaderStage.module);
+	return shaderStage;
+}
+
 ApplicationBase::ApplicationBase()
 {
 #if defined(_WIN32)
