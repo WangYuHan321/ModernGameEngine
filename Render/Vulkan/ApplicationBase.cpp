@@ -477,6 +477,46 @@ void ApplicationBase::UpdateOverlay()
 	ui.Update();
 }
 
+void ApplicationBase::SubmitFrame(bool skipQueueSubmit)
+{
+	if (!skipQueueSubmit) {
+		const VkPipelineStageFlags waitPipelineStage{ VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
+		VkSubmitInfo submitInfo{
+			.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+			.waitSemaphoreCount = 1,
+			.pWaitSemaphores = &m_presentCompleteSemaphores[m_currentBuffer],
+			.pWaitDstStageMask = &waitPipelineStage,
+			.commandBufferCount = 1,
+			.pCommandBuffers = &m_drawCmdBuffers[m_currentBuffer],
+			.signalSemaphoreCount = 1,
+			.pSignalSemaphores = &m_renderCompleteSemaphores[m_currentImageIndex]
+		};
+		VK_CHECK_RESULT(vkQueueSubmit(m_queue, 1, &submitInfo, m_waitFences[m_currentBuffer]));
+	}
+
+	VkPresentInfoKHR presentInfo{
+		.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+		.waitSemaphoreCount = 1,
+		.pWaitSemaphores = &m_renderCompleteSemaphores[m_currentImageIndex],
+		.swapchainCount = 1,
+		.pSwapchains = &m_swapChain.swapChain,
+		.pImageIndices = &m_currentImageIndex
+	};
+	VkResult result = vkQueuePresentKHR(m_queue, &presentInfo);
+
+	if ((result == VK_ERROR_OUT_OF_DATE_KHR) || (result == VK_SUBOPTIMAL_KHR)) {
+		WindowResize();
+		if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+			return;
+		}
+	}
+	else {
+		VK_CHECK_RESULT(result);
+	}
+
+	m_currentBuffer = (m_currentBuffer + 1) % MAX_FRAMES_IN_FLIGHT;
+}
+
 void ApplicationBase::Prepare()
 {
 	CreateSurface();
