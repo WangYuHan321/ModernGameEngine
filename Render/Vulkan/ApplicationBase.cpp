@@ -363,7 +363,7 @@ void ApplicationBase::SetupRenderPass()
 	};
 
 	VkAttachmentReference colorReference{ .attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL };
-	VkAttachmentReference depthReference{ .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL };
+	VkAttachmentReference depthReference{ .attachment = 1, .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL };
 
 	VkSubpassDescription subpassDescription
 	{
@@ -393,7 +393,6 @@ void ApplicationBase::SetupRenderPass()
 	};
 
 	VkRenderPassCreateInfo renderPassInfo = Render::Vulkan::Initializer::RenderPassCreateInfo();
-	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassInfo.pAttachments = attachments.data();
 	renderPassInfo.subpassCount = 1;
