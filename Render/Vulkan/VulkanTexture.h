@@ -14,7 +14,7 @@ namespace Render
             VkDeviceMemory deviceMemory;
             VkImageView imageView;
             uint32_t width, height;
-            uint32_t mipLevels;
+            uint32_t mipLevels = 1;
             uint32_t layerCount;
             VkDescriptorImageInfo descirptor;
             VkSampler sampler;

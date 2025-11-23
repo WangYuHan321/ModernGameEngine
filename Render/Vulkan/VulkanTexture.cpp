@@ -38,6 +38,9 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 	stbi_uc* pixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
 	VkDeviceSize imageSize = texWidth * texHeight * 4;
 
+	width = texWidth;
+	height = texHeight;
+
 	if (!pixels)
 	{
 		throw std::runtime_error("failed to load texture image!");
@@ -55,7 +58,7 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 	VkBufferCreateInfo bufferCreateInfo = Render::Vulkan::Initializer::BufferCreateInfo(
 		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
 		imageSize);
-	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; //¶ÀÏíÄ£Ê½
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE; //ï¿½ï¿½ï¿½ï¿½Ä£Ê½
 
 	VK_CHECK_RESULT(vkCreateBuffer(device->logicalDevice, &bufferCreateInfo, nullptr, &stagingBuffer));
 	
@@ -76,6 +79,9 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 
 	VkImageCreateInfo imageCreateInfo = Vulkan::Initializer::ImageCreateInfo();
 	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imageCreateInfo.extent.width = width;
+	imageCreateInfo.extent.height = height;
+	imageCreateInfo.extent.depth = 1;
 	imageCreateInfo.format = format;
 	imageCreateInfo.mipLevels = mipLevels;
 	imageCreateInfo.arrayLayers = 1;
@@ -92,7 +98,7 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 	VK_CHECK_RESULT(vkCreateImage(device->logicalDevice, &imageCreateInfo, nullptr, &image));
 	vkGetImageMemoryRequirements(device->logicalDevice, image, &memReqs);
 	memAlloc.allocationSize = memReqs.size;
-	memAlloc.memoryTypeIndex = device->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	memAlloc.memoryTypeIndex = device->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	VK_CHECK_RESULT(vkAllocateMemory(device->logicalDevice, &memAlloc, nullptr, &deviceMemory));
 	VK_CHECK_RESULT(vkBindImageMemory(device->logicalDevice, image, deviceMemory, 0));
 
