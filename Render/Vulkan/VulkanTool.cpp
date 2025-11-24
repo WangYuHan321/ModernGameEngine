@@ -24,7 +24,7 @@ void Render::Vulkan::Tool::SetImageLayout(
     switch (oldImageLayout)
     {
         case VK_IMAGE_LAYOUT_UNDEFINED://图片当前无定义布局，常用于初始状态；不保留数据。
-            srcStageMask = 0;//没有已发生的访问需要等待。
+            imageMemoryBarrier.srcAccessMask = 0;//没有已发生的访问需要等待。
             break;
         case VK_IMAGE_LAYOUT_PREINITIALIZED://图片已被主机/CPU 预初始化写入过（线性图片较常见）。
             imageMemoryBarrier.srcAccessMask = VK_ACCESS_HOST_WRITE_BIT;//保证主机端写入完成后，设备再访问图片。
@@ -226,7 +226,6 @@ void Render::Vulkan::Tool::GenerateMipMap(Render::Vulkan::VulkanDevice* device,
                          0, nullptr,
                          1, &barrier);
 
-    EndSingleTimeCommands(device, device->commandPool,commandBuffer, queue);
 }
 
 VkBool32 Render::Vulkan::Tool::GetSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat)

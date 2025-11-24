@@ -44,7 +44,7 @@ namespace Render
 
 			void Create(uint32_t width, uint32_t height, bool vsync = false, bool fullScreen = false);
 	
-			VkResult AcquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t imageIndex);
+			VkResult AcquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t& imageIndex);
 
 			VkResult QueuePresent(VkQueue, uint32_t imageIndex, VkSemaphore waitSemaphore = VK_NULL_HANDLE);
 

@@ -153,19 +153,6 @@ void ApplicationWin::CreateQuad()
 
 void ApplicationWin::CreateDescriptorPool()
 {
-#if 0
-	std::vector<VkDescriptorPoolSize> poolSizes = {
-		// Graphics pipelines uniform buffers
-		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT * 2),
-		// Graphics pipelines image samplers for displaying compute output image
-		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT * 2),
-		// Compute pipelines uses a storage image for image reads and writes
-		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_FRAMES_IN_FLIGHT * 2),
-	};
-	VkDescriptorPoolCreateInfo descriptorPoolInfo = Render::Vulkan::Initializer::DescriptorPoolCreateInfo(poolSizes, MAX_FRAMES_IN_FLIGHT * 3);
-	VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
-#endif
-
 	std::vector<VkDescriptorPoolSize> descriptorTypeCounts;
 	descriptorTypeCounts.resize(3);
 	descriptorTypeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -182,7 +169,6 @@ void ApplicationWin::CreateDescriptorPool()
 	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(3);//descriptorTypeCounts.size()
 	descriptorPoolInfo.pPoolSizes = descriptorTypeCounts.data();
 	descriptorPoolInfo.maxSets = 3 * MAX_FRAMES_IN_FLIGHT;// type 个数 * MAX_FRAMES_IN_FLIGHT
-
 
 	VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
 
@@ -268,13 +254,13 @@ void ApplicationWin::PrepareGraphicsPipeline()
 	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorCreateInfo, nullptr, &m_graphics.descriptorSetLayout));
 	for (auto i = 0; i < m_graphics.uniformBuffers.size(); i++)
 	{
-		VkDescriptorSetAllocateInfo descriptorAllocInfo;
-		descriptorAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		descriptorAllocInfo.descriptorPool = m_descriptorPool;
-		descriptorAllocInfo.descriptorSetCount = 1;// 这里 只有1个 preCompute
-		descriptorAllocInfo.pSetLayouts = &m_graphics.descriptorSetLayout;
+		VkDescriptorSetAllocateInfo descriptorAllocInfo0 {};
+		descriptorAllocInfo0.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		descriptorAllocInfo0.descriptorPool = m_descriptorPool;
+		descriptorAllocInfo0.descriptorSetCount = 1;// 这里 只有1个 preCompute
+		descriptorAllocInfo0.pSetLayouts = &m_graphics.descriptorSetLayout;
 
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &descriptorAllocInfo, &m_graphics.descriptorSets[i].preCompute));
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &descriptorAllocInfo0, &m_graphics.descriptorSets[i].preCompute));
 		VkWriteDescriptorSet writeDescriptorSet0{};
 		writeDescriptorSet0.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet0.dstSet = m_graphics.descriptorSets[i].preCompute;
@@ -295,7 +281,13 @@ void ApplicationWin::PrepareGraphicsPipeline()
 
 		vkUpdateDescriptorSets(m_device, writeDescriptorSets0.size(), writeDescriptorSets0.data(), 0, nullptr);
 
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &descriptorAllocInfo, &m_graphics.descriptorSets[i].postCompute));
+		VkDescriptorSetAllocateInfo descriptorAllocInfo1 {};
+		descriptorAllocInfo1.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		descriptorAllocInfo1.descriptorPool = m_descriptorPool;
+		descriptorAllocInfo1.descriptorSetCount = 1;// 这里 只有1个 preCompute
+		descriptorAllocInfo1.pSetLayouts = &m_graphics.descriptorSetLayout;
+
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &descriptorAllocInfo1, &m_graphics.descriptorSets[i].postCompute));
 		VkWriteDescriptorSet writeDescriptorSet00{};
 		writeDescriptorSet00.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		writeDescriptorSet00.dstSet = m_graphics.descriptorSets[i].postCompute;
@@ -331,7 +323,7 @@ void ApplicationWin::PrepareGraphicsPipeline()
 	inputAssemblyState.primitiveRestartEnable = VK_FALSE;
 
 	VkPipelineRasterizationStateCreateInfo rasterizationState{};
-	rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO;
+	rasterizationState.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
 	rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
 	rasterizationState.cullMode = VK_CULL_MODE_NONE;
 	rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
@@ -355,7 +347,7 @@ void ApplicationWin::PrepareGraphicsPipeline()
 	depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 	depthStencilState.back.compareOp = VK_COMPARE_OP_ALWAYS;
 
-	VkPipelineViewportStateCreateInfo viewportState;
+	VkPipelineViewportStateCreateInfo viewportState{};
 	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
 	viewportState.viewportCount = 1;
 	viewportState.scissorCount = 1;
@@ -375,32 +367,32 @@ void ApplicationWin::PrepareGraphicsPipeline()
 
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 
-	shaderStages[0] = LoadShader("computeshader/texture.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("computeshader/texture.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_compute/texture.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_compute/texture.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-	VkVertexInputBindingDescription vertexInputBinding;
+	VkVertexInputBindingDescription vertexInputBinding{};
 	vertexInputBinding.binding = 0;
 	vertexInputBinding.stride = sizeof(Vertex);
 	vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	VkVertexInputAttributeDescription vertexInputAttr0;
+	VkVertexInputAttributeDescription vertexInputAttr0{};
 	vertexInputAttr0.location = 0;
 	vertexInputAttr0.binding = 0;
 	vertexInputAttr0.format = VK_FORMAT_R32G32B32_SFLOAT;
 	vertexInputAttr0.offset = offsetof(Vertex, position);
 
-	VkVertexInputAttributeDescription vertexInputAttr1;
-	vertexInputAttr0.location = 0;
-	vertexInputAttr0.binding = 1;
-	vertexInputAttr0.format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertexInputAttr0.offset = offsetof(Vertex, uv);
+	VkVertexInputAttributeDescription vertexInputAttr1{};
+	vertexInputAttr1.location = 1;
+	vertexInputAttr1.binding = 0;
+	vertexInputAttr1.format = VK_FORMAT_R32G32_SFLOAT;
+	vertexInputAttr1.offset = offsetof(Vertex, uv);
 
 	std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
 		vertexInputBinding
 	};
 
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttrs = {
-	vertexInputAttr0, vertexInputAttr1
+		vertexInputAttr0, vertexInputAttr1
 	};
 
 	VkPipelineVertexInputStateCreateInfo vertexInputState{};
@@ -456,7 +448,7 @@ void ApplicationWin::PrepareComputePipeline()
 	{
 		VkFenceCreateInfo fenceCreateInfo{};
 		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fenceCreateInfo.flags = 0;
+		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 		VK_CHECK_RESULT(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &fence));
 	}
 
@@ -478,12 +470,15 @@ void ApplicationWin::PrepareComputePipeline()
 		setLayoutBinding0, setLayoutBinding1
 	};
 
-	VkDescriptorSetLayoutCreateInfo descriptorCreateInfo;
+	VkDescriptorSetLayoutCreateInfo descriptorCreateInfo{};
 	descriptorCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	descriptorCreateInfo.pBindings = setLayoutBindings.data();
 	descriptorCreateInfo.bindingCount = setLayoutBindings.size();
 	descriptorCreateInfo.flags = 0;
 	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorCreateInfo, nullptr, &m_compute.descriptorSetLayout));
+
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(&m_compute.descriptorSetLayout, 1);
+	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_compute.pipelineLayout));
 
 	VkDescriptorSetAllocateInfo setAllocateInfo{};
 	setAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -501,12 +496,12 @@ void ApplicationWin::PrepareComputePipeline()
 	writeDescriptorSet0.descriptorCount = 1;//更新一个Buffer
 
 	VkWriteDescriptorSet writeDescriptorSet1{};
-	writeDescriptorSet0.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet0.dstSet = m_compute.descriptorSet;
-	writeDescriptorSet0.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	writeDescriptorSet0.dstBinding = 1;
-	writeDescriptorSet0.pImageInfo = &m_storageImage.descirptor;
-	writeDescriptorSet0.descriptorCount = 1;//更新一个Buffer
+	writeDescriptorSet1.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptorSet1.dstSet = m_compute.descriptorSet;
+	writeDescriptorSet1.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	writeDescriptorSet1.dstBinding = 1;
+	writeDescriptorSet1.pImageInfo = &m_storageImage.descirptor;
+	writeDescriptorSet1.descriptorCount = 1;//更新一个Buffer
 	
 	std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
 			writeDescriptorSet0, writeDescriptorSet1
@@ -521,7 +516,8 @@ void ApplicationWin::PrepareComputePipeline()
 
 	for (auto item : m_filterName)
 	{
-		computePipelineCreateInfo.stage = LoadShader(item.c_str(), VK_SHADER_STAGE_COMPUTE_BIT);
+		std::string strPath = "./Asset/shader/glsl/draw_compute/" + item + ".comp.spv";
+		computePipelineCreateInfo.stage = LoadShader(strPath.c_str(), VK_SHADER_STAGE_COMPUTE_BIT);
 		
 		VkPipeline pipeline;
 		VK_CHECK_RESULT(vkCreateComputePipelines(m_device, m_pipelineCache, 1, &computePipelineCreateInfo, nullptr, &pipeline));
@@ -552,11 +548,18 @@ void ApplicationWin::PrepareUniformBuffer()
 		memAlloc.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 		VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAlloc, nullptr, &item.memory));
 
+		item.alignment = memReqs.alignment;
+		item.size = sizeof(Graphics::UniformData);
+		item.usageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+		item.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+		item.SetupDescriptor();
+
 		//绑定内存将缓冲区和内存binding在一起
 		VK_CHECK_RESULT(vkBindBufferMemory(m_device, item.buffer, item.memory, 0));
 
 		//将CPU地址和GPU地址Map
-		vkMapMemory(m_device, item.memory, 0, 0, 0, &item.mapped);
+		vkMapMemory(m_device, item.memory, 0, VK_WHOLE_SIZE, 0, &item.mapped);
 	}
 }
 
@@ -608,14 +611,14 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 	vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	VkViewport viewport{};
-	viewport.width = width;
+	viewport.width = width * 0.5f;
 	viewport.height = height;
 	viewport.minDepth = 0.01f;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
 	VkRect2D rect2D{};
-	rect2D.extent.width = width * 0.5f;
+	rect2D.extent.width = width;
 	rect2D.extent.height = height;
 	rect2D.offset.x = 0;
 	rect2D.offset.y = 0;
@@ -675,7 +678,7 @@ void ApplicationWin::UpdateUniformBuffers()
 	m_camera.setPerspective(60.0f, (float)width * 0.5f / (float)height, 1.0f, 256.0f);
 	m_graphics.uniformData.projection = m_camera.matrices.perspective;
 	m_graphics.uniformData.modelView = m_camera.matrices.view;
-
+	memcpy(m_graphics.uniformBuffers[m_currentBuffer].mapped, &m_graphics.uniformData, sizeof(Graphics::UniformData));
 }
 
 void ApplicationWin::Render()
@@ -698,10 +701,12 @@ void ApplicationWin::Render()
 
 	VK_CHECK_RESULT(vkWaitForFences(m_device, 1, &m_waitFences[m_currentBuffer], VK_TRUE, UINT64_MAX));
 	VK_CHECK_RESULT(vkResetFences(m_device, 1, &m_waitFences[m_currentBuffer]));
+	m_swapChain.AcquireNextImage(m_presentCompleteSemaphores[m_currentBuffer], m_currentImageIndex);
 
 	UpdateUniformBuffers();
 	BuildGraphicsCommandBuffer();
-	ApplicationBase::SubmitFrame();
+
+	ApplicationBase::SubmitFrame(false);
 	
 }
 
@@ -709,7 +714,8 @@ void ApplicationWin::LoadAsset()
 {
 	const VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
 
-	m_textureColorMap.LoadFromFile("./Asset/texture/lena.jpg", format, vulkanDevice, m_queue);
+	m_textureColorMap.LoadFromFile("./Asset/texture/lena.jpg", format, vulkanDevice, m_queue,
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
 
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(m_physicalDevice, format, &formatProperties);

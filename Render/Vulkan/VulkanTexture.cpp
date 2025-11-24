@@ -50,8 +50,6 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 	VkFormatProperties formatProps;
 	vkGetPhysicalDeviceFormatProperties(device->physicalDevice, format, &formatProps);
 
-	VkCommandBuffer copyCmd = device->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-
 	VkBuffer stagingBuffer;
 	VkDeviceMemory stagingMemory;
 
@@ -102,6 +100,13 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 	VK_CHECK_RESULT(vkAllocateMemory(device->logicalDevice, &memAlloc, nullptr, &deviceMemory));
 	VK_CHECK_RESULT(vkBindImageMemory(device->logicalDevice, image, deviceMemory, 0));
 
+
+
+
+
+
+
+	VkCommandBuffer copyCmd = device->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 	VkImageSubresourceRange subresourceRange{ .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = mipLevels, .layerCount = 1, };
 
 	//transition image layout
@@ -136,6 +141,8 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 		&region
 	);
 
+	Vulkan::Tool::GenerateMipMap(device, copyQueue, image, format, texWidth, texHeight, mipLevels);
+
 	this->imageLayout = imageLayout;
 	Vulkan::Tool::SetImageLayout(
 		copyCmd,
@@ -144,7 +151,7 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 		imageLayout,
 		subresourceRange);
 
-	Vulkan::Tool::GenerateMipMap(device, copyQueue, image, format, texWidth, texHeight, mipLevels );
+	device->FlushCommandBuffer(copyCmd, copyQueue);
 
 	vkDestroyBuffer(device->logicalDevice, stagingBuffer, nullptr);
 	vkFreeMemory(device->logicalDevice, stagingMemory, nullptr);

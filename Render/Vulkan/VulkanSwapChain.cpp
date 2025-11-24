@@ -453,7 +453,7 @@ void Render::Vulkan::VulkanSwapChain::Create(uint32_t width, uint32_t height, bo
 	}
 }
 
-VkResult Render::Vulkan::VulkanSwapChain::AcquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t imageIndex)
+VkResult Render::Vulkan::VulkanSwapChain::AcquireNextImage(VkSemaphore presentCompleteSemaphore, uint32_t& imageIndex)
 {
 	return vkAcquireNextImageKHR(device, swapChain, UINT64_MAX, presentCompleteSemaphore, (VkFence)nullptr, &imageIndex);
 }
