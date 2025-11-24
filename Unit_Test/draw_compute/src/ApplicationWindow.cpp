@@ -572,7 +572,23 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufBegInfo));
 
+	//这里只是跨队列写入共享模式下的 VK_SHARING_MODE_CONCURRENT m_storageImage
+	//所以这里不需要所有权的转移	imageMemoryBarrier.srcQueueFamilyIndex  imageMemoryBarrier.dstQueueFamilyIndex
+	//独占模式下 只读文件也不需要所有权转移 只有要写入修改的情况下才会发生
+	
+	//独占模式 + 跨队列写入 = 必须所有权转移
+	//共享模式 + 跨队列写入 = 只需要内存屏障
+
+	//这里是内存访问同步：
+
+	//计算队列：写入 m_storageImage
+
+	//图形队列：读取 m_storageImage
+
+	//需要确保计算写入完成后，图形才能读取
+
 	VkImageMemoryBarrier imageMemoryBarrier = {};
+	
 	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	// We won't be changing the layout of the image
 	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
