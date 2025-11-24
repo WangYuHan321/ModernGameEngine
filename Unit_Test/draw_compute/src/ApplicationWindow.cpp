@@ -703,7 +703,13 @@ void ApplicationWin::Render()
 		return;
 
 	//Vulkan CONCURRENT 模式只是解决了资源的"访问权限"问题，完全不处理"执行同步"！
+	// 
+	// 屏障是GPU内部的同步：确保命令缓冲区内的执行顺序
+	// Fence / 信号量是CPU - GPU间的同步：确保命令缓冲区间的执行顺序
+	//屏障的前提：相关的命令缓冲区必须已经提交并在执行中
+	//结论：你不能移除 compute fence 的等待。内存屏障需要计算命令已经开始执行才能正常工作。如果移除 fence 等待，会导致未定义行为（数据竞争、图像撕裂或验证层错误）。
 	//所以这里必须 等待计算队列完成
+
 	vkWaitForFences(m_device, 1, &m_compute.fences[m_currentBuffer], VK_TRUE, UINT64_MAX);
 	vkResetFences(m_device, 1, &m_compute.fences[m_currentBuffer]);
 	BuildComputeCommandBuffer();
