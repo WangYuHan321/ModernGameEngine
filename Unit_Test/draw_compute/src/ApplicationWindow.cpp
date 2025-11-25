@@ -15,6 +15,16 @@ ApplicationWin::~ApplicationWin()
 	
 }
 
+void ApplicationWin::DrawUI(const VkCommandBuffer cmdBuffer)
+{
+	const VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width, (float)height, 0.0f, 1.0f);
+	const VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
+	vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+	vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+	ui.Draw(cmdBuffer);
+}
+
 void ApplicationWin::CreateQuad()
 {
 	std::vector<Vertex> vertices = {
@@ -659,6 +669,8 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 
 	vkCmdDrawIndexed(cmdBuffer, m_indexCount, 1, 0, 0, 0);
 
+	DrawUI(cmdBuffer);
+
 	vkCmdEndRenderPass(cmdBuffer);
 
 	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
@@ -730,6 +742,7 @@ void ApplicationWin::Render()
 
 	ApplicationBase::SubmitFrame(false);
 	
+	vkQueueWaitIdle(m_queue);
 }
 
 void ApplicationWin::LoadAsset()

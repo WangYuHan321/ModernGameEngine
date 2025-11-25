@@ -63,6 +63,7 @@ private:
 	uint32_t m_currentFrame{ 0 };
 
 public:
+	void DrawUI(const VkCommandBuffer cmdBuffer);
 	void CreateQuad();
 	void CreateDescriptorPool();
 	void UpdateUniformBuffers();
