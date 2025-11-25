@@ -46,4 +46,5 @@ ext {
 	fontPath = '../../../Asset/font'
     shaderPath = '../../../Asset/shader/'
     meshPath = '../../../Asset/mesh/'
+	texturePath = '../../../Asset/texture/'
 }
