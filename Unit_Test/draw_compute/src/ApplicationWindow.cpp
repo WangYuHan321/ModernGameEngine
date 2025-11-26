@@ -608,6 +608,8 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 
 	//需要确保计算写入完成后，图形才能读取
 
+	//这里 Fence已经保障了 Compute Shader完成 但是 内存只是写入了 他没有真正的刷新到主缓存中 因此需要内存屏障去强制刷新
+
 	VkImageMemoryBarrier imageMemoryBarrier = {};
 	
 	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
