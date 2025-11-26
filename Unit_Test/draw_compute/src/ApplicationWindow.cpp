@@ -377,8 +377,14 @@ void ApplicationWin::PrepareGraphicsPipeline()
 
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 
+#if defined (__ANDROID__)
+	shaderStages[0] = LoadShader("shaders/glsl/draw_compute/texture.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("shaders/glsl/draw_compute/texture.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
 	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_compute/texture.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_compute/texture.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#endif
+
 
 	VkVertexInputBindingDescription vertexInputBinding{};
 	vertexInputBinding.binding = 0;
@@ -526,7 +532,12 @@ void ApplicationWin::PrepareComputePipeline()
 
 	for (auto item : m_filterName)
 	{
+#if defined(__ANDROID__)
+		std::string strPath = "shaders/glsl/draw_compute/" + item + ".comp.spv";
+#else
 		std::string strPath = "./Asset/shader/glsl/draw_compute/" + item + ".comp.spv";
+#endif
+
 		computePipelineCreateInfo.stage = LoadShader(strPath.c_str(), VK_SHADER_STAGE_COMPUTE_BIT);
 		
 		VkPipeline pipeline;
@@ -749,8 +760,14 @@ void ApplicationWin::LoadAsset()
 {
 	const VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
 
+#if defined(__ANDROID__)
+	m_textureColorMap.LoadFromFile("texture/lena.jpg", format, vulkanDevice, m_queue,
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+#else
 	m_textureColorMap.LoadFromFile("./Asset/texture/lena.jpg", format, vulkanDevice, m_queue,
 		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+#endif
+
 
 	VkFormatProperties formatProperties;
 	vkGetPhysicalDeviceFormatProperties(m_physicalDevice, format, &formatProperties);
