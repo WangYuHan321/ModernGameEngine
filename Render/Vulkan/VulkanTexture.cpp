@@ -37,11 +37,12 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
     int texWidth, texHeight, texChannels;
 #if defined (__ANDROID__)
     // Load shader from compressed asset
-    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, filename.c_str(), AASSET_MODE_STREAMING);
+    AAsset* asset = AAssetManager_open(androidApp->activity->assetManager, filename.c_str(), AASSET_MODE_BUFFER);
     assert(asset);
     size_t size = AAsset_getLength(asset);
     assert(size > 0);
-    stbi_uc* pixels = stbi_load_from_memory((stbi_uc*)asset,size, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
+    const unsigned char* buffer = static_cast<const unsigned char*>(AAsset_getBuffer(asset));
+    stbi_uc* pixels = stbi_load_from_memory((stbi_uc*)buffer,size, &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
     AAsset_close(asset);
 #else
     stbi_uc* pixels = stbi_load(filename.c_str(), &texWidth, &texHeight, &texChannels, STBI_rgb_alpha);
