@@ -1,4 +1,5 @@
-﻿#include "VulkanBuffer.h"
+﻿#pragma once
+#include "VulkanBuffer.h"
 #include "VulkanDevice.h"
 
 namespace Render
