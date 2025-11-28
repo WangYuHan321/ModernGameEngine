@@ -19,12 +19,10 @@
 
 #include "vulkan/vulkan.h"
 #include "VulkanDevice.h"
-#include "VulkanTexture.h"
 
-#define TINYGLTF_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <tiny_gltf.h>
+#include "VulkanTexture.h"
 #include "../Camera.hpp"
+#include <tiny_gltf.h>
 
 namespace Render
 {
