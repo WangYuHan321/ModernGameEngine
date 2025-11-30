@@ -119,6 +119,12 @@ namespace Render
 
 			struct VertexBuffer
 			{
+				VkBuffer buffer;
+				VkDeviceMemory memory;
+			};
+
+			struct IndexBuffer
+			{
 				int count;
 				VkBuffer buffer;
 				VkDeviceMemory memory;
@@ -171,6 +177,9 @@ namespace Render
 			std::vector<Texture> textures;
 			std::vector<Material> materials;
 			std::vector<Node*>    nodes;
+
+			VertexBuffer vertices;
+			IndexBuffer indices;
 
 			void LoadImages(tinygltf::Model& input);
 			void LoadTextures(tinygltf::Model& input);
