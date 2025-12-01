@@ -1043,6 +1043,7 @@ void ApplicationBase::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 	}
 	case WM_MOUSEMOVE:
 	{
+		HandleMouseMove(LOWORD(lParam), HIWORD(lParam));
 		break;
 	}
 	case WM_SIZE:
@@ -1061,6 +1062,31 @@ void ApplicationBase::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 		break;
 	}
 }
+
+void ApplicationBase::HandleMouseMove(int32_t x, int32_t y)
+{
+	int32_t dx = (int32_t)mouseState.position.x - x;
+	int32_t dy = (int32_t)mouseState.position.y - y;
+
+	bool handled = false;
+
+	if (handled) {
+		mouseState.position = glm::vec2((float)x, (float)y);
+		return;
+	}
+
+	if (mouseState.button.left) {
+		m_camera.rotate(glm::vec3(dy * m_camera.rotationSpeed, -dx * m_camera.rotationSpeed, 0.0f));
+	}
+	if (mouseState.button.right) {
+		m_camera.translate(glm::vec3(-0.0f, 0.0f, dy * .005f));
+	}
+	if (mouseState.button.middle) {
+		m_camera.translate(glm::vec3(-dx * 0.005f, -dy * 0.005f, 0.0f));
+	}
+	mouseState.position = glm::vec2((float)x, (float)y);
+}
+
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
 
 int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* event)

@@ -19,7 +19,7 @@ void Render::Vulkan::GlTFModel::LoadImages(tinygltf::Model& input)
 		VkDeviceSize bufferSize = 0;
 		bool deleteBuffer = false;
 
-		if (gltfImage.component = 3)
+		if (gltfImage.component == 3)
 		{
 			bufferSize = gltfImage.width * gltfImage.height * 4;
 			buffer = new unsigned char[bufferSize];
