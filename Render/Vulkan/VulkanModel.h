@@ -193,6 +193,9 @@ namespace Render
 			void LoadNode(const tinygltf::Node& inputNode, const tinygltf::Model& input, 
 				GlTFModel::Node* parent, std::vector<uint32_t>& indexBuffer, std::vector<GlTFModel::Vertex>& vertexBuffer);
 
+
+			void Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout);
+			void DrawNode(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, GlTFModel::Node* node);
 		};
 	}
 }

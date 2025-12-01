@@ -5,9 +5,10 @@ ApplicationWin::ApplicationWin():
 {
 	title = " ApplicationDrawModel ";
 	m_camera.type = Camera::CameraType::lookat;
-	m_camera.setPosition(glm::vec3(0.0f, 0.0f, -2.0f));
-	m_camera.setRotation(glm::vec3(0.0f));
-	m_camera.setPerspective(60.0f, (float)width * 0.5f / (float)height, 1.0f, 256.0f);
+	m_camera.flipY = true;
+	m_camera.setPosition(glm::vec3(0.0f, -20.1f, -1.0f));
+	m_camera.setRotation(glm::vec3(0.0f, 45.0f, 0.0f));
+	m_camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 1000.0f);
 }
 
 ApplicationWin::~ApplicationWin()
@@ -28,21 +29,18 @@ void ApplicationWin::DrawUI(const VkCommandBuffer cmdBuffer)
 void ApplicationWin::CreateDescriptorPool()
 {
 	std::vector<VkDescriptorPoolSize> descriptorTypeCounts;
-	descriptorTypeCounts.resize(3);
+	descriptorTypeCounts.resize(2);
 	descriptorTypeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorTypeCounts[0].descriptorCount = MAX_FRAMES_IN_FLIGHT * 2;// preCompute postCompute  （2个） 1个unfiromBuffer
+	descriptorTypeCounts[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
 
 	descriptorTypeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorTypeCounts[1].descriptorCount = MAX_FRAMES_IN_FLIGHT * 2;// preCompute postCompute  （2个） 1个unfiromBuffer
-
-	descriptorTypeCounts[2].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	descriptorTypeCounts[2].descriptorCount = MAX_FRAMES_IN_FLIGHT * 2;// 这里 * 2 对应 ComputerShader 2个Image
+	descriptorTypeCounts[1].descriptorCount = m_glTFModel.images.size() * MAX_FRAMES_IN_FLIGHT;
 
 	VkDescriptorPoolCreateInfo descriptorPoolInfo{};
 	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(3);//descriptorTypeCounts.size()
+	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(descriptorTypeCounts.size());//descriptorTypeCounts.size()
 	descriptorPoolInfo.pPoolSizes = descriptorTypeCounts.data();
-	descriptorPoolInfo.maxSets = 3 * MAX_FRAMES_IN_FLIGHT;// type 个数 * MAX_FRAMES_IN_FLIGHT
+	descriptorPoolInfo.maxSets = (m_glTFModel.images.size() + 1) * MAX_FRAMES_IN_FLIGHT;// type 个数 * MAX_FRAMES_IN_FLIGHT
 
 	VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
 
@@ -98,97 +96,112 @@ VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
 	}
 }
 
-void ApplicationWin::PrepareGraphicsPipeline()
+void ApplicationWin::PreparePipeline()
 {
-	//设置 Descriptor Layout
-	VkDescriptorType vkDescriptType0 = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	VkDescriptorType vkDescriptType1 = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;//VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE
+	VkDescriptorSetLayoutBinding descrSetLayoutBinding0{};
+	descrSetLayoutBinding0.binding = 0;
+	descrSetLayoutBinding0.descriptorCount = 1;
+	descrSetLayoutBinding0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	descrSetLayoutBinding0.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	VkDescriptorSetLayoutBinding setLayoutBinding0{};
-	setLayoutBinding0.binding = 0;
-	setLayoutBinding0.descriptorType = vkDescriptType0;
-	setLayoutBinding0.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	setLayoutBinding0.descriptorCount = 1;
-
-	VkDescriptorSetLayoutBinding setLayoutBinding1{};
-	setLayoutBinding1.binding = 1;
-	setLayoutBinding1.descriptorType = vkDescriptType1;
-	setLayoutBinding1.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	setLayoutBinding1.descriptorCount = 1;
-
-	std::vector<VkDescriptorSetLayoutBinding> setLayoutBinding = {
-				setLayoutBinding0,setLayoutBinding1
+	std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings{
+		descrSetLayoutBinding0
 	};
 
-	VkDescriptorSetLayoutCreateInfo descriptorCreateInfo{};
-	descriptorCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorCreateInfo.bindingCount = setLayoutBinding.size();
-	descriptorCreateInfo.pBindings = setLayoutBinding.data();
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{};
+	descriptorSetLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorSetLayoutCreateInfo.flags = 0;
+	descriptorSetLayoutCreateInfo.bindingCount = descriptorSetLayoutBindings.size();
+	descriptorSetLayoutCreateInfo.pBindings = descriptorSetLayoutBindings.data();
 
-	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorCreateInfo, nullptr, &m_graphics.descriptorSetLayout));
-	for (auto i = 0; i < m_graphics.uniformBuffers.size(); i++)
+	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo, nullptr, &m_descriptorSetLayout.matrices));
+
+	VkDescriptorSetLayoutBinding descrSetLayoutBinding1{};
+	descrSetLayoutBinding1.binding = 0;
+	descrSetLayoutBinding1.descriptorCount = 1;
+	descrSetLayoutBinding1.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descrSetLayoutBinding1.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::vector<VkDescriptorSetLayoutBinding> descriptorSetLayoutBindings1{
+		descrSetLayoutBinding1
+	};
+
+	VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo1{};
+	descriptorSetLayoutCreateInfo1.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	descriptorSetLayoutCreateInfo1.flags = 0;
+	descriptorSetLayoutCreateInfo1.bindingCount = descriptorSetLayoutBindings1.size();
+	descriptorSetLayoutCreateInfo1.pBindings = descriptorSetLayoutBindings1.data();
+
+	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorSetLayoutCreateInfo1, nullptr, &m_descriptorSetLayout.textures));
+
+	for (int i = 0;i < m_uniformDataBuffer.size();i++)
 	{
-		VkDescriptorSetAllocateInfo descriptorAllocInfo0 {};
-		descriptorAllocInfo0.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		descriptorAllocInfo0.descriptorPool = m_descriptorPool;
-		descriptorAllocInfo0.descriptorSetCount = 1;// 这里 只有1个 preCompute
-		descriptorAllocInfo0.pSetLayouts = &m_graphics.descriptorSetLayout;
+		VkDescriptorSetAllocateInfo allocInfo0{};
+		allocInfo0.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo0.descriptorPool = m_descriptorPool;
+		allocInfo0.descriptorSetCount = 1;
+		allocInfo0.pSetLayouts = &m_descriptorSetLayout.matrices;
 
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &descriptorAllocInfo0, &m_graphics.descriptorSets[i].preCompute));
-		VkWriteDescriptorSet writeDescriptorSet0{};
-		writeDescriptorSet0.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDescriptorSet0.dstSet = m_graphics.descriptorSets[i].preCompute;
-		writeDescriptorSet0.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		writeDescriptorSet0.dstBinding = 0;
-		writeDescriptorSet0.pBufferInfo = &m_graphics.uniformBuffers[i].descriptor;
-		writeDescriptorSet0.descriptorCount = 1;//更新一个Buffer
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo0, &m_descriptorSet[i]));
 
-		VkWriteDescriptorSet writeDescriptorSet1{};
-		writeDescriptorSet1.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDescriptorSet1.dstSet = m_graphics.descriptorSets[i].preCompute;
-		writeDescriptorSet1.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		writeDescriptorSet1.dstBinding = 1;
-		writeDescriptorSet1.pImageInfo = &m_textureColorMap.descirptor;
-		writeDescriptorSet1.descriptorCount = 1;//更新一个Buffer
-		
-		std::vector<VkWriteDescriptorSet> writeDescriptorSets0 = { writeDescriptorSet0 , writeDescriptorSet1 };
+		VkWriteDescriptorSet writeDescriptorSet{};
+		writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		writeDescriptorSet.descriptorCount = 1;
+		writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		writeDescriptorSet.dstSet = m_descriptorSet[i];
+		writeDescriptorSet.dstBinding = 0;
+		writeDescriptorSet.pBufferInfo = &m_uniformDataBuffer[i].descriptor;
 
-		vkUpdateDescriptorSets(m_device, writeDescriptorSets0.size(), writeDescriptorSets0.data(), 0, nullptr);
+		vkUpdateDescriptorSets(m_device, 1, &writeDescriptorSet, 0, nullptr);
 
-		VkDescriptorSetAllocateInfo descriptorAllocInfo1 {};
-		descriptorAllocInfo1.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		descriptorAllocInfo1.descriptorPool = m_descriptorPool;
-		descriptorAllocInfo1.descriptorSetCount = 1;// 这里 只有1个 preCompute
-		descriptorAllocInfo1.pSetLayouts = &m_graphics.descriptorSetLayout;
-
-		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &descriptorAllocInfo1, &m_graphics.descriptorSets[i].postCompute));
-		VkWriteDescriptorSet writeDescriptorSet00{};
-		writeDescriptorSet00.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDescriptorSet00.dstSet = m_graphics.descriptorSets[i].postCompute;
-		writeDescriptorSet00.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		writeDescriptorSet00.dstBinding = 0;
-		writeDescriptorSet00.pBufferInfo = &m_graphics.uniformBuffers[i].descriptor;
-		writeDescriptorSet00.descriptorCount = 1;//更新一个Buffer
-
-		VkWriteDescriptorSet writeDescriptorSet11{};
-		writeDescriptorSet11.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		writeDescriptorSet11.dstSet = m_graphics.descriptorSets[i].postCompute;
-		writeDescriptorSet11.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		writeDescriptorSet11.dstBinding = 1;
-		writeDescriptorSet11.pImageInfo = &m_storageImage.descirptor;
-		writeDescriptorSet11.descriptorCount = 1;//更新一个Buffer
-
-		std::vector<VkWriteDescriptorSet> writeDescriptorSets1 = { writeDescriptorSet00 , writeDescriptorSet11 };
-
-		vkUpdateDescriptorSets(m_device, writeDescriptorSets1.size(), writeDescriptorSets1.data(), 0, nullptr);
+		for (auto& image : m_glTFModel.images)
+		{
+			VkDescriptorSetAllocateInfo allocInfo0{};
+			allocInfo0.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+			allocInfo0.descriptorPool = m_descriptorPool;
+			allocInfo0.descriptorSetCount = 1;
+			allocInfo0.pSetLayouts = &m_descriptorSetLayout.textures;
+			VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo0, &image.descriptorSet));
+			VkWriteDescriptorSet writeDescriptorSet{};
+			writeDescriptorSet.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			writeDescriptorSet.descriptorCount = 1;
+			writeDescriptorSet.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+			writeDescriptorSet.dstSet = image.descriptorSet;
+			writeDescriptorSet.dstBinding = 0;
+			writeDescriptorSet.pImageInfo = &image.texture.descirptor;
+			vkUpdateDescriptorSets(m_device, 1, &writeDescriptorSet, 0, nullptr);
+		}
 	}
 
-	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo{};
-	pipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	pipelineLayoutCreateInfo.setLayoutCount = 1;
-	pipelineLayoutCreateInfo.pSetLayouts = &m_graphics.descriptorSetLayout;
 
-	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_graphics.pipelineLayout));
+
+
+
+
+
+
+
+
+
+
+
+
+
+	std::array<VkDescriptorSetLayout, 2> setLayouts = { m_descriptorSetLayout.matrices, m_descriptorSetLayout.textures };
+	VkPushConstantRange pushConstantRange{};
+	pushConstantRange.offset = 0;
+	pushConstantRange.size = sizeof(glm::mat4);
+	pushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+
+	VkPipelineLayoutCreateInfo pipelineLayoutCI{};
+	pipelineLayoutCI.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutCI.flags = 0;
+	pipelineLayoutCI.setLayoutCount = setLayouts.size();
+	pipelineLayoutCI.pSetLayouts = setLayouts.data();
+	pipelineLayoutCI.pushConstantRangeCount = 1;
+	pipelineLayoutCI.pPushConstantRanges = &pushConstantRange;
+
+	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCI, nullptr, &m_pipelineLayout));
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState{};
 	inputAssemblyState.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -242,37 +255,49 @@ void ApplicationWin::PrepareGraphicsPipeline()
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 
 #if defined (__ANDROID__)
-	shaderStages[0] = LoadShader("shaders/glsl/draw_compute/texture.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("shaders/glsl/draw_compute/texture.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader("shaders/glsl/draw_model/draw_model.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("shaders/glsl/draw_model/draw_model.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 #else
-	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_compute/texture.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_compute/texture.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_model/draw_model.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_model/draw_model.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 #endif
 
 
 	VkVertexInputBindingDescription vertexInputBinding{};
 	vertexInputBinding.binding = 0;
-	vertexInputBinding.stride = sizeof(Vertex);
+	vertexInputBinding.stride = sizeof(GlTFModel::Vertex);
 	vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
 	VkVertexInputAttributeDescription vertexInputAttr0{};
 	vertexInputAttr0.location = 0;
 	vertexInputAttr0.binding = 0;
 	vertexInputAttr0.format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertexInputAttr0.offset = offsetof(Vertex, position);
+	vertexInputAttr0.offset = offsetof(GlTFModel::Vertex, pos);
 
 	VkVertexInputAttributeDescription vertexInputAttr1{};
 	vertexInputAttr1.location = 1;
 	vertexInputAttr1.binding = 0;
-	vertexInputAttr1.format = VK_FORMAT_R32G32_SFLOAT;
-	vertexInputAttr1.offset = offsetof(Vertex, uv);
+	vertexInputAttr1.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr1.offset = offsetof(GlTFModel::Vertex, normal);
+
+	VkVertexInputAttributeDescription vertexInputAttr2{};
+	vertexInputAttr2.location = 2;
+	vertexInputAttr2.binding = 0;
+	vertexInputAttr2.format = VK_FORMAT_R32G32_SFLOAT;
+	vertexInputAttr2.offset = offsetof(GlTFModel::Vertex, uv);
+
+	VkVertexInputAttributeDescription vertexInputAttr3{};
+	vertexInputAttr3.location = 3;
+	vertexInputAttr3.binding = 0;
+	vertexInputAttr3.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr3.offset = offsetof(GlTFModel::Vertex, color);
 
 	std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
 		vertexInputBinding
 	};
 
 	std::vector<VkVertexInputAttributeDescription> vertexInputAttrs = {
-		vertexInputAttr0, vertexInputAttr1
+		vertexInputAttr0, vertexInputAttr1, vertexInputAttr2, vertexInputAttr3
 	};
 
 	VkPipelineVertexInputStateCreateInfo vertexInputState{};
@@ -284,7 +309,7 @@ void ApplicationWin::PrepareGraphicsPipeline()
 
 	VkGraphicsPipelineCreateInfo pipelineCreateInfo{};
 	pipelineCreateInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	pipelineCreateInfo.layout = m_graphics.pipelineLayout;
+	pipelineCreateInfo.layout = m_pipelineLayout;
 	pipelineCreateInfo.renderPass = m_renderPass;
 	pipelineCreateInfo.flags = 0;
 	pipelineCreateInfo.basePipelineIndex = -1;
@@ -300,126 +325,23 @@ void ApplicationWin::PrepareGraphicsPipeline()
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
 
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_graphics.pipeline));
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipelines.solid));
+
+	rasterizationState.polygonMode = VK_POLYGON_MODE_LINE;
+	rasterizationState.lineWidth = 1.0f;
+
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipelines.wireFrame));
 }
-
-void ApplicationWin::PrepareComputePipeline()
-{
-	vkGetDeviceQueue(m_device, vulkanDevice->queueFamilyIndices.compute, 0, &m_compute.queue);
-
-	VkCommandPoolCreateInfo cmdPoolInfo{};
-	cmdPoolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	cmdPoolInfo.queueFamilyIndex = vulkanDevice->queueFamilyIndices.compute;
-	cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-	VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &m_compute.commandPool));
-
-	VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
-	cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdBufAllocateInfo.commandPool = m_compute.commandPool;
-	cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdBufAllocateInfo.commandBufferCount = 1;
-
-	for (auto& commandBuffer : m_compute.commandBuffers)
-	{
-		VK_CHECK_RESULT(vkAllocateCommandBuffers(m_device, &cmdBufAllocateInfo, &commandBuffer));
-	}
-
-	for (auto& fence : m_compute.fences)
-	{
-		VkFenceCreateInfo fenceCreateInfo{};
-		fenceCreateInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-		fenceCreateInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-		VK_CHECK_RESULT(vkCreateFence(m_device, &fenceCreateInfo, nullptr, &fence));
-	}
-
-	VkDescriptorType vkDescriptType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-
-	VkDescriptorSetLayoutBinding setLayoutBinding0{};
-	setLayoutBinding0.binding = 0;
-	setLayoutBinding0.descriptorType = vkDescriptType;
-	setLayoutBinding0.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	setLayoutBinding0.descriptorCount = 1;
-
-	VkDescriptorSetLayoutBinding setLayoutBinding1{};
-	setLayoutBinding1.binding = 1;
-	setLayoutBinding1.descriptorType = vkDescriptType;
-	setLayoutBinding1.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-	setLayoutBinding1.descriptorCount = 1;
-
-	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
-		setLayoutBinding0, setLayoutBinding1
-	};
-
-	VkDescriptorSetLayoutCreateInfo descriptorCreateInfo{};
-	descriptorCreateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	descriptorCreateInfo.pBindings = setLayoutBindings.data();
-	descriptorCreateInfo.bindingCount = setLayoutBindings.size();
-	descriptorCreateInfo.flags = 0;
-	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorCreateInfo, nullptr, &m_compute.descriptorSetLayout));
-
-	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(&m_compute.descriptorSetLayout, 1);
-	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_compute.pipelineLayout));
-
-	VkDescriptorSetAllocateInfo setAllocateInfo{};
-	setAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	setAllocateInfo.descriptorPool = m_descriptorPool;
-	setAllocateInfo.pSetLayouts = &m_compute.descriptorSetLayout;
-	setAllocateInfo.descriptorSetCount = 1;
-	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &setAllocateInfo, &m_compute.descriptorSet));
-	
-	VkWriteDescriptorSet writeDescriptorSet0{};
-	writeDescriptorSet0.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet0.dstSet = m_compute.descriptorSet;
-	writeDescriptorSet0.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	writeDescriptorSet0.dstBinding = 0;
-	writeDescriptorSet0.pImageInfo = &m_textureColorMap.descirptor;
-	writeDescriptorSet0.descriptorCount = 1;//更新一个Buffer
-
-	VkWriteDescriptorSet writeDescriptorSet1{};
-	writeDescriptorSet1.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	writeDescriptorSet1.dstSet = m_compute.descriptorSet;
-	writeDescriptorSet1.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	writeDescriptorSet1.dstBinding = 1;
-	writeDescriptorSet1.pImageInfo = &m_storageImage.descirptor;
-	writeDescriptorSet1.descriptorCount = 1;//更新一个Buffer
-	
-	std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
-			writeDescriptorSet0, writeDescriptorSet1
-	};
-
-	vkUpdateDescriptorSets(m_device, 2, writeDescriptorSets.data(), 0, nullptr);
-
-	VkComputePipelineCreateInfo computePipelineCreateInfo{};
-	computePipelineCreateInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-	computePipelineCreateInfo.layout = m_compute.pipelineLayout;
-	computePipelineCreateInfo.flags = 0;
-
-	for (auto item : m_filterName)
-	{
-#if defined(__ANDROID__)
-		std::string strPath = "shaders/glsl/draw_compute/" + item + ".comp.spv";
-#else
-		std::string strPath = "./Asset/shader/glsl/draw_compute/" + item + ".comp.spv";
-#endif
-
-		computePipelineCreateInfo.stage = LoadShader(strPath.c_str(), VK_SHADER_STAGE_COMPUTE_BIT);
-		
-		VkPipeline pipeline;
-		VK_CHECK_RESULT(vkCreateComputePipelines(m_device, m_pipelineCache, 1, &computePipelineCreateInfo, nullptr, &pipeline));
-		m_compute.pipelines.push_back(pipeline);
-	}
-}
-
 
 void ApplicationWin::PrepareUniformBuffer()
 {
-	for (auto& item : m_graphics.uniformBuffers)
+	for (auto& item : m_uniformDataBuffer)
 	{
 		// 创建缓冲区（CreateBuffer）
 		VkBufferCreateInfo bufferCreateInfo{};
 		bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 		bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		bufferCreateInfo.size = sizeof(Graphics::UniformData);
+		bufferCreateInfo.size = sizeof(UniformData);
 		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;//队列独占模式 只给一个人使用
 		VK_CHECK_RESULT(vkCreateBuffer(m_device, &bufferCreateInfo, nullptr, &item.buffer));
 
@@ -434,7 +356,7 @@ void ApplicationWin::PrepareUniformBuffer()
 		VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAlloc, nullptr, &item.memory));
 
 		item.alignment = memReqs.alignment;
-		item.size = sizeof(Graphics::UniformData);
+		item.size = sizeof(UniformData);
 		item.usageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
 		item.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
@@ -448,7 +370,7 @@ void ApplicationWin::PrepareUniformBuffer()
 	}
 }
 
-void ApplicationWin::BuildGraphicsCommandBuffer()
+void ApplicationWin::BuildCommandBuffer()
 {
 	VkCommandBuffer cmdBuffer = m_drawCmdBuffers[m_currentBuffer];
 
@@ -457,47 +379,8 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 
 	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufBegInfo));
 
-	//这里只是跨队列写入共享模式下的 VK_SHARING_MODE_CONCURRENT m_storageImage
-	//所以这里不需要所有权的转移	imageMemoryBarrier.srcQueueFamilyIndex  imageMemoryBarrier.dstQueueFamilyIndex
-	//独占模式下 只读文件也不需要所有权转移 只有要写入修改的情况下才会发生
-	
-	//独占模式 + 跨队列写入 = 必须所有权转移
-	//共享模式 + 跨队列写入 = 只需要内存屏障
-
-	//这里是内存访问同步：
-
-	//计算队列：写入 m_storageImage
-
-	//图形队列：读取 m_storageImage
-
-	//需要确保计算写入完成后，图形才能读取
-
-	//这里 Fence已经保障了 Compute Shader完成 但是 内存只是写入了 他没有真正的刷新到主缓存中 因此需要内存屏障去强制刷新
-
-	VkImageMemoryBarrier imageMemoryBarrier = {};
-	
-	imageMemoryBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	// We won't be changing the layout of the image
-	imageMemoryBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-	imageMemoryBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
-	imageMemoryBarrier.image = m_storageImage.image;
-	imageMemoryBarrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-	imageMemoryBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-	imageMemoryBarrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-	imageMemoryBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	imageMemoryBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-
-	vkCmdPipelineBarrier(
-		cmdBuffer,
-		VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-		VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-		VK_FLAGS_NONE,
-		0, nullptr,
-		0, nullptr,
-		1, &imageMemoryBarrier);
-
 	VkClearValue clearValue[2]{};
-	clearValue[0].color = { 0.025f, 0.025f, 0.025f, 1.0f };
+	clearValue[0].color = { 0.525f, 0.525f, 0.525f, 1.0f };
 	clearValue[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassBeginInfo{};
@@ -514,7 +397,7 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 	vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 	VkViewport viewport{};
-	viewport.width = width * 0.5f;
+	viewport.width = width;
 	viewport.height = height;
 	viewport.minDepth = 0.01f;
 	viewport.maxDepth = 1.0f;
@@ -528,23 +411,13 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 	vkCmdSetScissor(cmdBuffer, 0, 1, &rect2D);
 
 	VkDeviceSize offsets[1] = { 0 };
-	vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &m_vertexBuffer.buffer, offsets);
-	vkCmdBindIndexBuffer(cmdBuffer, m_indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 
-	//先绘制左边
-	vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics.pipelineLayout, 0, 1, &m_graphics.descriptorSets[m_currentBuffer].preCompute, 0, nullptr);
-	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics.pipeline);
-
-	vkCmdDrawIndexed(cmdBuffer, m_indexCount, 1, 0, 0, 0);
-
-	//绘制右边
-	viewport.x = (float)width / 2.0f;
 	vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
-	vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics.pipelineLayout, 0, 1, &m_graphics.descriptorSets[m_currentBuffer].postCompute, 0, nullptr);
-	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_graphics.pipeline);
+	vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet[m_currentBuffer], 0, nullptr);
+	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines.solid);
 
-	vkCmdDrawIndexed(cmdBuffer, m_indexCount, 1, 0, 0, 0);
+	m_glTFModel.Draw(cmdBuffer, m_pipelineLayout);
 
 	DrawUI(cmdBuffer);
 
@@ -553,17 +426,12 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
 }
 
-void ApplicationWin::BuildComputeCommandBuffer()
-{
-	VkCommandBuffer cmdBuffer = m_compute.commandBuffers[m_currentBuffer];
-	VkCommandBufferBeginInfo cmdBufBegInfo{};
-	cmdBufBegInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufBegInfo));
 
-	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute.pipelines[m_compute.pipelineIndex]);
-	vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, m_compute.pipelineLayout, 0, 1, &m_compute.descriptorSet, 0, 0);
-	vkCmdDispatch(cmdBuffer, m_storageImage.width / 16, m_storageImage.height / 16, 1);
-	vkEndCommandBuffer(cmdBuffer);
+void ApplicationWin::GetEnabledFeatures(){
+	// Fill mode non solid is required for wireframe display
+	if (m_deviceFeatures.fillModeNonSolid) {
+		m_enabledFeatures.fillModeNonSolid = VK_TRUE;
+	};
 }
 
 void ApplicationWin::Prepare() 
@@ -572,17 +440,16 @@ void ApplicationWin::Prepare()
 	LoadAsset(); // 加载图片
 	PrepareUniformBuffer();
 	CreateDescriptorPool();
-	PrepareGraphicsPipeline();
-	PrepareComputePipeline();
+	PreparePipeline();
 	prepared = true;
 }
 
 void ApplicationWin::UpdateUniformBuffers()
 {
-	m_camera.setPerspective(60.0f, (float)width * 0.5f / (float)height, 1.0f, 256.0f);
-	m_graphics.uniformData.projection = m_camera.matrices.perspective;
-	m_graphics.uniformData.modelView = m_camera.matrices.view;
-	memcpy(m_graphics.uniformBuffers[m_currentBuffer].mapped, &m_graphics.uniformData, sizeof(Graphics::UniformData));
+	m_uniform.projection = m_camera.matrices.perspective;
+	m_uniform.model = m_camera.matrices.view;
+	m_uniform.viewPos = m_camera.viewPos;
+	memcpy(m_uniformDataBuffer[m_currentBuffer].mapped, &m_uniform, sizeof(UniformData));
 }
 
 void ApplicationWin::Render()
@@ -590,31 +457,12 @@ void ApplicationWin::Render()
 	if (!prepared)
 		return;
 
-	//Vulkan CONCURRENT 模式只是解决了资源的"访问权限"问题，完全不处理"执行同步"！
-	// 
-	// 屏障是GPU内部的同步：确保命令缓冲区内的执行顺序
-	// Fence / 信号量是CPU - GPU间的同步：确保命令缓冲区间的执行顺序
-	//屏障的前提：相关的命令缓冲区必须已经提交并在执行中
-	//结论：你不能移除 compute fence 的等待。内存屏障需要计算命令已经开始执行才能正常工作。如果移除 fence 等待，会导致未定义行为（数据竞争、图像撕裂或验证层错误）。
-	//所以这里必须 等待计算队列完成
-
-	vkWaitForFences(m_device, 1, &m_compute.fences[m_currentBuffer], VK_TRUE, UINT64_MAX);
-	vkResetFences(m_device, 1, &m_compute.fences[m_currentBuffer]);
-	BuildComputeCommandBuffer();
-
-	VkSubmitInfo computeSubmitInfo{};
-	computeSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	computeSubmitInfo.commandBufferCount = 1;
-	computeSubmitInfo.pCommandBuffers = &m_compute.commandBuffers[m_currentBuffer];
-	VK_CHECK_RESULT(vkQueueSubmit(m_compute.queue, 1, &computeSubmitInfo, m_compute.fences[m_currentBuffer]));
-
-
 	VK_CHECK_RESULT(vkWaitForFences(m_device, 1, &m_waitFences[m_currentBuffer], VK_TRUE, UINT64_MAX));
 	VK_CHECK_RESULT(vkResetFences(m_device, 1, &m_waitFences[m_currentBuffer]));
 	m_swapChain.AcquireNextImage(m_presentCompleteSemaphores[m_currentBuffer], m_currentImageIndex);
 
 	UpdateUniformBuffers();
-	BuildGraphicsCommandBuffer();
+	BuildCommandBuffer();
 
 	ApplicationBase::SubmitFrame(false);
 	
@@ -623,8 +471,5 @@ void ApplicationWin::Render()
 
 void ApplicationWin::LoadAsset()
 {
-
-
-
-
+	LoadGlTFFile("./Asset/mesh/Sponza/Sponza.gltf");
 }

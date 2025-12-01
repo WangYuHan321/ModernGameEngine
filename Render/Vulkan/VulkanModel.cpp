@@ -229,3 +229,42 @@ void Render::Vulkan::GlTFModel::LoadNode(const tinygltf::Node& inputNode,
 	}
 
 }
+
+void Render::Vulkan::GlTFModel::Draw(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout)
+{
+	VkDeviceSize offsets[1] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertices.buffer, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+	for (auto& node : nodes) {
+		DrawNode(commandBuffer, pipelineLayout, node);
+	}
+}
+
+void Render::Vulkan::GlTFModel::DrawNode(VkCommandBuffer commandBuffer, VkPipelineLayout pipelineLayout, GlTFModel::Node* node)
+{
+	if (node->mesh.primitives.size() > 0) {
+		// Pass the node's matrix via push constants
+		// Traverse the node hierarchy to the top-most parent to get the final matrix of the current node
+		glm::mat4 nodeMatrix = node->matrix;
+		GlTFModel::Node* currentParent = node->parent;
+		while (currentParent) {
+			nodeMatrix = currentParent->matrix * nodeMatrix;
+			currentParent = currentParent->parent;
+		}
+		// Pass the final matrix to the vertex shader using push constants
+		vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &nodeMatrix);
+		for (GlTFModel::Primitive& primitive : node->mesh.primitives) {
+			if (primitive.indexCount > 0) {
+				// Get the texture index for this primitive
+				GlTFModel::Texture texture = textures[materials[primitive.materialIndex].baseColorTextureIndex];
+				// Bind the descriptor for the current primitive's texture
+				vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &images[texture.imageIndex].descriptorSet, 0, nullptr);
+				vkCmdDrawIndexed(commandBuffer, primitive.indexCount, 1, primitive.firstIndex, 0, 0);
+			}
+		}
+	}
+	for (auto& child : node->children) {
+		DrawNode(commandBuffer, pipelineLayout, child);
+	}
+}

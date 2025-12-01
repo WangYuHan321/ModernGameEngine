@@ -208,6 +208,9 @@ void Render::Vulkan::VulkanTexture2D::FromBuffer(void* buffer,
 	VkImageLayout      imageLayout)
 {
 
+	width = texWidth;
+	height = texHeight;
+
 	//get device property
 	VkFormatProperties formatProps;
 	vkGetPhysicalDeviceFormatProperties(device->physicalDevice, format, &formatProps);
