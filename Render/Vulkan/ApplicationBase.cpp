@@ -1,11 +1,14 @@
 #include "ApplicationBase.h"
 
-//这里需要注意一下垃圾 tinygltf库
-//我之前在VulkanModel  tinygltf.h包含了所有实现 这里包含会有重复符号报错
-//#define TINYGLTF_IMPLEMENTATION
-#define TINYGLTF_NO_STB_IMAGE
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
+
+#define TINYGLTF_NO_INCLUDE_STB_IMAGE
+#define TINYGLTF_NO_INCLUDE_STB_IMAGE_WRITE
+#define TINYGLTF_IMPLEMENTATION
+//#define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
-#include <tiny_gltf.h>
+#include<tiny_gltf.h>
 
 #if (defined(VK_USE_PLATFORM_METAL_EXT))
 #include <Cocoa/Cocoa.h>

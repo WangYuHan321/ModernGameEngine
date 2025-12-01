@@ -2,7 +2,9 @@
 #include "VulkanTool.h"
 #include "VulkanInitializers.hpp"
 
-#define TINYGLTF_IMPLEMENTATION
+//这里需要注意一下垃圾 tinygltf库
+//我之前在VulkanModel  tinygltf.h包含了所有实现 这里包含会有重复符号报错
+//#define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include <tiny_gltf.h>
@@ -209,6 +211,7 @@ void Render::Vulkan::GlTFModel::LoadNode(const tinygltf::Node& inputNode,
 						return;
 					}
 				}
+
 				Primitive primitive{};
 				primitive.firstIndex = firstIndex;
 				primitive.indexCount = indexCount;

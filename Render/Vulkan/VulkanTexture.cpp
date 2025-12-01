@@ -1,11 +1,7 @@
 ﻿#include "VulkanTexture.h"
 #include "VulkanTool.h"
 #include <stdexcept>
-
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>
-
 #include "VulkanInitializers.hpp"
 
 void Render::Vulkan::VulkanTexture::UpdateDescriptor()
