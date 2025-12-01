@@ -22,7 +22,13 @@
 
 #include "VulkanTexture.h"
 #include "../Camera.hpp"
-#include <tiny_gltf.h>
+
+namespace tinygltf
+{
+	class Model;
+	class Node;
+}
+
 
 namespace Render
 {

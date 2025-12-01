@@ -1,7 +1,7 @@
 ﻿#include "VulkanTexture.h"
 #include "VulkanTool.h"
 #include <stdexcept>
-#define TINYGLTF_IMPLEMENTATION
+
 #define STB_IMAGE_IMPLEMENTATION
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_image.h>

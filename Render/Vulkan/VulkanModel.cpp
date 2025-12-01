@@ -2,6 +2,11 @@
 #include "VulkanTool.h"
 #include "VulkanInitializers.hpp"
 
+#define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_STB_IMAGE_WRITE
+#include <tiny_gltf.h>
+
 void Render::Vulkan::GlTFModel::LoadImages(tinygltf::Model& input)
 {
 	images.resize(input.images.size());

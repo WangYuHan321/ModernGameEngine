@@ -1,5 +1,12 @@
 #include "ApplicationBase.h"
 
+//这里需要注意一下垃圾 tinygltf库
+//我之前在VulkanModel  tinygltf.h包含了所有实现 这里包含会有重复符号报错
+//#define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_NO_STB_IMAGE
+#define TINYGLTF_NO_STB_IMAGE_WRITE
+#include <tiny_gltf.h>
+
 #if (defined(VK_USE_PLATFORM_METAL_EXT))
 #include <Cocoa/Cocoa.h>
 #include <QuartzCore/CAMetalLayer.h>
@@ -679,7 +686,6 @@ void ApplicationBase::WindowResize()
 
 void ApplicationBase::LoadGlTFFile(std::string path)
 {
-	/*
 	tinygltf::Model glTFInput;
 	tinygltf::TinyGLTF gltfContext;
 	std::string error, warning;
@@ -774,7 +780,6 @@ void ApplicationBase::LoadGlTFFile(std::string path)
 	vkFreeMemory(m_device, vertexStaging.memory, nullptr);
 	vkDestroyBuffer(m_device, indexStaging.buffer, nullptr);
 	vkFreeMemory(m_device, indexStaging.memory, nullptr);
-	*/
 }
 
 VkPipelineShaderStageCreateInfo ApplicationBase::LoadShader(std::string fileName, VkShaderStageFlagBits stage)
