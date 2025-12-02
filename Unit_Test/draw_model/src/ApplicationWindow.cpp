@@ -471,5 +471,10 @@ void ApplicationWin::Render()
 
 void ApplicationWin::LoadAsset()
 {
-	LoadGlTFFile("./Asset/mesh/Sponza/Sponza.gltf");
+#if defined(__ANDROID__)
+    LoadGlTFFile("mesh/Sponza/Sponza.gltf");
+#else
+    LoadGlTFFile("./Asset/mesh/Sponza/Sponza.gltf");
+#endif
+
 }

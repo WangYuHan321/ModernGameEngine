@@ -693,6 +693,10 @@ void ApplicationBase::WindowResize()
 
 void ApplicationBase::LoadGlTFFile(std::string path)
 {
+#if defined(__ANDROID__)
+    tinygltf::asset_manager = androidApp->activity->assetManager;
+#endif
+
 	tinygltf::Model glTFInput;
 	tinygltf::TinyGLTF gltfContext;
 	std::string error, warning;
@@ -701,10 +705,6 @@ void ApplicationBase::LoadGlTFFile(std::string path)
 
 	m_glTFModel.vulkanDevice = this->vulkanDevice;
 	m_glTFModel.copyQueue = m_queue;
-
-#if defined(__ANDROID__)
-    tinygltf::asset_manager = androidApp->activity->assetManager;
-#endif
 
 	std::vector<uint32_t> indexBuffer;
 	std::vector<GlTFModel::Vertex> vertexBuffer;
