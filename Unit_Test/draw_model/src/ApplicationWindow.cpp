@@ -6,9 +6,9 @@ ApplicationWin::ApplicationWin():
 	title = " ApplicationDrawModel ";
 	m_camera.type = Camera::CameraType::lookat;
 	m_camera.flipY = true;
-	m_camera.setPosition(glm::vec3(0.0f, -20.1f, -1.0f));
-	m_camera.setRotation(glm::vec3(0.0f, 45.0f, 0.0f));
-	m_camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 1000.0f);
+	m_camera.setPosition(glm::vec3(1.0f, 5.1f, -3.0f));
+	m_camera.setRotation(glm::vec3(0.0f, 60.0f, 0.0f));
+	m_camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 100.0f);
 }
 
 ApplicationWin::~ApplicationWin()
