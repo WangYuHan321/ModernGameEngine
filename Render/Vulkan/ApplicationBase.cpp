@@ -661,6 +661,12 @@ void ApplicationBase::WindowResize()
 	width = destWidth;
 	height = destHeight;
 	CreateSwapChain();
+    
+#if defined(VK_USE_PLATFORM_METAL_EXT)
+    //fix macos resize error
+    CGSize sizeWindow{(double)width, (double)height};
+    metalLayer.drawableSize = sizeWindow;
+#endif
 
 	//Recreate the frame buffer
 	vkDestroyImageView(m_device, m_depthStencil.view, nullptr);
@@ -866,6 +872,30 @@ ApplicationBase::~ApplicationBase()
 	vkDestroyInstance(m_instance, nullptr);
 }
 
+void ApplicationBase::HandleMouseMove(int32_t x, int32_t y)
+{
+    int32_t dx = (int32_t)mouseState.position.x - x;
+    int32_t dy = (int32_t)mouseState.position.y - y;
+
+    bool handled = false;
+
+    if (handled) {
+        mouseState.position = glm::vec2((float)x, (float)y);
+        return;
+    }
+
+    if (mouseState.button.left) {
+        m_camera.rotate(glm::vec3(dy * m_camera.rotationSpeed, -dx * m_camera.rotationSpeed, 0.0f));
+    }
+    if (mouseState.button.right) {
+        m_camera.translate(glm::vec3(-0.0f, 0.0f, dy * .005f));
+    }
+    if (mouseState.button.middle) {
+        m_camera.translate(glm::vec3(-dx * 0.005f, -dy * 0.005f, 0.0f));
+    }
+    mouseState.position = glm::vec2((float)x, (float)y);
+}
+
 #if defined(_WIN32)
 
 void ApplicationBase::SetupConsole(std::string title)
@@ -1069,30 +1099,6 @@ void ApplicationBase::HandleMessages(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM
 	case WM_EXITSIZEMOVE:
 		break;
 	}
-}
-
-void ApplicationBase::HandleMouseMove(int32_t x, int32_t y)
-{
-	int32_t dx = (int32_t)mouseState.position.x - x;
-	int32_t dy = (int32_t)mouseState.position.y - y;
-
-	bool handled = false;
-
-	if (handled) {
-		mouseState.position = glm::vec2((float)x, (float)y);
-		return;
-	}
-
-	if (mouseState.button.left) {
-		m_camera.rotate(glm::vec3(dy * m_camera.rotationSpeed, -dx * m_camera.rotationSpeed, 0.0f));
-	}
-	if (mouseState.button.right) {
-		m_camera.translate(glm::vec3(-0.0f, 0.0f, dy * .005f));
-	}
-	if (mouseState.button.middle) {
-		m_camera.translate(glm::vec3(-dx * 0.005f, -dy * 0.005f, 0.0f));
-	}
-	mouseState.position = glm::vec2((float)x, (float)y);
 }
 
 #elif defined(VK_USE_PLATFORM_ANDROID_KHR)
@@ -1387,32 +1393,45 @@ static CVReturn displayLinkOutputCallback(CVDisplayLinkRef displayLink, const CV
 
 - (void)mouseDown:(NSEvent *)event
 {
+    auto point = [self getMouseLocalPoint:event];
+    vulkanExample->mouseState.position = glm::vec2(point.x, point.y);
+    vulkanExample->mouseState.button.left = true;
 }
 
 - (void)mouseUp:(NSEvent *)event
 {
+    vulkanExample->mouseState.button.left = false;
 }
 
 - (void)rightMouseDown:(NSEvent *)event
 {
+    auto point = [self getMouseLocalPoint:event];
+    vulkanExample->mouseState.position = glm::vec2(point.x, point.y);
+    vulkanExample->mouseState.button.right = true;
 }
 
 - (void)rightMouseUp:(NSEvent *)event
 {
+    vulkanExample->mouseState.button.right = false;
 }
 
 - (void)otherMouseDown:(NSEvent *)event
 {
-
+    auto point = [self getMouseLocalPoint:event];
+    vulkanExample->mouseState.position = glm::vec2(point.x, point.y);
+    vulkanExample->mouseState.button.middle = true;
 }
 
+//mouse middle
 - (void)otherMouseUp:(NSEvent *)event
 {
+    vulkanExample->mouseState.button.middle = false;
 }
 
 - (void)mouseDragged:(NSEvent *)event
 {
-
+    auto point = [self getMouseLocalPoint:event];
+    vulkanExample->MouseDragged(point.x, point.y);
 }
 
 - (void)rightMouseDragged:(NSEvent *)event
@@ -1422,12 +1441,14 @@ static CVReturn displayLinkOutputCallback(CVDisplayLinkRef displayLink, const CV
 
 - (void)otherMouseDragged:(NSEvent *)event
 {
-
+    auto point = [self getMouseLocalPoint:event];
+    vulkanExample->MouseDragged(point.x, point.y);
 }
 
 - (void)mouseMoved:(NSEvent *)event
 {
-
+    auto point = [self getMouseLocalPoint:event];
+    vulkanExample->MouseDragged(point.x, point.y);
 }
 
 - (void)scrollWheel:(NSEvent *)event
@@ -1501,7 +1522,7 @@ void ApplicationBase::DisplayLinkOutputCb()
 
 void ApplicationBase::MouseDragged(float x, float y)
 {
-    
+    HandleMouseMove(static_cast<uint32_t>(x), static_cast<uint32_t>(y));
 }
 
 void ApplicationBase::WindowWillResize(float x, float y)
