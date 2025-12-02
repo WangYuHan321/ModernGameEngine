@@ -1100,6 +1100,7 @@ void ApplicationBase::HandleMouseMove(int32_t x, int32_t y)
 int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* event)
 {
     ApplicationBase* pBase = reinterpret_cast<ApplicationBase*>(app->userData);
+    //鼠标
     if(AInputEvent_getType(event) == AINPUT_EVENT_TYPE_MOTION)
     {
         int32_t eventSource = AInputEvent_getSource(event);
@@ -1115,7 +1116,37 @@ int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* e
 
                 switch (action)
                 {
+                    case AMOTION_EVENT_ACTION_UP:
+                    {
+                        pBase->touchDown = false;
+                    };
+                    break;
+                    case AMOTION_EVENT_ACTION_DOWN:
+                    {
+                        pBase->touchDown = true;
 
+                        pBase->touchPos.x = AMotionEvent_getX(event, 0);
+                        pBase->touchPos.y = AMotionEvent_getY(event, 0);
+                        pBase->mouseState.position.x = AMotionEvent_getX(event, 0);
+                        pBase->mouseState.position.y = AMotionEvent_getY(event, 0);
+                    };
+                    break;
+                    case AMOTION_EVENT_ACTION_MOVE:
+                    {
+                        //摄像机旋转
+                        int32_t eventX = AMotionEvent_getX(event, 0);
+                        int32_t eventY = AMotionEvent_getY(event, 0);
+
+                        float deltaX = (float)(pBase->touchPos.y - eventY) * pBase->m_camera.rotationSpeed * 0.5f;
+                        float deltaY = (float)(pBase->touchPos.x - eventX) * pBase->m_camera.rotationSpeed * 0.5f;
+
+                        pBase->m_camera.rotate(glm::vec3(deltaX, 0.0f, 0.0f));
+                        pBase->m_camera.rotate(glm::vec3(0.0f, -deltaY, 0.0f));
+
+                        pBase->touchPos.x = eventX;
+                        pBase->touchPos.y = eventY;
+                    };
+                    break;
                 }
             }
             break;
@@ -1123,6 +1154,23 @@ int32_t  ApplicationBase::HandleAppInput(struct android_app* app, AInputEvent* e
                 return 1;
                 break;
         }
+    }
+
+    //按钮输入
+    if (AInputEvent_getType(event) == AINPUT_EVENT_TYPE_KEY)
+    {
+        int32_t keyCode = AKeyEvent_getKeyCode((const AInputEvent*)event);
+        int32_t action = AKeyEvent_getAction((const AInputEvent*)event);
+
+        if (action == AKEY_EVENT_ACTION_UP)
+            return 0;
+
+        switch(keyCode)
+        {
+
+        }
+
+
     }
 
     return 0;
