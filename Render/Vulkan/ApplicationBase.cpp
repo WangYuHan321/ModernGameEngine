@@ -8,6 +8,10 @@
 #define TINYGLTF_IMPLEMENTATION
 //#define TINYGLTF_NO_STB_IMAGE
 #define TINYGLTF_NO_STB_IMAGE_WRITE
+#if defined(__ANDROID__)
+    #define TINYGLTF_ANDROID_LOAD_FROM_ASSETS
+#endif
+
 #include<tiny_gltf.h>
 
 #if (defined(VK_USE_PLATFORM_METAL_EXT))
@@ -697,6 +701,10 @@ void ApplicationBase::LoadGlTFFile(std::string path)
 
 	m_glTFModel.vulkanDevice = this->vulkanDevice;
 	m_glTFModel.copyQueue = m_queue;
+
+#if defined(__ANDROID__)
+    tinygltf::asset_manager = androidApp->activity->assetManager;
+#endif
 
 	std::vector<uint32_t> indexBuffer;
 	std::vector<GlTFModel::Vertex> vertexBuffer;
