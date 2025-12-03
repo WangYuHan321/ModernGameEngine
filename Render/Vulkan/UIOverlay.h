@@ -63,6 +63,8 @@ namespace Render
             bool Header(const char* caption);
 
             void Text(const char* pStr, ...);
+
+            bool CheckBox(const char* caption, bool* value);
         };
     }
 }

@@ -397,3 +397,8 @@ void Render::Vulkan::UIOverlay::Text(const char* pStr, ...)
 	ImGui::TextV(pStr, args);
 	va_end(args);
 }
+
+bool Render::Vulkan::UIOverlay::CheckBox(const char* caption, bool* value)
+{
+	return ImGui::Checkbox(caption, value);
+}
