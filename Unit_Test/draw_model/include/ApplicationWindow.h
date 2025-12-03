@@ -32,6 +32,7 @@ public:
 	~ApplicationWin() override;
 	
 private:
+	bool m_wireFrame = false;
 
 	VkPipelineLayout m_pipelineLayout{ VK_NULL_HANDLE };
 	Pipelines m_pipelines;
@@ -54,6 +55,7 @@ public:
 	void BuildCommandBuffer();
 
 	virtual void GetEnabledFeatures();
+	virtual void OnUpdateUIOverlay(Render::Vulkan::UIOverlay* overlay);
 
 	void Prepare() override;
 	void Render();

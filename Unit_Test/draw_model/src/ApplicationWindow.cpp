@@ -415,7 +415,11 @@ void ApplicationWin::BuildCommandBuffer()
 	vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 
 	vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet[m_currentBuffer], 0, nullptr);
-	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines.solid);
+	
+	if (m_wireFrame)
+		vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines.wireFrame);
+	else
+		vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines.solid);
 
 	m_glTFModel.Draw(cmdBuffer, m_pipelineLayout);
 
@@ -432,6 +436,13 @@ void ApplicationWin::GetEnabledFeatures(){
 	if (m_deviceFeatures.fillModeNonSolid) {
 		m_enabledFeatures.fillModeNonSolid = VK_TRUE;
 	};
+}
+
+void ApplicationWin::OnUpdateUIOverlay(Render::Vulkan::UIOverlay* overlay)
+{
+	if (overlay->Header("Settings")) {
+		overlay->CheckBox("Wireframe", &m_wireFrame);
+	}
 }
 
 void ApplicationWin::Prepare() 
