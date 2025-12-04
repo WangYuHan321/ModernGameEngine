@@ -34,6 +34,7 @@ public:
 private:
 	bool m_wireFrame = false;
 
+	GlTFModel m_glTFModel;
 	VkPipelineLayout m_pipelineLayout{ VK_NULL_HANDLE };
 	Pipelines m_pipelines;
 
