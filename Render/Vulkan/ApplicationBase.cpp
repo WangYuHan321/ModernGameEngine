@@ -697,7 +697,7 @@ void ApplicationBase::WindowResize()
 	prepared = true;
 }
 
-void ApplicationBase::LoadGlTFFile(std::string path)
+void ApplicationBase::LoadGlTFFile(std::string path, GlTFModel& glTFModel)
 {
 #if defined(__ANDROID__)
     tinygltf::asset_manager = androidApp->activity->assetManager;
@@ -709,23 +709,23 @@ void ApplicationBase::LoadGlTFFile(std::string path)
 
 	bool fileLoaded = gltfContext.LoadASCIIFromFile(&glTFInput, &error, &warning, path);
 
-	m_glTFModel.vulkanDevice = this->vulkanDevice;
-	m_glTFModel.copyQueue = m_queue;
+	glTFModel.vulkanDevice = this->vulkanDevice;
+	glTFModel.copyQueue = m_queue;
 
 	std::vector<uint32_t> indexBuffer;
 	std::vector<GlTFModel::Vertex> vertexBuffer;
 
 	if (fileLoaded)
 	{
-		m_glTFModel.LoadImages(glTFInput);
-		m_glTFModel.LoadMaterials(glTFInput);
-		m_glTFModel.LoadTextures(glTFInput);
+		glTFModel.LoadImages(glTFInput);
+		glTFModel.LoadMaterials(glTFInput);
+		glTFModel.LoadTextures(glTFInput);
 
 		const tinygltf::Scene& scene = glTFInput.scenes[0];
 		for (size_t i = 0; i < scene.nodes.size(); i++)
 		{
 			const tinygltf::Node node = glTFInput.nodes[scene.nodes[i]];
-			m_glTFModel.LoadNode(node, glTFInput, nullptr, indexBuffer, vertexBuffer);
+			glTFModel.LoadNode(node, glTFInput, nullptr, indexBuffer, vertexBuffer);
 		}
 	}
 	else
@@ -735,7 +735,7 @@ void ApplicationBase::LoadGlTFFile(std::string path)
 
 	size_t vertexBufferSize = vertexBuffer.size() * sizeof(GlTFModel::Vertex);
 	size_t indexBufferSize = indexBuffer.size() * sizeof(uint32_t);
-	m_glTFModel.indices.count = static_cast<uint32_t>(indexBuffer.size());
+	glTFModel.indices.count = static_cast<uint32_t>(indexBuffer.size());
 
 	struct StagingBuffer {
 		VkBuffer buffer;
@@ -763,15 +763,15 @@ void ApplicationBase::LoadGlTFFile(std::string path)
 		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		vertexBufferSize,
-		&m_glTFModel.vertices.buffer,
-		&m_glTFModel.vertices.memory));
+		&glTFModel.vertices.buffer,
+		&glTFModel.vertices.memory));
 	
 	VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
 		VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
 		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
 		indexBufferSize,
-		&m_glTFModel.indices.buffer,
-		&m_glTFModel.indices.memory));
+		&glTFModel.indices.buffer,
+		&glTFModel.indices.memory));
 
 	VkCommandBuffer copyCmd = vulkanDevice->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
 	VkBufferCopy copyRegion = {};
@@ -780,7 +780,7 @@ void ApplicationBase::LoadGlTFFile(std::string path)
 	vkCmdCopyBuffer(
 		copyCmd,
 		vertexStaging.buffer,
-		m_glTFModel.vertices.buffer,
+		glTFModel.vertices.buffer,
 		1,
 		&copyRegion);
 
@@ -788,7 +788,7 @@ void ApplicationBase::LoadGlTFFile(std::string path)
 	vkCmdCopyBuffer(
 		copyCmd,
 		indexStaging.buffer,
-		m_glTFModel.indices.buffer,
+		glTFModel.indices.buffer,
 		1,
 		&copyRegion);
 
