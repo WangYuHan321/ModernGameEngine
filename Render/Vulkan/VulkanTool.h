@@ -75,7 +75,8 @@ namespace Render
 				VkPipelineStageFlags dstStageMask = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);//Ĭ�� ������ָ��׶ζ�Ҫ������
 
 			void GenerateMipMap(Render::Vulkan::VulkanDevice* device,
-				VkQueue queue, VkImage image, VkFormat format, int32_t texWidth, int32_t texHeight, uint32_t mipLevels);
+				VkQueue queue, VkImage image, VkFormat format, 
+				int32_t texWidth, int32_t texHeight, uint32_t mipLevels, uint32_t layerCount = 1);
 
 			VkBool32 GetSupportedDepthStencilFormat(VkPhysicalDevice physicalDevice, VkFormat* depthStencilFormat);
 

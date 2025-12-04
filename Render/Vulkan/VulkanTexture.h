@@ -51,7 +51,14 @@ namespace Render
         class VulkanTexture2DArray : public VulkanTexture
         {
         public:
-            void LoadFromFile();
+            void LoadFromFile(
+                std::vector<std::string> fileNameVec,
+                VkFormat           format,
+                Vulkan::VulkanDevice* device,
+                VkQueue            copyQueue,
+                VkImageUsageFlags  imageUsageFlags = VK_IMAGE_USAGE_SAMPLED_BIT,
+                VkImageLayout      imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+            );
         };
 
         class VulkanTextureCube : public VulkanTexture
