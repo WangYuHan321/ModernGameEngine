@@ -14,7 +14,7 @@ layout (location = 7) in int instanceTexIndex;
 
 layout (binding = 0) uniform UBO
 {
-	mat4 projetion;
+	mat4 projection;
 	mat4 modelView;
 } ubo;
 
@@ -60,14 +60,14 @@ void main()
 	
 	mat4 rotMat = mz * my * mx;
 	
-	outNormal = inNormal * mat4(rotMat);
+	outNormal = inNormal * mat3(rotMat);
 	
 	vec4 pos = vec4((inPos.xyz * instanceScale) + instancePos, 1.0) * rotMat;
 	
-	gl_Position = ubo.projection * ubo.modelview * pos;
+	gl_Position = ubo.projection * ubo.modelView * pos;
 
 	//在这里 作者可能想用于特定光照模型：某些简单光照计算中可能接受近似值 所以 outViewVec = -pos.xyz
-	vec4 wPos = ubo.modelview * vec4(pos.xyz, 1.0); 
+	vec4 wPos = ubo.modelView * vec4(pos.xyz, 1.0); 
 	vec4 lPos = vec4(0.0, -5.0, 0.0, 1.0);
 	outLightVec = lPos.xyz - pos.xyz;
 	outViewVec = -pos.xyz;	
