@@ -31,24 +31,6 @@ void ApplicationWin::DrawUI(const VkCommandBuffer cmdBuffer)
 
 void ApplicationWin::SetupDescriptors()
 {
-	std::vector<VkDescriptorPoolSize> descriptorTypeCounts;
-	descriptorTypeCounts.resize(2);
-	descriptorTypeCounts[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	descriptorTypeCounts[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
-
-	descriptorTypeCounts[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	descriptorTypeCounts[1].descriptorCount = m_glTFModel.images.size() * MAX_FRAMES_IN_FLIGHT;
-
-	VkDescriptorPoolCreateInfo descriptorPoolInfo{};
-	descriptorPoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	descriptorPoolInfo.poolSizeCount = static_cast<uint32_t>(descriptorTypeCounts.size());//descriptorTypeCounts.size()
-	descriptorPoolInfo.pPoolSizes = descriptorTypeCounts.data();
-	descriptorPoolInfo.maxSets = (m_glTFModel.images.size() + 1) * MAX_FRAMES_IN_FLIGHT;// type 个数 * MAX_FRAMES_IN_FLIGHT
-
-	VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
-
-
-
 
 }
 
@@ -191,11 +173,25 @@ void ApplicationWin::Render()
 
 void ApplicationWin::LoadAsset()
 {
-	LoadGlTFFile("model/1.gltf", m_model.plants);
-	LoadGlTFFile("model/1.gltf", m_model.ground);
-	LoadGlTFFile("model/1.gltf", m_model.skySphere);
+	LoadGlTFFile("./mesh/IndirectDraw/plants.gltf", m_model.plants);
+	LoadGlTFFile("./mesh/IndirectDraw/plane_circle.gltf", m_model.ground);
+	LoadGlTFFile("./mesh/IndirectDraw/sphere.gltf", m_model.skySphere);
 
-	std::vector<std::string> strFileVec;
+	std::vector<std::string> strFileVec = {
+		"./Asset/mesh/IndirectDraw/0.png",
+		"./Asset/mesh/IndirectDraw/1.png",
+		"./Asset/mesh/IndirectDraw/2.png",
+		"./Asset/mesh/IndirectDraw/3.png",
+		"./Asset/mesh/IndirectDraw/4.png",
+		"./Asset/mesh/IndirectDraw/5.png",
+		"./Asset/mesh/IndirectDraw/6.png",
+		"./Asset/mesh/IndirectDraw/7.png",
+		"./Asset/mesh/IndirectDraw/8.png",
+		"./Asset/mesh/IndirectDraw/9.png",
+		"./Asset/mesh/IndirectDraw/10.png",
+		"./Asset/mesh/IndirectDraw/11.png"
+	};
+
 	m_texture.plants.LoadFromFile(strFileVec, VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
-	m_texture.ground.LoadFromFile("", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
+	m_texture.ground.LoadFromFile("./Asset/mesh/IndirectDraw/test.png", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
 }
