@@ -58,8 +58,8 @@ private:
 
 	VkDescriptorSetLayout m_descriptorSetLayout{ VK_NULL_HANDLE };
 
-	std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> m_descriptorSet;
-	std::array<Render::Vulkan::Buffer, MAX_FRAMES_IN_FLIGHT> m_uniformDataBuffer;
+	VkDescriptorSet m_descriptorSet;
+	Render::Vulkan::Buffer m_uniformDataBuffer;
 
 public:
 	void DrawUI(const VkCommandBuffer cmdBuffer);

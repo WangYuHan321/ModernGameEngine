@@ -31,7 +31,34 @@ void ApplicationWin::DrawUI(const VkCommandBuffer cmdBuffer)
 
 void ApplicationWin::SetupDescriptors()
 {
+	std::vector<VkDescriptorPoolSize> poolSize = {
+		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
+		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)
+	};
 
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = Render::Vulkan::Initializer::
+		DescriptorPoolCreateInfo(poolSize, 2 * MAX_FRAMES_IN_FLIGHT);
+	VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
+
+	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 2)
+	};
+	VkDescriptorSetLayoutCreateInfo descriptorLayout = Render::Vulkan::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings);
+	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorLayout, nullptr, &m_descriptorSetLayout));
+
+	//set
+	VkDescriptorSetAllocateInfo allocInfo = Render::Vulkan::Initializer::DescriptorSetAllocateInfo(m_descriptorPool, &m_descriptorSetLayout, 1);
+	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &m_descriptorSet));
+
+	std::vector<VkWriteDescriptorSet> writerDescriptorSets = {
+		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0,&m_uniformDataBuffer.descriptor),
+		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0,&m_uniformDataBuffer.descriptor),
+		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0,&m_uniformDataBuffer.descriptor)
+	};
+
+	vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writerDescriptorSets.size()), writerDescriptorSets.data(), 0, nullptr);
 }
 
 VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
@@ -87,43 +114,41 @@ VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
 void ApplicationWin::PreparePipeline()
 {
 
+
 }
 
 void ApplicationWin::PrepareUniformBuffer()
 {
-	for (auto& item : m_uniformDataBuffer)
-	{
-		// 创建缓冲区（CreateBuffer）
-		VkBufferCreateInfo bufferCreateInfo{};
-		bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-		bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		bufferCreateInfo.size = sizeof(UniformData);
-		bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;//队列独占模式 只给一个人使用
-		VK_CHECK_RESULT(vkCreateBuffer(m_device, &bufferCreateInfo, nullptr, &item.buffer));
+	// 创建缓冲区（CreateBuffer）
+	VkBufferCreateInfo bufferCreateInfo{};
+	bufferCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufferCreateInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	bufferCreateInfo.size = sizeof(UniformData);
+	bufferCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;//队列独占模式 只给一个人使用
+	VK_CHECK_RESULT(vkCreateBuffer(m_device, &bufferCreateInfo, nullptr, &m_uniformDataBuffer.buffer));
 
-		//查询内存需求
-		VkMemoryRequirements memReqs;
-		vkGetBufferMemoryRequirements(m_device, item.buffer, &memReqs);
+	//查询内存需求
+	VkMemoryRequirements memReqs;
+	vkGetBufferMemoryRequirements(m_device, m_uniformDataBuffer.buffer, &memReqs);
 
-		//分配内存
-		VkMemoryAllocateInfo memAlloc = Render::Vulkan::Initializer::MemoryAllocInfo();
-		memAlloc.allocationSize = memReqs.size;
-		memAlloc.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-		VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAlloc, nullptr, &item.memory));
+	//分配内存
+	VkMemoryAllocateInfo memAlloc = Render::Vulkan::Initializer::MemoryAllocInfo();
+	memAlloc.allocationSize = memReqs.size;
+	memAlloc.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+	VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAlloc, nullptr, &m_uniformDataBuffer.memory));
 
-		item.alignment = memReqs.alignment;
-		item.size = sizeof(UniformData);
-		item.usageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
-		item.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+	m_uniformDataBuffer.alignment = memReqs.alignment;
+	m_uniformDataBuffer.size = sizeof(UniformData);
+	m_uniformDataBuffer.usageFlags = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+	m_uniformDataBuffer.memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-		item.SetupDescriptor();
+	m_uniformDataBuffer.SetupDescriptor();
 
-		//绑定内存将缓冲区和内存binding在一起
-		VK_CHECK_RESULT(vkBindBufferMemory(m_device, item.buffer, item.memory, 0));
+	//绑定内存将缓冲区和内存binding在一起
+	VK_CHECK_RESULT(vkBindBufferMemory(m_device, m_uniformDataBuffer.buffer, m_uniformDataBuffer.memory, 0));
 
-		//将CPU地址和GPU地址Map
-		vkMapMemory(m_device, item.memory, 0, VK_WHOLE_SIZE, 0, &item.mapped);
-	}
+	//将CPU地址和GPU地址Map
+	vkMapMemory(m_device, m_uniformDataBuffer.memory, 0, VK_WHOLE_SIZE, 0, &m_uniformDataBuffer.mapped);
 }
 
 void ApplicationWin::BuildCommandBuffer()
