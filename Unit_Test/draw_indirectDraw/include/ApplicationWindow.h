@@ -61,6 +61,7 @@ private:
 	VkDescriptorSet m_descriptorSet;
 	Render::Vulkan::Buffer m_uniformDataBuffer;
 
+	std::vector<VkDrawIndexedIndirectCommand> m_indirectCommands;
 public:
 	void DrawUI(const VkCommandBuffer cmdBuffer);
 	void SetupDescriptors();

@@ -113,8 +113,72 @@ VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
 
 void ApplicationWin::PreparePipeline()
 {
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(&m_descriptorSetLayout, 1);
 
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = Render::Vulkan::Initializer::PipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+	VkPipelineRasterizationStateCreateInfo rasterizationState = Render::Vulkan::Initializer::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
+	VkPipelineColorBlendAttachmentState blendAttachmentState = Render::Vulkan::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE);
+	VkPipelineColorBlendStateCreateInfo colorBlendState = Render::Vulkan::Initializer::PipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
+	VkPipelineDepthStencilStateCreateInfo depthStencilState = Render::Vulkan::Initializer::PipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
+	VkPipelineViewportStateCreateInfo viewportState = Render::Vulkan::Initializer::PipelineViewportStateCreateInfo(1, 1, 0);
+	VkPipelineMultisampleStateCreateInfo multisampleState = Render::Vulkan::Initializer::PipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
+	std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+	VkPipelineDynamicStateCreateInfo dynamicState = Render::Vulkan::Initializer::PipelineDynamicStateCreateInfo(dynamicStateEnables);
+	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
+	VkGraphicsPipelineCreateInfo pipelineCreateInfo = Render::Vulkan::Initializer::PipelineCreateInfo(m_pipelineLayout, m_renderPass);
+	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
+	pipelineCreateInfo.pRasterizationState = &rasterizationState;
+	pipelineCreateInfo.pColorBlendState = &colorBlendState;
+	pipelineCreateInfo.pMultisampleState = &multisampleState;
+	pipelineCreateInfo.pViewportState = &viewportState;
+	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
+	pipelineCreateInfo.pDynamicState = &dynamicState;
+	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+	pipelineCreateInfo.pStages = shaderStages.data();
+
+	//这里是2个input state 1个是instanced 1个是非instanced
+	VkPipelineVertexInputStateCreateInfo inputState = Render::Vulkan::Initializer::PipelineVertexInputStateCreateInfo();
+	std::vector<VkVertexInputBindingDescription> bindingDescriptions;
+	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
+
+	bindingDescriptions = {
+		Render::Vulkan::Initializer::VertexInputBindingDescription(0, sizeof(GlTFModel::Vertex), VK_VERTEX_INPUT_RATE_VERTEX),
+		Render::Vulkan::Initializer::VertexInputBindingDescription(1, sizeof(InstanceData), VK_VERTEX_INPUT_RATE_INSTANCE)
+	};
+
+	attributeDescriptions = {
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,0, VK_FORMAT_R32G32B32_SFLOAT,0),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,1, VK_FORMAT_R32G32B32_SFLOAT,0),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,2, VK_FORMAT_R32G32_SFLOAT, 0),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,3, VK_FORMAT_R32G32B32_SFLOAT,0),
+
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,4, VK_FORMAT_R32G32B32_SFLOAT,0),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,5, VK_FORMAT_R32G32B32_SFLOAT,0),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,6, VK_FORMAT_R32_SFLOAT,0),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,7, VK_FORMAT_R32_SINT, 0),
+	};
+	inputState.pVertexBindingDescriptions = bindingDescriptions.data();
+	inputState.pVertexAttributeDescriptions = attributeDescriptions.data();
+	inputState.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
+	inputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+
+	pipelineCreateInfo.pVertexInputState = &inputState;
+	shaderStages[0] = LoadShader("indirectdraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("indirectdraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.plants));
+
+	inputState.vertexBindingDescriptionCount = 1;
+	inputState.vertexAttributeDescriptionCount = 4;
+	shaderStages[0] = LoadShader("indirectdraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("indirectdraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.ground));
+
+	shaderStages[0] = LoadShader("indirectdraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("indirectdraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.skySphere));
 }
 
 void ApplicationWin::PrepareUniformBuffer()
@@ -153,7 +217,75 @@ void ApplicationWin::PrepareUniformBuffer()
 
 void ApplicationWin::BuildCommandBuffer()
 {
+	VkCommandBufferBeginInfo cmdBufInfo = Render::Vulkan::Initializer::CommandBufferBeginInfo();
 
+	VkClearValue clearValue[2];
+	clearValue[0].color = { { 0.18f, 0.27f, 0.5f, 0.0f } };
+	clearValue[1].depthStencil = { 1.0f, 0 };
+
+	VkRenderPassBeginInfo renderPassBeginInfo = Render::Vulkan::Initializer::RenderPassBeginInfo();
+	renderPassBeginInfo.renderPass = m_renderPass;
+	renderPassBeginInfo.renderArea.extent.width = width;
+	renderPassBeginInfo.renderArea.extent.height = height;
+	renderPassBeginInfo.clearValueCount = 2;
+	renderPassBeginInfo.pClearValues = clearValue;
+
+	for (int32_t i = 0; i < m_drawCmdBuffers.size(); ++i)
+	{
+		// Set target frame buffer
+		renderPassBeginInfo.framebuffer = m_frameBuffers[i];
+
+		VK_CHECK_RESULT(vkBeginCommandBuffer(m_drawCmdBuffers[i], &cmdBufInfo));
+
+		vkCmdBeginRenderPass(m_drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width, (float)height, 0.0f, 1.0f);
+		vkCmdSetViewport(m_drawCmdBuffers[i], 0, 1, &viewport);
+
+		VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
+		vkCmdSetScissor(m_drawCmdBuffers[i], 0, 1, &scissor);
+
+		VkDeviceSize offsets[1] = { 0 };
+		vkCmdBindDescriptorSets(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
+
+		// Skysphere
+		vkCmdBindPipeline(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.skySphere);
+		m_model.skySphere.Draw(m_drawCmdBuffers[i], VK_NULL_HANDLE);
+		// Ground
+		vkCmdBindPipeline(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.ground);
+		m_model.ground.Draw(m_drawCmdBuffers[i], VK_NULL_HANDLE);
+
+		// [POI] Instanced multi draw rendering of the plants
+		vkCmdBindPipeline(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.plants);
+		// Binding point 0 : Mesh vertex buffer
+		vkCmdBindVertexBuffers(m_drawCmdBuffers[i], 0, 1, &m_model.plants.vertices.buffer, offsets);
+		// Binding point 1 : Instance data buffer
+		vkCmdBindVertexBuffers(m_drawCmdBuffers[i], 1, 1, &m_instanceBuffer.buffer, offsets);
+
+		vkCmdBindIndexBuffer(m_drawCmdBuffers[i], m_model.plants.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+		// If the multi draw feature is supported:
+		// One draw call for an arbitrary number of objects
+		// Index offsets and instance count are taken from the indirect buffer
+		if (vulkanDevice->features.multiDrawIndirect)
+		{
+			vkCmdDrawIndexedIndirect(m_drawCmdBuffers[i], m_indirectCommandBuffer.buffer, 0, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
+		}
+		else
+		{
+			// If multi draw is not available, we must issue separate draw commands
+			for (auto j = 0; j < m_indirectCommands.size(); j++)
+			{
+				vkCmdDrawIndexedIndirect(m_drawCmdBuffers[i], m_indirectCommandBuffer.buffer, j * sizeof(VkDrawIndexedIndirectCommand), 1, sizeof(VkDrawIndexedIndirectCommand));
+			}
+		}
+
+		DrawUI(m_drawCmdBuffers[i]);
+
+		vkCmdEndRenderPass(m_drawCmdBuffers[i]);
+
+		VK_CHECK_RESULT(vkEndCommandBuffer(m_drawCmdBuffers[i]));
+	}
 }
 
 
