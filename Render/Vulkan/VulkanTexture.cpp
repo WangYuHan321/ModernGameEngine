@@ -100,6 +100,8 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 	if (!(imageCreateInfo.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
 		imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	}
+	if(mipLevels > 1)
+		imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
 	VK_CHECK_RESULT(vkCreateImage(device->logicalDevice, &imageCreateInfo, nullptr, &image));
 	vkGetImageMemoryRequirements(device->logicalDevice, image, &memReqs);
@@ -149,13 +151,13 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 		&region
 	);
 
-	Vulkan::Tool::GenerateMipMap(device, copyQueue, image, format, texWidth, texHeight, mipLevels);
+	Vulkan::Tool::GenerateMipMap(device, copyCmd, copyQueue, image, format, texWidth, texHeight, mipLevels);
 
 	this->imageLayout = imageLayout;
 	Vulkan::Tool::SetImageLayout(
 		copyCmd,
 		image,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		imageLayout,
 		subresourceRange);
 
@@ -255,6 +257,8 @@ void Render::Vulkan::VulkanTexture2D::FromBuffer(void* buffer,
 	if (!(imageCreateInfo.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
 		imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	}
+	if (mipLevels > 1)
+		imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
 	VK_CHECK_RESULT(vkCreateImage(device->logicalDevice, &imageCreateInfo, nullptr, &image));
 	vkGetImageMemoryRequirements(device->logicalDevice, image, &memReqs);
@@ -304,13 +308,13 @@ void Render::Vulkan::VulkanTexture2D::FromBuffer(void* buffer,
 		&region
 	);
 
-	Vulkan::Tool::GenerateMipMap(device, copyQueue, image, format, texWidth, texHeight, mipLevels);
-
+	Vulkan::Tool::GenerateMipMap(device, copyCmd, copyQueue, image, format, texWidth, texHeight, mipLevels);
+	
 	this->imageLayout = imageLayout;
 	Vulkan::Tool::SetImageLayout(
 		copyCmd,
 		image,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		imageLayout,
 		subresourceRange);
 
@@ -362,7 +366,7 @@ void Render::Vulkan::VulkanTexture2DArray::LoadFromFile(
 	)
 {
 	int numImage = fileNameVec.size();
-	assert(numImage == 0);
+	assert(numImage != 0);
 
 	stbi_uc** pixelPtrs = new stbi_uc * [numImage];
 
@@ -445,6 +449,8 @@ void Render::Vulkan::VulkanTexture2DArray::LoadFromFile(
 	if (!(imageCreateInfo.usage & VK_IMAGE_USAGE_TRANSFER_DST_BIT)) {
 		imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 	}
+	if (mipLevels > 1)
+		imageCreateInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
 	VK_CHECK_RESULT(vkCreateImage(device->logicalDevice, &imageCreateInfo, nullptr, &image));
 	vkGetImageMemoryRequirements(device->logicalDevice, image, &memReqs);
@@ -495,13 +501,13 @@ void Render::Vulkan::VulkanTexture2DArray::LoadFromFile(
 		regions.data()
 	);
 
-	Vulkan::Tool::GenerateMipMap(device, copyQueue, image, format, texWidth, texHeight, mipLevels, layerCount);
+	Vulkan::Tool::GenerateMipMap(device, copyCmd, copyQueue, image, format, texWidth, texHeight, mipLevels);
 
 	this->imageLayout = imageLayout;
 	Vulkan::Tool::SetImageLayout(
 		copyCmd,
 		image,
-		VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+		VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
 		imageLayout,
 		subresourceRange);
 
