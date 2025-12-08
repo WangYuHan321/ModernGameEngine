@@ -220,6 +220,8 @@ void ApplicationWin::PrepareUniformBuffer()
 
 void ApplicationWin::BuildCommandBuffer()
 {
+	VkCommandBuffer cmdBuffer = m_drawCmdBuffers[m_currentBuffer];
+
 	VkCommandBufferBeginInfo cmdBufInfo = Render::Vulkan::Initializer::CommandBufferBeginInfo();
 
 	VkClearValue clearValue[2];
@@ -233,62 +235,61 @@ void ApplicationWin::BuildCommandBuffer()
 	renderPassBeginInfo.clearValueCount = 2;
 	renderPassBeginInfo.pClearValues = clearValue;
 
-	for (int32_t i = 0; i < m_drawCmdBuffers.size(); ++i)
+
+
+	// Set target frame buffer
+	renderPassBeginInfo.framebuffer = m_frameBuffers[m_currentImageIndex];
+
+	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
+
+	vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+	VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width, (float)height, 0.0f, 1.0f);
+	vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
+	vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+	VkDeviceSize offsets[1] = { 0 };
+	vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
+
+	// Skysphere
+	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.skySphere);
+	m_model.skySphere.Draw(cmdBuffer, VK_NULL_HANDLE);
+	// Ground
+	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.ground);
+	m_model.ground.Draw(cmdBuffer, VK_NULL_HANDLE);
+
+	// [POI] Instanced multi draw rendering of the plants
+	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.plants);
+	// Binding point 0 : Mesh vertex buffer
+	vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &m_model.plants.vertices.buffer, offsets);
+	// Binding point 1 : Instance data buffer
+	vkCmdBindVertexBuffers(cmdBuffer, 1, 1, &m_instanceBuffer.buffer, offsets);
+
+	vkCmdBindIndexBuffer(cmdBuffer, m_model.plants.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+
+	// If the multi draw feature is supported:
+	// One draw call for an arbitrary number of objects
+	// Index offsets and instance count are taken from the indirect buffer
+	if (vulkanDevice->features.multiDrawIndirect)
 	{
-		// Set target frame buffer
-		renderPassBeginInfo.framebuffer = m_frameBuffers[i];
-
-		VK_CHECK_RESULT(vkBeginCommandBuffer(m_drawCmdBuffers[i], &cmdBufInfo));
-
-		vkCmdBeginRenderPass(m_drawCmdBuffers[i], &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-		VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width, (float)height, 0.0f, 1.0f);
-		vkCmdSetViewport(m_drawCmdBuffers[i], 0, 1, &viewport);
-
-		VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
-		vkCmdSetScissor(m_drawCmdBuffers[i], 0, 1, &scissor);
-
-		VkDeviceSize offsets[1] = { 0 };
-		vkCmdBindDescriptorSets(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSet, 0, NULL);
-
-		// Skysphere
-		vkCmdBindPipeline(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.skySphere);
-		m_model.skySphere.Draw(m_drawCmdBuffers[i], VK_NULL_HANDLE);
-		// Ground
-		vkCmdBindPipeline(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.ground);
-		m_model.ground.Draw(m_drawCmdBuffers[i], VK_NULL_HANDLE);
-
-		// [POI] Instanced multi draw rendering of the plants
-		vkCmdBindPipeline(m_drawCmdBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.plants);
-		// Binding point 0 : Mesh vertex buffer
-		vkCmdBindVertexBuffers(m_drawCmdBuffers[i], 0, 1, &m_model.plants.vertices.buffer, offsets);
-		// Binding point 1 : Instance data buffer
-		vkCmdBindVertexBuffers(m_drawCmdBuffers[i], 1, 1, &m_instanceBuffer.buffer, offsets);
-
-		vkCmdBindIndexBuffer(m_drawCmdBuffers[i], m_model.plants.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
-
-		// If the multi draw feature is supported:
-		// One draw call for an arbitrary number of objects
-		// Index offsets and instance count are taken from the indirect buffer
-		if (vulkanDevice->features.multiDrawIndirect)
-		{
-			vkCmdDrawIndexedIndirect(m_drawCmdBuffers[i], m_indirectCommandBuffer.buffer, 0, m_indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
-		}
-		else
-		{
-			// If multi draw is not available, we must issue separate draw commands
-			for (auto j = 0; j < m_indirectCommands.size(); j++)
-			{
-				vkCmdDrawIndexedIndirect(m_drawCmdBuffers[i], m_indirectCommandBuffer.buffer, j * sizeof(VkDrawIndexedIndirectCommand), 1, sizeof(VkDrawIndexedIndirectCommand));
-			}
-		}
-
-		DrawUI(m_drawCmdBuffers[i]);
-
-		vkCmdEndRenderPass(m_drawCmdBuffers[i]);
-
-		VK_CHECK_RESULT(vkEndCommandBuffer(m_drawCmdBuffers[i]));
+		vkCmdDrawIndexedIndirect(cmdBuffer, m_indirectCommandBuffer.buffer, 0, m_indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
 	}
+	else
+	{
+		// If multi draw is not available, we must issue separate draw commands
+		for (auto j = 0; j < m_indirectCommands.size(); j++)
+		{
+			vkCmdDrawIndexedIndirect(cmdBuffer, m_indirectCommandBuffer.buffer, j * sizeof(VkDrawIndexedIndirectCommand), 1, sizeof(VkDrawIndexedIndirectCommand));
+		}
+	}
+
+	DrawUI(cmdBuffer);
+
+	vkCmdEndRenderPass(cmdBuffer);
+
+	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
 }
 
 void ApplicationWin::PrepareInstanceData()
@@ -444,8 +445,8 @@ void ApplicationWin::LoadAsset()
 		"./Asset/mesh/IndirectDraw/11.png"
 	};
 
-	m_texture.plants.mipLevels = 10;
-	m_texture.ground.mipLevels = 10;
+	m_texture.plants.mipLevels = 5;
+	m_texture.ground.mipLevels = 5;
 	m_texture.plants.LoadFromFile(strFileVec, VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
 	m_texture.ground.LoadFromFile("./Asset/mesh/IndirectDraw/test.png", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
 }
