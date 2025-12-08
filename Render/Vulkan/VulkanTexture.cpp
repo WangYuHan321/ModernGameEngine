@@ -501,7 +501,7 @@ void Render::Vulkan::VulkanTexture2DArray::LoadFromFile(
 		regions.data()
 	);
 
-	Vulkan::Tool::GenerateMipMap(device, copyCmd, copyQueue, image, format, texWidth, texHeight, mipLevels);
+	Vulkan::Tool::GenerateMipMap(device, copyCmd, copyQueue, image, format, texWidth, texHeight, mipLevels, numImage);
 
 	this->imageLayout = imageLayout;
 	Vulkan::Tool::SetImageLayout(
@@ -538,7 +538,7 @@ void Render::Vulkan::VulkanTexture2DArray::LoadFromFile(
 	VkImageViewCreateInfo viewCreateInfo{
 		.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 		.image = image,
-		.viewType = VK_IMAGE_VIEW_TYPE_2D,
+		.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY,
 		.format = format,
 		.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = mipLevels, .baseArrayLayer = 0, .layerCount = 1 },
 	};
