@@ -49,8 +49,10 @@ private:
 	InstanceData m_instanceData;
 
 	Render::Vulkan::Buffer m_instanceBuffer;
+	std::vector<VkDrawIndexedIndirectCommand> m_indirectCommands;
 	Render::Vulkan::Buffer m_indirectCommandBuffer;
-	uint32_t indirectDrawCount{ 0 };
+	uint32_t m_indirectDrawCount{ 0 };
+	uint32_t m_objectCount{ 0 };
 
 	UniformData m_uniformData;
 
@@ -60,8 +62,6 @@ private:
 
 	VkDescriptorSet m_descriptorSet;
 	Render::Vulkan::Buffer m_uniformDataBuffer;
-
-	std::vector<VkDrawIndexedIndirectCommand> m_indirectCommands;
 public:
 	void DrawUI(const VkCommandBuffer cmdBuffer);
 	void SetupDescriptors();
@@ -72,6 +72,8 @@ public:
 	void PreparePipeline();
 	void PrepareUniformBuffer();
 	void BuildCommandBuffer();
+	void PrepareInstanceData();
+	void PrepareIndirectCommandBuffer();
 
 	virtual void GetEnabledFeatures();
 

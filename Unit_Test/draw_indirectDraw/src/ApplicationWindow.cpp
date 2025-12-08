@@ -1,4 +1,5 @@
 ﻿#include "ApplicationWindow.h"
+#include <random>
 
 // plants.gltf 模型文件可能包含多个mesh
 // 每个mesh对应一种植物类型，与纹理数组层对应
@@ -32,18 +33,18 @@ void ApplicationWin::DrawUI(const VkCommandBuffer cmdBuffer)
 void ApplicationWin::SetupDescriptors()
 {
 	std::vector<VkDescriptorPoolSize> poolSize = {
-		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1),
-		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2)
+		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT),
+		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2 * MAX_FRAMES_IN_FLIGHT)
 	};
 
 	VkDescriptorPoolCreateInfo descriptorPoolInfo = Render::Vulkan::Initializer::
-		DescriptorPoolCreateInfo(poolSize, 2 * MAX_FRAMES_IN_FLIGHT);
+		DescriptorPoolCreateInfo(poolSize, MAX_FRAMES_IN_FLIGHT);
 	VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
 
 	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
 		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT, 0),
 		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),
-		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 2)
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2)
 	};
 	VkDescriptorSetLayoutCreateInfo descriptorLayout = Render::Vulkan::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings);
 	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorLayout, nullptr, &m_descriptorSetLayout));
@@ -53,9 +54,9 @@ void ApplicationWin::SetupDescriptors()
 	VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &m_descriptorSet));
 
 	std::vector<VkWriteDescriptorSet> writerDescriptorSets = {
-		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0,&m_uniformDataBuffer.descriptor),
-		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0,&m_uniformDataBuffer.descriptor),
-		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,0,&m_uniformDataBuffer.descriptor)
+		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &m_uniformDataBuffer.descriptor),
+		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,1,&m_texture.plants.descirptor),
+		Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSet, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,2,&m_texture.ground.descirptor)
 	};
 
 	vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writerDescriptorSets.size()), writerDescriptorSets.data(), 0, nullptr);
@@ -114,6 +115,7 @@ VkShaderModule ApplicationWin::LoadSPIRVShader(const std::string& filename)
 void ApplicationWin::PreparePipeline()
 {
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(&m_descriptorSetLayout, 1);
+	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout));
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = Render::Vulkan::Initializer::PipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
 	VkPipelineRasterizationStateCreateInfo rasterizationState = Render::Vulkan::Initializer::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
@@ -164,19 +166,20 @@ void ApplicationWin::PreparePipeline()
 	inputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 
 	pipelineCreateInfo.pVertexInputState = &inputState;
-	shaderStages[0] = LoadShader("indirectdraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("indirectdraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.plants));
 
 	inputState.vertexBindingDescriptionCount = 1;
 	inputState.vertexAttributeDescriptionCount = 4;
-	shaderStages[0] = LoadShader("indirectdraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("indirectdraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/ground.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/ground.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 	rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.ground));
 
-	shaderStages[0] = LoadShader("indirectdraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("indirectdraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/skysphere.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/skysphere.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	depthStencilState.depthWriteEnable = VK_FALSE;
 	rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.skySphere));
 }
@@ -269,7 +272,7 @@ void ApplicationWin::BuildCommandBuffer()
 		// Index offsets and instance count are taken from the indirect buffer
 		if (vulkanDevice->features.multiDrawIndirect)
 		{
-			vkCmdDrawIndexedIndirect(m_drawCmdBuffers[i], m_indirectCommandBuffer.buffer, 0, indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
+			vkCmdDrawIndexedIndirect(m_drawCmdBuffers[i], m_indirectCommandBuffer.buffer, 0, m_indirectDrawCount, sizeof(VkDrawIndexedIndirectCommand));
 		}
 		else
 		{
@@ -288,18 +291,108 @@ void ApplicationWin::BuildCommandBuffer()
 	}
 }
 
+void ApplicationWin::PrepareInstanceData()
+{
+	std::vector<InstanceData> instanceData;
+	instanceData.resize(m_objectCount);
+
+	std::default_random_engine rndEngine(time(0));
+	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
+
+	for (uint32_t i = 0; i < m_objectCount; i++) {
+		float theta = 2 * float(3.14) * uniformDist(rndEngine);
+		float phi = acos(1 - 2 * uniformDist(rndEngine));
+		instanceData[i].rot = glm::vec3(0.0f, float(3.14) * uniformDist(rndEngine), 0.0f);
+		instanceData[i].pos = glm::vec3(sin(phi) * cos(theta), 0.0f, cos(phi)) * 25.0f;
+		instanceData[i].scale = 1.0f + uniformDist(rndEngine) * 2.0f;
+		instanceData[i].texIndex = i / OBJECT_INSTANCE_COUNT;
+	}
+
+	Render::Vulkan::Buffer stagingBuffer;
+	VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		&stagingBuffer,
+		instanceData.size() * sizeof(InstanceData),
+		instanceData.data()));
+
+	VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
+		VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		&m_instanceBuffer,
+		stagingBuffer.size));
+
+	vulkanDevice->CopyBuffer(&stagingBuffer, &m_instanceBuffer, m_queue);
+	stagingBuffer.Destroy();
+}
+
+void ApplicationWin::PrepareIndirectCommandBuffer()
+{
+	m_indirectCommands.clear();
+
+	uint32_t m = 0;
+
+	for (auto& node : m_model.plants.nodes)
+	{
+		if (node->mesh.primitives.size() > 0)
+		{
+			VkDrawIndexedIndirectCommand indirectCmd{};
+			indirectCmd.instanceCount = OBJECT_INSTANCE_COUNT;
+			indirectCmd.firstIndex = m * OBJECT_INSTANCE_COUNT;
+			indirectCmd.firstIndex = node->mesh.primitives[0].firstIndex;
+			indirectCmd.indexCount = node->mesh.primitives[0].indexCount;
+
+			m_indirectCommands.push_back(indirectCmd);
+			m++;
+		}
+
+	}
+
+	m_indirectDrawCount = static_cast<uint32_t>(m_indirectCommands.size());
+
+	m_objectCount = 0;
+	for (auto indirectCmd : m_indirectCommands)
+	{
+		m_objectCount += indirectCmd.instanceCount;
+	}
+
+	Render::Vulkan::Buffer stagingBuffer;
+
+	VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
+		VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+		VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+		&stagingBuffer,
+		m_indirectCommands.size() * sizeof(VkDrawIndexedIndirectCommand),
+		m_indirectCommands.data()));
+
+	VK_CHECK_RESULT(vulkanDevice->CreateBuffer(
+		VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+		VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+		&m_indirectCommandBuffer,
+		stagingBuffer.size));
+
+	vulkanDevice->CopyBuffer(&stagingBuffer, &m_indirectCommandBuffer, m_queue);
+	stagingBuffer.Destroy();
+}
+
 
 void ApplicationWin::GetEnabledFeatures(){
-	// Fill mode non solid is required for wireframe display
-	if (m_deviceFeatures.fillModeNonSolid) {
-		m_enabledFeatures.fillModeNonSolid = VK_TRUE;
-	};
+	// Example uses multi draw indirect if available
+	if (m_deviceFeatures.multiDrawIndirect) {
+		m_enabledFeatures.multiDrawIndirect = VK_TRUE;
+	}
+	// Enable anisotropic filtering if supported
+	if (m_deviceFeatures.samplerAnisotropy) {
+		m_enabledFeatures.samplerAnisotropy = VK_TRUE;
+	}
 }
 
 void ApplicationWin::Prepare() 
 {
 	ApplicationBase::Prepare();
 	LoadAsset(); // 加载图片
+	PrepareIndirectCommandBuffer();
+	PrepareInstanceData();
 	PrepareUniformBuffer();
 	SetupDescriptors();
 	PreparePipeline();
@@ -308,7 +401,9 @@ void ApplicationWin::Prepare()
 
 void ApplicationWin::UpdateUniformBuffers()
 {
-
+	m_uniformData.projection = m_camera.matrices.perspective;
+	m_uniformData.view = m_camera.matrices.view;
+	memcpy(m_uniformDataBuffer.mapped, &m_uniformData, sizeof(UniformData));
 }
 
 void ApplicationWin::Render()
@@ -330,9 +425,9 @@ void ApplicationWin::Render()
 
 void ApplicationWin::LoadAsset()
 {
-	LoadGlTFFile("./mesh/IndirectDraw/plants.gltf", m_model.plants);
-	LoadGlTFFile("./mesh/IndirectDraw/plane_circle.gltf", m_model.ground);
-	LoadGlTFFile("./mesh/IndirectDraw/sphere.gltf", m_model.skySphere);
+	LoadGlTFFile("./Asset/mesh/IndirectDraw/plants.gltf", m_model.plants);
+	LoadGlTFFile("./Asset/mesh/IndirectDraw/plane_circle.gltf", m_model.ground);
+	LoadGlTFFile("./Asset/mesh/IndirectDraw/sphere.gltf", m_model.skySphere);
 
 	std::vector<std::string> strFileVec = {
 		"./Asset/mesh/IndirectDraw/0.png",
@@ -349,6 +444,8 @@ void ApplicationWin::LoadAsset()
 		"./Asset/mesh/IndirectDraw/11.png"
 	};
 
+	m_texture.plants.mipLevels = 10;
+	m_texture.ground.mipLevels = 10;
 	m_texture.plants.LoadFromFile(strFileVec, VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
 	m_texture.ground.LoadFromFile("./Asset/mesh/IndirectDraw/test.png", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
 }
