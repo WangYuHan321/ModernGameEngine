@@ -8,11 +8,11 @@ ApplicationWin::ApplicationWin():
 	ApplicationBase()
 {
 	title = " ApplicationDrawIndirectDraw ";
-	m_camera.type = Camera::CameraType::lookat;
-	m_camera.flipY = true;
-	m_camera.setPosition(glm::vec3(1.0f, 5.1f, -3.0f));
-	m_camera.setRotation(glm::vec3(0.0f, 60.0f, 0.0f));
-	m_camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 100.0f);
+	m_camera.type = Camera::CameraType::firstperson;
+	m_camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 512.0f);
+	m_camera.setRotation(glm::vec3(-12.0f, 159.0f, 0.0f));
+	m_camera.setTranslation(glm::vec3(0.4f, 1.25f, 0.0f));
+	m_camera.movementSpeed = 5.0f;
 }
 
 ApplicationWin::~ApplicationWin()
@@ -151,14 +151,14 @@ void ApplicationWin::PreparePipeline()
 
 	attributeDescriptions = {
 		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,0, VK_FORMAT_R32G32B32_SFLOAT,0),
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,1, VK_FORMAT_R32G32B32_SFLOAT,0),
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,2, VK_FORMAT_R32G32_SFLOAT, 0),
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,3, VK_FORMAT_R32G32B32_SFLOAT,0),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,1, VK_FORMAT_R32G32B32_SFLOAT,sizeof(float) * 3),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,2, VK_FORMAT_R32G32_SFLOAT, sizeof(float) * 6),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,3, VK_FORMAT_R32G32B32_SFLOAT, sizeof(float) * 8),
 
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,4, VK_FORMAT_R32G32B32_SFLOAT,0),
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,5, VK_FORMAT_R32G32B32_SFLOAT,0),
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,6, VK_FORMAT_R32_SFLOAT,0),
-		Render::Vulkan::Initializer::VertexInputAttributeDescription(0,7, VK_FORMAT_R32_SINT, 0),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(1,4, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceData, pos)),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(1,5, VK_FORMAT_R32G32B32_SFLOAT, offsetof(InstanceData, rot)),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(1,6, VK_FORMAT_R32_SFLOAT, offsetof(InstanceData, scale)),
+		Render::Vulkan::Initializer::VertexInputAttributeDescription(1,7, VK_FORMAT_R32_SINT, offsetof(InstanceData, texIndex)),
 	};
 	inputState.pVertexBindingDescriptions = bindingDescriptions.data();
 	inputState.pVertexAttributeDescriptions = attributeDescriptions.data();
@@ -166,9 +166,12 @@ void ApplicationWin::PreparePipeline()
 	inputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 
 	pipelineCreateInfo.pVertexInputState = &inputState;
+	//VkPipelineRasterizationStateCreateInfo rasterizationStateNew = Render::Vulkan::Initializer::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_LINE, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
+	//pipelineCreateInfo.pRasterizationState = &rasterizationStateNew;
 	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.plants));
+	//pipelineCreateInfo.pRasterizationState = &rasterizationState;
 
 	inputState.vertexBindingDescriptionCount = 1;
 	inputState.vertexAttributeDescriptionCount = 4;
@@ -445,8 +448,8 @@ void ApplicationWin::LoadAsset()
 		"./Asset/mesh/IndirectDraw/11.png"
 	};
 
-	m_texture.plants.mipLevels = 5;
-	m_texture.ground.mipLevels = 5;
+	m_texture.plants.mipLevels = 10;
+	m_texture.ground.mipLevels = 10;
 	m_texture.plants.LoadFromFile(strFileVec, VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
 	m_texture.ground.LoadFromFile("./Asset/mesh/IndirectDraw/test.png", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
 }

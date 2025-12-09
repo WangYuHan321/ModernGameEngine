@@ -522,9 +522,9 @@ void Render::Vulkan::VulkanTexture2DArray::LoadFromFile(
 		.magFilter = VK_FILTER_LINEAR,
 		.minFilter = VK_FILTER_LINEAR,
 		.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-		.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-		.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-		.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+		.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+		.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
 		.mipLodBias = 0.0f,
 		.anisotropyEnable = device->enableFeatures.samplerAnisotropy,
 		.maxAnisotropy = device->enableFeatures.samplerAnisotropy ? device->properties.limits.maxSamplerAnisotropy : 1.0f,
@@ -540,7 +540,7 @@ void Render::Vulkan::VulkanTexture2DArray::LoadFromFile(
 		.image = image,
 		.viewType = VK_IMAGE_VIEW_TYPE_2D_ARRAY,
 		.format = format,
-		.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = mipLevels, .baseArrayLayer = 0, .layerCount = 1 },
+		.subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .baseMipLevel = 0, .levelCount = mipLevels, .baseArrayLayer = 0, .layerCount = layerCount },
 	};
 	VK_CHECK_RESULT(vkCreateImageView(device->logicalDevice, &viewCreateInfo, nullptr, &imageView));
 
