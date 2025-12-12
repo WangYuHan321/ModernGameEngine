@@ -1,6 +1,6 @@
 ﻿#include "Render/Vulkan/ApplicationBase.h"
 
-#define OBJECT_INSTANCE_COUNT 1024
+#define OBJECT_INSTANCE_COUNT 2048
 
 struct ProjectBGTexture{
 	Render::Vulkan::VulkanTexture2DArray plants;
@@ -8,9 +8,9 @@ struct ProjectBGTexture{
 };
 
 struct ProjectModel {
-	Render::Vulkan::GlTFModel plants;
-	Render::Vulkan::GlTFModel ground;
-	Render::Vulkan::GlTFModel skySphere;
+	Render::Vulkan::VkModel plants;
+	Render::Vulkan::VkModel ground;
+	Render::Vulkan::VkModel skySphere;
 };
 
 struct ProjectPipeline

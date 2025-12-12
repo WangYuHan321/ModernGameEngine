@@ -145,7 +145,7 @@ void ApplicationWin::PreparePipeline()
 	std::vector<VkVertexInputAttributeDescription> attributeDescriptions;
 
 	bindingDescriptions = {
-		Render::Vulkan::Initializer::VertexInputBindingDescription(0, sizeof(GlTFModel::Vertex), VK_VERTEX_INPUT_RATE_VERTEX),
+		Render::Vulkan::Initializer::VertexInputBindingDescription(0, sizeof(VkModel::Vertex), VK_VERTEX_INPUT_RATE_VERTEX),
 		Render::Vulkan::Initializer::VertexInputBindingDescription(1, sizeof(InstanceData), VK_VERTEX_INPUT_RATE_INSTANCE)
 	};
 
@@ -258,10 +258,10 @@ void ApplicationWin::BuildCommandBuffer()
 
 	// Skysphere
 	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.skySphere);
-	m_model.skySphere.Draw(cmdBuffer, VK_NULL_HANDLE);
+	m_model.skySphere.Draw(cmdBuffer);
 	// Ground
 	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.ground);
-	m_model.ground.Draw(cmdBuffer, VK_NULL_HANDLE);
+	m_model.ground.Draw(cmdBuffer);
 
 	// [POI] Instanced multi draw rendering of the plants
 	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline.plants);
@@ -338,13 +338,13 @@ void ApplicationWin::PrepareIndirectCommandBuffer()
 
 	for (auto& node : m_model.plants.nodes)
 	{
-		if (node->mesh.primitives.size() > 0)
+		if (node->mesh->primitives.size() > 0)
 		{
 			VkDrawIndexedIndirectCommand indirectCmd{};
 			indirectCmd.instanceCount = OBJECT_INSTANCE_COUNT;
 			indirectCmd.firstIndex = m * OBJECT_INSTANCE_COUNT;
-			indirectCmd.firstIndex = node->mesh.primitives[0].firstIndex;
-			indirectCmd.indexCount = node->mesh.primitives[0].indexCount;
+			indirectCmd.firstIndex = node->mesh->primitives[0]->firstIndex;
+			indirectCmd.indexCount = node->mesh->primitives[0]->indexCount;
 
 			m_indirectCommands.push_back(indirectCmd);
 			m++;
@@ -429,9 +429,14 @@ void ApplicationWin::Render()
 
 void ApplicationWin::LoadAsset()
 {
-	LoadGlTFFile("./Asset/mesh/IndirectDraw/plants.gltf", m_model.plants);
-	LoadGlTFFile("./Asset/mesh/IndirectDraw/plane_circle.gltf", m_model.ground);
-	LoadGlTFFile("./Asset/mesh/IndirectDraw/sphere.gltf", m_model.skySphere);
+	const uint32_t glTFLoadingFlags = Render::Vulkan::VkModel::FileLoadingFlags::PreTransformVertices
+		| Render::Vulkan::VkModel::FileLoadingFlags::PreMultiplyVertexColors |
+		Render::Vulkan::VkModel::FileLoadingFlags::FlipY;
+
+
+	m_model.plants.LoadFromFile("./Asset/mesh/IndirectDraw/plants.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
+	m_model.ground.LoadFromFile("./Asset/mesh/IndirectDraw/plane_circle.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
+	m_model.skySphere.LoadFromFile("./Asset/mesh/IndirectDraw/sphere.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
 
 	std::vector<std::string> strFileVec = {
 		"./Asset/mesh/IndirectDraw/0.png",
