@@ -294,8 +294,9 @@ Render::Vulkan::VkModel::Mesh::Mesh(Render::Vulkan::VulkanDevice* device, glm::m
 
 Render::Vulkan::VkModel::Mesh::~Mesh()
 {
-	if(uniformBuffer.buffer.device)
-		uniformBuffer.buffer.Destroy();
+	if (uniformBuffer.buffer.size == 0)
+		return;
+	uniformBuffer.buffer.Destroy();
 	for (auto primitive : primitives)
 	{
 		delete primitive;
