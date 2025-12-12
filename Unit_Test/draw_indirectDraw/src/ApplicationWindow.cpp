@@ -303,13 +303,14 @@ void ApplicationWin::PrepareInstanceData()
 	std::default_random_engine rndEngine(time(0));
 	std::uniform_real_distribution<float> uniformDist(0.0f, 1.0f);
 
-	for (uint32_t i = 0; i < m_objectCount; i++) {
+	for (uint32_t i = 0; i < m_objectCount; i++) 
+	{
 		float theta = 2 * float(3.14) * uniformDist(rndEngine);
 		float phi = acos(1 - 2 * uniformDist(rndEngine));
 		instanceData[i].rot = glm::vec3(0.0f, float(3.14) * uniformDist(rndEngine), 0.0f);
-		instanceData[i].pos = glm::vec3(sin(phi) * cos(theta), 0.0f, cos(phi)) * 25.0f;
+		instanceData[i].pos = glm::vec3(sin(phi) * cos(theta), 0.0f, cos(phi)) * 20.0f;
 		instanceData[i].scale = 1.0f + uniformDist(rndEngine) * 2.0f;
-		instanceData[i].texIndex = i / OBJECT_INSTANCE_COUNT;
+		instanceData[i].texIndex = i % OBJECT_INSTANCE_COUNT;
 	}
 
 	Render::Vulkan::Buffer stagingBuffer;

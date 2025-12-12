@@ -1,6 +1,6 @@
 ﻿#include "Render/Vulkan/ApplicationBase.h"
 
-#define OBJECT_INSTANCE_COUNT 2048
+#define OBJECT_INSTANCE_COUNT 1024
 
 struct ProjectBGTexture{
 	Render::Vulkan::VulkanTexture2DArray plants;
