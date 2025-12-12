@@ -6,6 +6,10 @@
 //我之前在VulkanModel  tinygltf.h包含了所有实现 这里包含会有重复符号报错
 //#define TINYGLTF_IMPLEMENTATION
 //#define TINYGLTF_NO_STB_IMAGE
+
+#if defined (__ANDROID__)
+#define TINYGLTF_ANDROID_LOAD_FROM_ASSETS
+#endif
 #define TINYGLTF_NO_STB_IMAGE_WRITE
 #include <tiny_gltf.h>
 

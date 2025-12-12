@@ -1,4 +1,4 @@
-﻿#include "ApplicationWindow.h"
+#include "ApplicationWindow.h"
 #include <random>
 
 // plants.gltf 模型文件可能包含多个mesh
@@ -168,20 +168,36 @@ void ApplicationWin::PreparePipeline()
 	pipelineCreateInfo.pVertexInputState = &inputState;
 	//VkPipelineRasterizationStateCreateInfo rasterizationStateNew = Render::Vulkan::Initializer::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_LINE, VK_CULL_MODE_NONE, VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
 	//pipelineCreateInfo.pRasterizationState = &rasterizationStateNew;
-	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/indirectdraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/indirectdraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.plants));
+
+#if defined (__ANDROID__)
+    shaderStages[0] = LoadShader("shaders/glsl/draw_indirectDraw/indirectDraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shaderStages[1] = LoadShader("shaders/glsl/draw_indirectDraw/indirectDraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/indirectDraw.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/indirectDraw.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#endif
+    VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.plants));
 	//pipelineCreateInfo.pRasterizationState = &rasterizationState;
 
 	inputState.vertexBindingDescriptionCount = 1;
 	inputState.vertexAttributeDescriptionCount = 4;
+#if defined (__ANDROID__)
+    shaderStages[0] = LoadShader("shaders/glsl/draw_indirectDraw/ground.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shaderStages[1] = LoadShader("shaders/glsl/draw_indirectDraw/ground.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
 	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/ground.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/ground.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
-	rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
+#endif
+    rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.ground));
 
-	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/skysphere.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+#if defined (__ANDROID__)
+    shaderStages[0] = LoadShader("shaders/glsl/draw_indirectDraw/skysphere.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shaderStages[1] = LoadShader("shaders/glsl/draw_indirectDraw/skysphere.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
+    shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/skysphere.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_indirectDraw/skysphere.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#endif
 	depthStencilState.depthWriteEnable = VK_FALSE;
 	rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCreateInfo, nullptr, &m_pipeline.skySphere));
@@ -434,7 +450,31 @@ void ApplicationWin::LoadAsset()
 		| Render::Vulkan::VkModel::FileLoadingFlags::PreMultiplyVertexColors |
 		Render::Vulkan::VkModel::FileLoadingFlags::FlipY;
 
+#if defined (__ANDROID__)
+    m_model.plants.LoadFromFile("mesh/IndirectDraw/plants.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
+	m_model.ground.LoadFromFile("mesh/IndirectDraw/plane_circle.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
+	m_model.skySphere.LoadFromFile("mesh/IndirectDraw/sphere.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
 
+	std::vector<std::string> strFileVec = {
+		"mesh/IndirectDraw/0.png",
+		"mesh/IndirectDraw/1.png",
+		"mesh/IndirectDraw/2.png",
+		"mesh/IndirectDraw/3.png",
+		"mesh/IndirectDraw/4.png",
+		"mesh/IndirectDraw/5.png",
+		"mesh/IndirectDraw/6.png",
+		"mesh/IndirectDraw/7.png",
+		"mesh/IndirectDraw/8.png",
+		"mesh/IndirectDraw/9.png",
+		"mesh/IndirectDraw/10.png",
+		"mesh/IndirectDraw/11.png"
+	};
+
+	m_texture.plants.mipLevels = 10;
+	m_texture.ground.mipLevels = 10;
+	m_texture.plants.LoadFromFile(strFileVec, VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
+	m_texture.ground.LoadFromFile("mesh/IndirectDraw/test.png", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
+#else
 	m_model.plants.LoadFromFile("./Asset/mesh/IndirectDraw/plants.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
 	m_model.ground.LoadFromFile("./Asset/mesh/IndirectDraw/plane_circle.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
 	m_model.skySphere.LoadFromFile("./Asset/mesh/IndirectDraw/sphere.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
@@ -458,4 +498,5 @@ void ApplicationWin::LoadAsset()
 	m_texture.ground.mipLevels = 10;
 	m_texture.plants.LoadFromFile(strFileVec, VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
 	m_texture.ground.LoadFromFile("./Asset/mesh/IndirectDraw/test.png", VK_FORMAT_R8G8B8A8_UNORM, vulkanDevice, m_queue);
+#endif
 }
