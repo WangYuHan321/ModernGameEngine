@@ -478,7 +478,7 @@ void ApplicationBase::UpdateOverlay()
 	ImGui::Begin("Vulkan Example", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
 	ImGui::TextUnformatted(title.c_str());
 	ImGui::TextUnformatted(m_deviceProperties.deviceName);
-	ImGui::Text("Triangle Demo");
+	ImGui::Text(title.c_str());
 	ImGui::PushItemWidth(250.0f * ui.scale);
 	OnUpdateUIOverlay(&ui);
 	ImGui::PopItemWidth();
