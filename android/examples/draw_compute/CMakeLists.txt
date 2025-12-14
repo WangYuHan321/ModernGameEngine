@@ -14,7 +14,7 @@ set(IMGUI_DIR "../../../deps/imgui")
 set(GLSLANG_DIR "../../../deps/glslang")
 set(TINYGLTF_DIR "../../../deps/tinygltf")
 set(TASKFLOW_DIR "../../../deps/taskflow")
-set(SRC_DIR ${MAIN_DIR}/Unit_Test/draw_compute)
+set(SRC_DIR ${MAIN_DIR}/Unit_Test/${NAME})
 set(RENDER_DIR ${MAIN_DIR}/Render)
 
 file(GLOB EXAMPLE_SRC ${SRC_DIR}/*.cpp ${SRC_DIR}/include/*.h ${SRC_DIR}/src/*.cpp)
