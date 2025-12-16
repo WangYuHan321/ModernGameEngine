@@ -516,7 +516,11 @@ void ApplicationWin::CreateRayTracingPipeline()
 
 	// Ray generation group
 	{
+#if defined (__ANDROID__)
+		shaderStages.push_back(LoadShader("shaders/glsl/ray_triangle/raygen.rgen.spv", VK_SHADER_STAGE_RAYGEN_BIT_KHR));
+#else
 		shaderStages.push_back(LoadShader("./Asset/shader/glsl/ray_triangle/raygen.rgen.spv", VK_SHADER_STAGE_RAYGEN_BIT_KHR));
+#endif
 		VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
 		shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
 		shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
@@ -529,7 +533,11 @@ void ApplicationWin::CreateRayTracingPipeline()
 
 	// Miss group                            glslangValidator
 	{
+#if defined (__ANDROID__)
+		shaderStages.push_back(LoadShader("shaders/glsl/ray_triangle/miss.rmiss.spv", VK_SHADER_STAGE_MISS_BIT_KHR));
+#else
 		shaderStages.push_back(LoadShader("./Asset/shader/glsl/ray_triangle/miss.rmiss.spv", VK_SHADER_STAGE_MISS_BIT_KHR));
+#endif
 		VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
 		shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
 		shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
@@ -542,7 +550,11 @@ void ApplicationWin::CreateRayTracingPipeline()
 
 	// Closest hit group
 	{
+#if defined (__ANDROID__)
+		shaderStages.push_back(LoadShader("shaders/glsl/ray_triangle/closesthit.rchit.spv", VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR));
+#else
 		shaderStages.push_back(LoadShader("./Asset/shader/glsl/ray_triangle/closesthit.rchit.spv", VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR));
+#endif
 		VkRayTracingShaderGroupCreateInfoKHR shaderGroup{};
 		shaderGroup.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
 		shaderGroup.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
