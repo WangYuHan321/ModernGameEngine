@@ -1,0 +1,63 @@
+#version 460
+
+#extension GL_EXT_ray_tracing : enable     //Vulkan GLSL 着色器扩展声明，用于启用光线追踪和图像加载功能。
+#extension GL_EXT_shader_image_load_formatted : enable   //允许着色器无需知道确切格式就能从图像加载数据。
+
+//glslc --target-env=vulkan1.2 closesthit.rchit -o closesthit.rchit.spv
+// 传统方式：需要知道确切格式
+// layout(binding = 0, rgba32f) uniform image2D image1;  // 必须指定格式
+// vec4 color1 = imageLoad(image1, ivec2(uv));
+
+// 使用扩展：不需要指定格式
+// layout(binding = 1) uniform image2D image2;  // 不指定格式！
+// vec4 color2 = imageLoad(image2, ivec2(uv));  // 自动适应格式
+
+
+// 内置变量
+//gl_WorldRayOriginEXT     // 光线起点（世界空间）
+//gl_WorldRayDirectionEXT  // 光线方向（世界空间）
+//gl_RayTminEXT           // 光线最小距离
+//gl_RayTmaxEXT           // 光线最大距离
+//gl_InstanceID           // 实例ID
+//gl_InstanceCustomIndexEXT // 自定义实例索引
+//gl_GeometryIndexEXT     // 几何体索引
+//gl_PrimitiveID          // 图元ID
+//gl_HitTEXT              // 命中距离
+
+
+layout (binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
+layout (binding = 1, set = 0) uniform image2D image;
+layout (binding = 2, set = 0) uniform CameraProperties
+{
+	mat4 viewInverse;
+	mat4 projInverse;
+} cam;
+
+layout(location = 0) rayPayloadEXT vec3 hitValue;
+//hitAttributeEXT vec2 attribs;   //当光线命中三角形时，硬件会自动计算并传入这两个值  通常包含 (u, v) 两个参数
+
+//一般在Ray Tracing Shader中 区别 光栅化 一般是射线的像素点  而在光栅化中一般表示顶点属性
+//layout(location = 0) rayPayloadEXT vec3 primaryColor;
+//layout(location = 1) rayPayloadEXT vec3 shadowRay;    // 阴影载荷
+//layout(location = 2) rayPayloadEXT vec3 reflection;   // 反射载荷
+//layout(location = 3) rayPayloadEXT vec3 refraction;   // 折射载荷
+
+void main()
+{
+	const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+	const vec2 inUV = pixelCenter/vec2(gl_LaunchSizeEXT.xy);
+	vec2 d = inUV * 2.0 - 1.0;
+
+	vec4 origin = cam.viewInverse * vec4(0,0,0,1);
+	vec4 target = cam.projInverse * vec4(d.x, d.y, 1, 1) ;
+	vec4 direction = cam.viewInverse*vec4(normalize(target.xyz), 0) ;
+
+	float tmin = 0.001;
+	float tmax = 10000.0;
+
+    hitValue = vec3(0.0);
+
+    traceRayEXT(topLevelAS, gl_RayFlagsOpaqueEXT, 0xff, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
+
+	imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(hitValue, 0.0));
+}
