@@ -2,7 +2,7 @@
 
 #include"ApplicationBase.h"
 
-class ApplicationRaytracingBase : ApplicationBase
+class ApplicationRaytracingBase : public ApplicationBase
 {
 protected:
 	virtual void SetupRenderPass();
