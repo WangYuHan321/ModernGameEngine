@@ -5,7 +5,7 @@ ApplicationWin::ApplicationWin():
 {
 	title = " ApplicationRayTraingle ";
 
-	apiVersion = VK_API_VERSION_1_1;
+	apiVersion = VK_API_VERSION_1_3;
 
 	m_camera.type = Camera::CameraType::lookat;
 	m_camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 512.0f);
