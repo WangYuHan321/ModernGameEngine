@@ -1,0 +1,43 @@
+#version 460
+
+#extension GL_EXT_ray_tracing : enable
+#extension GL_EXT_shader_image_load_formatted : enable // 不需要考虑任意格式的image format
+
+layout (binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
+layout (binding = 1, set = 0) uniform image2D image;
+layout (binding = 2, set = 0) uniform CameraProperties
+{
+	mat4 viewInverse;
+	mat4 projInverse;
+}cam;
+
+layout(location = 0) rayPayloadEXT vec3 hitValue;
+
+void main()
+{
+	//左上角为0，0   gl_LaunchIDEXT.xy 当前击中的像素坐标 gl_LaunchIDEXT.xy
+	//  gl_LaunchSizeEXT   渲染窗口的大小（以像素为单位）
+	
+	const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);//获取像素中心坐标
+	const vec2 inUV = pixelCenter / vec2(gl_LaunchSizeEXT.xy); //将 像素中心坐标归一化到[0,1]范围， 得到纹理坐标（UV坐标）。
+	vec2 d = inUV * 2.0 - 1.0; //将UV坐标从[0,1]映射到[-1,1]范围，得到NDC（标准化设备坐标）或用于某些计算的坐标
+
+	vec4 origin = cam.viewInverse * vec4(0,0,0,1); // 获取相机世界空间中的位置 相机（0，0，0）
+	vec4 target = cam.projInverse * vec4(d.x, d.y, 1, 1) ;//此投影是正交投影 如果是透视要除以w 而正交w = 1
+	//target = target / target.w; //透视
+	vec4 direction = cam.viewInverse*vec4(normalize(target.xyz), 0) ;// 世界空间方向
+
+	float tmin = 0.001;
+	float tmax = 10000.0;
+
+    hitValue = vec3(0.0);
+	//这里 topLevelAS -> 顶层加速结构 gl_RayFlagsNoneEXT -> 射线标志，表示无特殊行为 0xff -> 剔除掩码，这里为0xff表示所有几何体都可见
+	//0 -> sbtRecordOffset，着色器绑定表记录偏移 0 -> sbtRecordStride，着色器绑定表记录步长 0 -> missIndex，未命中着色器的索引
+	//origin.xyz -> 射线起点 tmin -> 射线的最小参数值（起点到最近交点的距离） direction.xyz -> 射线方向
+	//tmax -> 射线的最大参数值（起点到最远交点的距离）0 -> 载荷索引，指定使用哪个射线载荷变量（这里为0，对应layout(location=0)的rayPayloadEXT变量）
+	traceRayEXT(topLevelAS, gl_RayFlagsNoneEXT, 0xff, 0, 0, 0, origin.xyz, tmin, direction.xyz, tmax, 0);
+
+	imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(hitValue, 0.0));
+}
+
+
