@@ -402,3 +402,8 @@ bool Render::Vulkan::UIOverlay::CheckBox(const char* caption, bool* value)
 {
 	return ImGui::Checkbox(caption, value);
 }
+
+bool Render::Vulkan::UIOverlay::Button(const char* caption)
+{
+	return ImGui::Button(caption);
+}
