@@ -143,12 +143,12 @@ void ApplicationWin::CreateBottomLevelAccelerationStructure()
 	//创建
 	VkAccelerationStructureGeometryKHR accelerationStructureGeometry{};
 	accelerationStructureGeometry.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-	accelerationStructureGeometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // 完全不透明（性能最优）
+	//accelerationStructureGeometry.flags = VK_GEOMETRY_OPAQUE_BIT_KHR; // 完全不透明（性能最优）
 	accelerationStructureGeometry.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
 	accelerationStructureGeometry.geometry.triangles.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
 	accelerationStructureGeometry.geometry.triangles.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
 	accelerationStructureGeometry.geometry.triangles.vertexData = vertexBufferDeviceAddress;// 设备地址，必须是GPU可访问的内存
-	accelerationStructureGeometry.geometry.triangles.maxVertex = 2; //  // 最大顶点索引// 如果有3个顶点，索引是0,1,2，则maxVertex=2
+	accelerationStructureGeometry.geometry.triangles.maxVertex = 3; //  // 最大顶点索引// 如果有3个顶点，索引是0,1,2，则maxVertex=2
 	accelerationStructureGeometry.geometry.triangles.vertexStride = sizeof(Vertex);
 	accelerationStructureGeometry.geometry.triangles.indexType = VK_INDEX_TYPE_UINT32;
 	accelerationStructureGeometry.geometry.triangles.indexData = indexBufferDeviceAddress;
@@ -166,7 +166,7 @@ void ApplicationWin::CreateBottomLevelAccelerationStructure()
 	accelerationStructureBuildGeometryInfo.geometryCount = 1;
 	accelerationStructureBuildGeometryInfo.pGeometries = &accelerationStructureGeometry;
 
-	const uint32_t numTriangles = 1;
+	const uint32_t numTriangles = static_cast<uint32_t>(indices.size() / 3);;
 	VkAccelerationStructureBuildSizesInfoKHR accelerationStructureBuildSizesInfo{};
 	accelerationStructureBuildSizesInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
 	vkGetAccelerationStructureBuildSizesKHR(
