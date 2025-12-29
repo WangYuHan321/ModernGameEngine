@@ -123,6 +123,7 @@ VkResult Render::Vulkan::VulkanDevice::CreateLogicalDevice(VkPhysicalDeviceFeatu
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos{};
 	const float defaultQueuePriority(0.0f);
 
+    this->enableFeatures = enabledFeatures;
 
     if (requestedQueueType & VK_QUEUE_GRAPHICS_BIT)
     {
@@ -213,8 +214,6 @@ VkResult Render::Vulkan::VulkanDevice::CreateLogicalDevice(VkPhysicalDeviceFeatu
         deviceCreateInfo.enabledExtensionCount = (uint32_t)deviceExtensions.size();
         deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
     }
-
-    this->enableFeatures = enabledFeatures;
 
     VkResult result = vkCreateDevice(physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice);
     if (result != VK_SUCCESS)

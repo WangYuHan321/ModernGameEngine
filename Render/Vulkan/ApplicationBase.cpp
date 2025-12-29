@@ -802,9 +802,9 @@ void ApplicationBase::LoadGlTFFile(std::string path, GlTFModel& glTFModel)
 VkPipelineShaderStageCreateInfo ApplicationBase::LoadShader(std::string fileName, VkShaderStageFlagBits stage)
 {
 	VkPipelineShaderStageCreateInfo shaderStage{
-	.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
-	.stage = stage,
-	.pName = "main"
+		.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+		.stage = stage,
+		.pName = "main"
 	};
 
 #if defined (__ANDROID__)

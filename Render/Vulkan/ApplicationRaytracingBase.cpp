@@ -113,6 +113,8 @@ void ApplicationRaytracingBase::EnableExtensions()
 	m_enabledDeviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
 	m_enabledDeviceExtensions.push_back(VK_KHR_SPIRV_1_4_EXTENSION_NAME);
+
+	m_enabledDeviceExtensions.push_back(VK_KHR_SHADER_FLOAT_CONTROLS_EXTENSION_NAME);
 	
 	m_enabledFeatures.shaderStorageImageWriteWithoutFormat = VK_TRUE;
 }
