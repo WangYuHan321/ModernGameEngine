@@ -4,13 +4,11 @@ layout(location = 0) in vec3 inPos;
 layout(location = 1) in vec3 inNormal;
 layout(location = 2) in vec3 inColor;
 
-layout (std140, push_constant) uniform PushConsts
+layout(std140, push_constant) uniform PushConsts
 {
 	mat4 mvp;
 	vec3 color;
-};
-
-PushConsts pushConsts;
+}pushConsts;
 
 layout(location = 0) out vec3 outNormal;
 layout(location = 1) out vec3 outColor;
