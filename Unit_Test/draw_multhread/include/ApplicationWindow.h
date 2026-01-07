@@ -197,6 +197,7 @@ public:
 
 	void PrepareGraphicsPipeline();
 	void PrepareUniformBuffer();
+	void PrepareMulthreadRenderer();
 	void BuildGraphicsCommandBuffer();
 
 	void Prepare() override;

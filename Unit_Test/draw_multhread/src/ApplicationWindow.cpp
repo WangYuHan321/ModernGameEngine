@@ -69,6 +69,11 @@ void ApplicationWin::PrepareGraphicsPipeline()
 
 }
 
+void ThreadRenderCode(uint32_t threadIndex, uint32_t cmdBufferIndex, VkCommandBufferInheritanceInfo inheritanceInfo)
+{
+
+}
+
 void ApplicationWin::PrepareUniformBuffer()
 {
 }
@@ -77,11 +82,33 @@ void ApplicationWin::BuildGraphicsCommandBuffer()
 {
 }
 
+void ApplicationWin::PrepareMulthreadRenderer()
+{
+	for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+		VkCommandBufferAllocateInfo cmdBufAllocateInfo = Render::Vulkan::Initializer::CommandBufferAllocateInfo(m_cmdPool, VK_COMMAND_BUFFER_LEVEL_SECONDARY, 1);
+		VK_CHECK_RESULT(vkAllocateCommandBuffers(m_device, &cmdBufAllocateInfo, &m_secondaryCommandBuffer[i].background));
+		VK_CHECK_RESULT(vkAllocateCommandBuffers(m_device, &cmdBufAllocateInfo, &m_secondaryCommandBuffer[i].ui));
+	}
+
+	m_threadData.resize(m_numThreads);
+
+	for (int i = 0; i < m_numThreads;i++)
+	{
+		ThreadData* curThreadData = &m_threadData[i];
+
+
+
+
+
+	}
+
+}
+
 void ApplicationWin::Prepare() 
 {
 	ApplicationBase::Prepare();
 	LoadAsset("./Asset/mesh/Sponza/Sponza.gltf"); // 加载图片
-	PrepareUniformBuffer();
+	PrepareMulthreadRenderer();
 	CreateDescriptorPool();
 	PrepareGraphicsPipeline();
 	prepared = true;
