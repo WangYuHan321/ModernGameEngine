@@ -1,6 +1,7 @@
 ﻿#include "ApplicationWindow.h"
 
 #define OBJECT_NUM 512
+#define PI 3.141592653
 
 ApplicationWin::ApplicationWin():
 	ApplicationBase()
@@ -64,14 +65,67 @@ void ApplicationWin::CreateDescriptorPool()
 
 }
 
-void ApplicationWin::PrepareGraphicsPipeline()
+void ApplicationWin::UpdateMatrices()
 {
+	m_matrix.projection = m_camera.matrices.perspective;
+	m_matrix.view = m_camera.matrices.view;
+}
+
+void ApplicationWin::PreparePipelines()
+{
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(nullptr, 0);
+	
+	VkPushConstantRange pushConstantRange = Render::Vulkan::Initializer::PushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, sizeof(ThreadPushConstantBlock), 0);
+	pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+	pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout));
+
 
 }
 
-void ThreadRenderCode(uint32_t threadIndex, uint32_t cmdBufferIndex, VkCommandBufferInheritanceInfo inheritanceInfo)
+void ApplicationWin::ThreadRenderCode(uint32_t threadIndex, uint32_t cmdBufferIndex, VkCommandBufferInheritanceInfo inheritanceInfo)
 {
+	ThreadData* thread = &m_threadData[threadIndex];
+	ObjectData* objData = &thread->objectData[cmdBufferIndex];
 
+	VkCommandBufferBeginInfo commandBufferBeginInfo = Render::Vulkan::Initializer::CommandBufferBeginInfo();
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	commandBufferBeginInfo.pInheritanceInfo = &inheritanceInfo;
+
+	VkCommandBuffer cmdBuffer = thread->commandBuffer[m_currentBuffer][cmdBufferIndex];
+
+	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &commandBufferBeginInfo));
+
+	VkViewport viewport = Render::Vulkan::Initializer::Viewport(width, height, 0, 1);
+	vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+
+	VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
+	vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines.phong);
+
+	objData->model = glm::translate(glm::mat4(1.0f), objData->pos);
+	objData->model = glm::rotate(objData->model, -sinf(glm::radians(objData->deltaT * 360.0f)) * 0.25f, glm::vec3(objData->rotationDir, 0.0f, 0.0f));
+	objData->model = glm::rotate(objData->model, glm::radians(objData->rotation.y), glm::vec3(0.0f, objData->rotationDir, 0.0f));
+	objData->model = glm::rotate(objData->model, glm::radians(objData->deltaT * 360.0f), glm::vec3(0.0f, objData->rotationDir, 0.0f));
+	objData->model = glm::scale(objData->model, glm::vec3(objData->scale));
+
+	thread->pushConstBlock[cmdBufferIndex].mvp = m_matrix.projection * m_matrix.view * objData->model;
+
+	vkCmdPushConstants(
+		cmdBuffer,
+		m_pipelineLayout,
+		VK_SHADER_STAGE_VERTEX_BIT,
+		0,
+		sizeof(ThreadPushConstantBlock),
+		&thread->pushConstBlock[cmdBufferIndex]);
+
+	VkDeviceSize offsets[1] = { 0 };
+	vkCmdBindVertexBuffers(cmdBuffer, 0, 1, &m_models.model.vertices.buffer, offsets);
+	vkCmdBindIndexBuffer(cmdBuffer, m_models.model.indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+	vkCmdDrawIndexed(cmdBuffer, m_models.model.indices.count, 1, 0, 0, 0);
+
+	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
 }
 
 void ApplicationWin::PrepareUniformBuffer()
@@ -96,21 +150,45 @@ void ApplicationWin::PrepareMulthreadRenderer()
 	{
 		ThreadData* curThreadData = &m_threadData[i];
 
+		//初始化每个 线程的CommandBuffer
+		VkCommandPoolCreateInfo cmdPoolInfo = Render::Vulkan::Initializer::CommandPoolCreateInfo();
+		cmdPoolInfo.queueFamilyIndex = m_swapChain.queueNodeIndex;
+		cmdPoolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
+		VK_CHECK_RESULT(vkCreateCommandPool(m_device, &cmdPoolInfo, nullptr, &curThreadData->commandPool));
 
+		for (auto& commandBuffer : curThreadData->commandBuffer)
+		{
+			commandBuffer.resize(m_numObjectPerThread);
 
+			VkCommandBufferAllocateInfo secondaryCmdBufAllocateInfo = Render::Vulkan::Initializer::CommandBufferAllocateInfo(curThreadData->commandPool, VK_COMMAND_BUFFER_LEVEL_SECONDARY, static_cast<uint32_t>(commandBuffer.size()));
+			VK_CHECK_RESULT(vkAllocateCommandBuffers(m_device, &secondaryCmdBufAllocateInfo, commandBuffer.data()));
+		}
 
+		// 每个线程中object数据
+		curThreadData->pushConstBlock.resize(m_numObjectPerThread);
+		curThreadData->objectData.resize(m_numObjectPerThread);
+
+		for (uint32_t j = 0; j < m_numObjectPerThread; j++) {
+			float theta = 2.0f * float(PI) * Rnd(1.0f);
+			float phi = acos(1.0f - 2.0f * Rnd(1.0f));
+			curThreadData->objectData[j].pos = glm::vec3(sin(phi) * cos(theta), 0.0f, cos(phi)) * 35.0f;
+			curThreadData->objectData[j].rotation = glm::vec3(0.0f, Rnd(360.0f), 0.0f);
+			curThreadData->objectData[j].deltaT = Rnd(1.0f);
+			curThreadData->objectData[j].rotationDir = (Rnd(100.0f) < 50.0f) ? 1.0f : -1.0f;
+			curThreadData->objectData[j].rotationSpeed = (2.0f + Rnd(4.0f)) * curThreadData->objectData[j].rotationDir;
+			curThreadData->objectData[j].scale = 0.75f + Rnd(0.5f);
+			curThreadData->pushConstBlock[j].color = glm::vec3(Rnd(1.0f), Rnd(1.0f), Rnd(1.0f));
+		}
 	}
-
 }
 
 void ApplicationWin::Prepare() 
 {
 	ApplicationBase::Prepare();
 	LoadAsset("./Asset/mesh/Sponza/Sponza.gltf"); // 加载图片
+	UpdateMatrices();
 	PrepareMulthreadRenderer();
-	CreateDescriptorPool();
-	PrepareGraphicsPipeline();
 	prepared = true;
 }
 

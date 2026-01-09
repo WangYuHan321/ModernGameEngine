@@ -193,12 +193,15 @@ public:
 
 	void DrawUI(const VkCommandBuffer cmdBuffer);
 	void CreateDescriptorPool();
+	void UpdateMatrices();
 	void UpdateUniformBuffers();
 
-	void PrepareGraphicsPipeline();
+	void PreparePipelines();
 	void PrepareUniformBuffer();
 	void PrepareMulthreadRenderer();
 	void BuildGraphicsCommandBuffer();
+
+	void ThreadRenderCode(uint32_t threadIndex, uint32_t cmdBufferIndex, VkCommandBufferInheritanceInfo inheritanceInfo);
 
 	void Prepare() override;
 	void Render();
