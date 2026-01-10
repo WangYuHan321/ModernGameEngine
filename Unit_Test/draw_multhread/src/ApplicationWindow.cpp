@@ -71,6 +71,18 @@ void ApplicationWin::UpdateMatrices()
 	m_matrix.view = m_camera.matrices.view;
 }
 
+void ApplicationWin::UpdateSecondaryCommandBuffers(VkCommandBufferInheritanceInfo inheritanceInfo)
+{
+	VkCommandBufferBeginInfo commandBufferBeginInfo = Render::Vulkan::Initializer::CommandBufferBeginInfo();
+
+	commandBufferBeginInfo.flags = VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT;
+	commandBufferBeginInfo.pInheritanceInfo = &inheritanceInfo;
+
+	VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width, (float)height, 0.0f, 1.0f);
+	VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
+
+}
+
 void ApplicationWin::PreparePipelines()
 {
 	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(nullptr, 0);
@@ -81,6 +93,88 @@ void ApplicationWin::PreparePipelines()
 	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout));
 
 
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyState = Render::Vulkan::
+		Initializer::PipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+	VkPipelineRasterizationStateCreateInfo rasterizationState = Render::Vulkan::
+		Initializer::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, 
+			VK_FRONT_FACE_COUNTER_CLOCKWISE, 0);
+	VkPipelineColorBlendAttachmentState blendAttachmentState = Render::Vulkan::
+		Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE);
+	VkPipelineColorBlendStateCreateInfo colorBlendState = Render::Vulkan::
+		Initializer::PipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
+	VkPipelineDepthStencilStateCreateInfo depthStencilState = Render::Vulkan::
+		Initializer::PipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
+	VkPipelineViewportStateCreateInfo viewportState = Render::Vulkan::
+		Initializer::PipelineViewportStateCreateInfo(1, 1, 0);
+	VkPipelineMultisampleStateCreateInfo multisampleState = Render::Vulkan::
+		Initializer::PipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT, 0);
+	std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+	VkPipelineDynamicStateCreateInfo dynamicState = Render::Vulkan::
+		Initializer::PipelineDynamicStateCreateInfo(dynamicStateEnables);
+	VkPipelineVertexInputStateCreateInfo vertexInputState = Render::Vulkan::
+		Initializer::PipelineVertexInputStateCreateInfo();
+
+	VkVertexInputBindingDescription vertexInputBinding{};
+	vertexInputBinding.binding = 0;
+	vertexInputBinding.stride = sizeof(Vertex);
+	vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	VkVertexInputAttributeDescription vertexInputAttr0{};
+	vertexInputAttr0.location = 0;
+	vertexInputAttr0.binding = 0;
+	vertexInputAttr0.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr0.offset = offsetof(Vertex, pos);
+
+	VkVertexInputAttributeDescription vertexInputAttr1{};
+	vertexInputAttr1.location = 1;
+	vertexInputAttr1.binding = 0;
+	vertexInputAttr1.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr1.offset = offsetof(Vertex, normal);
+
+	VkVertexInputAttributeDescription vertexInputAttr2{};
+	vertexInputAttr1.location = 2;
+	vertexInputAttr1.binding = 0;
+	vertexInputAttr1.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr1.offset = offsetof(Vertex, color);
+
+	std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
+		vertexInputBinding
+	};
+
+	std::vector<VkVertexInputAttributeDescription> vertexInputAttrs = {
+		vertexInputAttr0, vertexInputAttr1, vertexInputAttr2
+	};
+
+	vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindings.size());
+	vertexInputState.pVertexBindingDescriptions = vertexInputBindings.data();
+	vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttrs.size());
+	vertexInputState.pVertexAttributeDescriptions = vertexInputAttrs.data();
+
+	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
+
+	VkGraphicsPipelineCreateInfo pipelineCI = Render::Vulkan::Initializer::PipelineCreateInfo(m_pipelineLayout, m_renderPass, 0);
+	pipelineCI.pInputAssemblyState = &inputAssemblyState;
+	pipelineCI.pRasterizationState = &rasterizationState;
+	pipelineCI.pColorBlendState = &colorBlendState;
+	pipelineCI.pMultisampleState = &multisampleState;
+	pipelineCI.pViewportState = &viewportState;
+	pipelineCI.pDepthStencilState = &depthStencilState;
+	pipelineCI.pDynamicState = &dynamicState;
+	pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
+	pipelineCI.pStages = shaderStages.data();
+	pipelineCI.pVertexInputState = &vertexInputState;
+
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_multhread/draw_multhread.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multhread/draw_multhread.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCI, nullptr, &m_pipelines.phong));
+
+	/*rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
+	depthStencilState.depthWriteEnable = VK_FALSE;
+	shaderStages[0] = LoadShader("multithreading/starsphere.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("multithreading/starsphere.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCI, nullptr, &m_pipelines.startsphere));*/
 }
 
 void ApplicationWin::ThreadRenderCode(uint32_t threadIndex, uint32_t cmdBufferIndex, VkCommandBufferInheritanceInfo inheritanceInfo)
@@ -189,19 +283,75 @@ void ApplicationWin::Prepare()
 	LoadAsset("./Asset/mesh/Sponza/Sponza.gltf"); // 加载图片
 	UpdateMatrices();
 	PrepareMulthreadRenderer();
+	PreparePipelines();
 	prepared = true;
 }
 
-void ApplicationWin::UpdateUniformBuffers()
+void ApplicationWin::UpdateCommandBuffers()
 {
+	VkCommandBuffer cmdBuffer = m_drawCmdBuffers[m_currentBuffer];
 
+	std::vector<VkCommandBuffer> commandBuffers;
+	
+	VkCommandBufferBeginInfo cmdBufInfo = Render::Vulkan::Initializer::CommandBufferBeginInfo();
+	
+	VkClearValue clearValues[2]{};
+	clearValues[0].color = { 0,0,0,1 };
+	clearValues[1].depthStencil = { 1,0 };
+
+	VkRenderPassBeginInfo renderPassBeginInfo = Render::Vulkan::Initializer::RenderPassBeginInfo();
+	renderPassBeginInfo.renderPass = m_renderPass;
+	renderPassBeginInfo.renderArea.offset.x = 0;
+	renderPassBeginInfo.renderArea.offset.y = 0;
+	renderPassBeginInfo.renderArea.extent.width = width;
+	renderPassBeginInfo.renderArea.extent.height = height;
+	renderPassBeginInfo.clearValueCount = 2;
+	renderPassBeginInfo.pClearValues = clearValues;
+	renderPassBeginInfo.framebuffer = m_frameBuffers[m_currentImageIndex];
+
+	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
+
+	vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
+
+	VkCommandBufferInheritanceInfo inheritanceInfo = Render::Vulkan::Initializer::CommandBufferInheritanceInfo();
+	inheritanceInfo.renderPass = renderPassBeginInfo.renderPass;
+	inheritanceInfo.framebuffer = renderPassBeginInfo.framebuffer;
+
+	for (uint32_t t = 0; t < m_numThreads; t++) {
+		for (uint32_t i = 0; i < m_numObjectPerThread; i++) {
+			m_threadPool.threads[t]->addJob([=, this] { ThreadRenderCode(t, i, inheritanceInfo); });
+		}
+	}
+
+	m_threadPool.Wait();
+
+	vkCmdExecuteCommands(m_drawCmdBuffers[m_currentBuffer], static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+
+	vkCmdEndRenderPass(m_drawCmdBuffers[m_currentBuffer]);
+
+	VK_CHECK_RESULT(vkEndCommandBuffer(m_drawCmdBuffers[m_currentBuffer]));
 }
 
 void ApplicationWin::Render()
 {
+	if (!prepared)
+		return;
+
+	VK_CHECK_RESULT(vkWaitForFences(m_device, 1, &m_waitFences[m_currentBuffer], VK_TRUE, UINT64_MAX));
+	VK_CHECK_RESULT(vkResetFences(m_device, 1, &m_waitFences[m_currentBuffer]));
+	m_swapChain.AcquireNextImage(m_presentCompleteSemaphores[m_currentBuffer], m_currentImageIndex);
+
+	UpdateMatrices();
+	UpdateCommandBuffers();
+
+	ApplicationBase::SubmitFrame(false);
+
+	vkQueueWaitIdle(m_queue);
+
 }
 
 void ApplicationWin::LoadAsset(std::string fileNamePath)
 {
-
+	const uint32_t glTFLoadingFlags = VkModel::FileLoadingFlags::PreTransformVertices | VkModel::FileLoadingFlags::PreMultiplyVertexColors | VkModel::FileLoadingFlags::FlipY;
+	m_models.model.LoadFromFile(fileNamePath, vulkanDevice, m_queue, glTFLoadingFlags);
 }

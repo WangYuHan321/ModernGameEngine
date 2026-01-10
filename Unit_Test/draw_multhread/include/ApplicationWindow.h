@@ -166,6 +166,13 @@ public:
 
 };
 
+struct Vertex
+{
+	glm::vec3 pos;
+	glm::vec3 normal;
+	glm::vec3 color;
+};
+
 class ApplicationWin : public ApplicationBase
 {
 public:
@@ -194,7 +201,8 @@ public:
 	void DrawUI(const VkCommandBuffer cmdBuffer);
 	void CreateDescriptorPool();
 	void UpdateMatrices();
-	void UpdateUniformBuffers();
+	void UpdateSecondaryCommandBuffers(VkCommandBufferInheritanceInfo inheritanceInfo);
+	void UpdateCommandBuffers();
 
 	void PreparePipelines();
 	void PrepareUniformBuffer();
