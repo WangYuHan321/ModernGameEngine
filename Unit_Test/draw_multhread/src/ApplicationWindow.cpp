@@ -81,6 +81,9 @@ void ApplicationWin::UpdateSecondaryCommandBuffers(VkCommandBufferInheritanceInf
 	VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width, (float)height, 0.0f, 1.0f);
 	VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
 
+	glm::mat4 mvp = m_matrix.projection * m_matrix.view;
+	mvp[3] = glm::vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	mvp = glm::scale(mvp, glm::vec3(2.0f));
 }
 
 void ApplicationWin::PreparePipelines()
@@ -132,10 +135,10 @@ void ApplicationWin::PreparePipelines()
 	vertexInputAttr1.offset = offsetof(Vertex, normal);
 
 	VkVertexInputAttributeDescription vertexInputAttr2{};
-	vertexInputAttr1.location = 2;
-	vertexInputAttr1.binding = 0;
-	vertexInputAttr1.format = VK_FORMAT_R32G32B32_SFLOAT;
-	vertexInputAttr1.offset = offsetof(Vertex, color);
+	vertexInputAttr2.location = 2;
+	vertexInputAttr2.binding = 0;
+	vertexInputAttr2.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr2.offset = offsetof(Vertex, color);
 
 	std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
 		vertexInputBinding
@@ -197,6 +200,16 @@ void ApplicationWin::ThreadRenderCode(uint32_t threadIndex, uint32_t cmdBufferIn
 	vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
 	vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelines.phong);
+
+
+	objData->rotation.y += 2.5f * objData->rotationSpeed * 1.0f;
+	if (objData->rotation.y > 360.0f) {
+		objData->rotation.y -= 360.0f;
+	}
+	objData->deltaT += 0.15f * 1.0f;
+	if (objData->deltaT > 1.0f)
+		objData->deltaT -= 1.0f;
+	objData->pos.y = sin(glm::radians(objData->deltaT * 360.0f)) * 2.5f;
 
 	objData->model = glm::translate(glm::mat4(1.0f), objData->pos);
 	objData->model = glm::rotate(objData->model, -sinf(glm::radians(objData->deltaT * 360.0f)) * 0.25f, glm::vec3(objData->rotationDir, 0.0f, 0.0f));
@@ -280,7 +293,7 @@ void ApplicationWin::PrepareMulthreadRenderer()
 void ApplicationWin::Prepare() 
 {
 	ApplicationBase::Prepare();
-	LoadAsset("./Asset/mesh/Sponza/Sponza.gltf"); // 加载图片
+	LoadAsset("./Asset/mesh/ufo/retroufo_red_lowpoly.gltf"); // 加载图片
 	UpdateMatrices();
 	PrepareMulthreadRenderer();
 	PreparePipelines();
@@ -324,6 +337,14 @@ void ApplicationWin::UpdateCommandBuffers()
 	}
 
 	m_threadPool.Wait();
+
+	for (uint32_t t = 0; t < m_numThreads; t++) {
+		for (uint32_t i = 0; i < m_numObjectPerThread; i++) {
+			if (m_threadData[t].objectData[i].visible) {
+				commandBuffers.push_back(m_threadData[t].commandBuffer[m_currentBuffer][i]);
+			}
+		}
+	}
 
 	vkCmdExecuteCommands(m_drawCmdBuffers[m_currentBuffer], static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
