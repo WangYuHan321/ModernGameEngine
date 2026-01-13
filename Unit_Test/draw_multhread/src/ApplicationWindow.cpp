@@ -167,8 +167,13 @@ void ApplicationWin::PreparePipelines()
 	pipelineCI.pStages = shaderStages.data();
 	pipelineCI.pVertexInputState = &vertexInputState;
 
+#if defined __ANDROID__
+	shaderStages[0] = LoadShader("shaders/glsl/draw_multhread/draw_multhread.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("shaders/glsl/draw_multhread/draw_multhread.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
 	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_multhread/draw_multhread.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multhread/draw_multhread.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#endif
 
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCI, nullptr, &m_pipelines.phong));
 
@@ -293,7 +298,11 @@ void ApplicationWin::PrepareMulthreadRenderer()
 void ApplicationWin::Prepare() 
 {
 	ApplicationBase::Prepare();
+#if defined __ANDROID__
+	LoadAsset("mesh/ufo/retroufo_red_lowpoly.gltf"); // 加载图片
+#else
 	LoadAsset("./Asset/mesh/ufo/retroufo_red_lowpoly.gltf"); // 加载图片
+#endif
 	UpdateMatrices();
 	PrepareMulthreadRenderer();
 	PreparePipelines();
