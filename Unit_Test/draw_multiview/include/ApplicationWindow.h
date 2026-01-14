@@ -28,10 +28,19 @@ class ApplicationWin : public ApplicationBase
 {
 public:
 
+	VkPhysicalDeviceMultiviewFeaturesKHR m_physicalDeviceMultiviewFeatures{};
+
 
 	MultivewPass m_multivewPass;
 
-	GltfModel m_model;
+	VkModel m_model;
+
+	VkPipeline m_pipeline{ VK_NULL_HANDLE };
+	VkPipelineLayout m_pipelineLayout{ VK_NULL_HANDLE };
+	VkDescriptorSetLayout m_descriptorSetLayout{ VK_NULL_HANDLE };
+	std::array<VkDescriptorSet, MAX_FRAMES_IN_FLIGHT> m_descriptorSets{};
+
+	VkPipeline viewDisplayPipelines[2]{};
 
 	UniformData m_uniformData;
 
@@ -49,6 +58,8 @@ public:
 	void CreateDescriptorPool();
 	void UpdateUniformBuffers();
 
+
+	void PrepareMultView();
 	void PrepareGraphicsPipeline();
 	void PrepareUniformBuffer();
 	void BuildGraphicsCommandBuffer();
