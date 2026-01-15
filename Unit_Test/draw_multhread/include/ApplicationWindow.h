@@ -170,9 +170,13 @@ struct Vertex
 {
 	glm::vec3 pos;
 	glm::vec3 normal;
-	glm::vec3 color;
-};
+	glm::vec2 uv;
+	glm::vec4 color;
+	glm::vec4 joint0;
+	glm::vec4 weight0;
+	glm::vec4 tangent;
 
+};
 class ApplicationWin : public ApplicationBase
 {
 public:

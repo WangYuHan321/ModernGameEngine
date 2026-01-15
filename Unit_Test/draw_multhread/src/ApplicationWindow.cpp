@@ -211,7 +211,7 @@ void ApplicationWin::ThreadRenderCode(uint32_t threadIndex, uint32_t cmdBufferIn
 	if (objData->rotation.y > 360.0f) {
 		objData->rotation.y -= 360.0f;
 	}
-	objData->deltaT += 0.15f * 1.0f;
+	objData->deltaT += 0.15f * 0.01f;
 	if (objData->deltaT > 1.0f)
 		objData->deltaT -= 1.0f;
 	objData->pos.y = sin(glm::radians(objData->deltaT * 360.0f)) * 2.5f;

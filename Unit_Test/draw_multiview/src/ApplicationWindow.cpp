@@ -137,11 +137,11 @@ void ApplicationWin::PreparePipeline()
 	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
 
 #if defined __ANDROID__
-	shaderStages[0] = LoadShader("shaders/glsl/draw_multview/draw_multview.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("shaders/glsl/draw_multview/draw_multview.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader("shaders/glsl/draw_multiview/draw_multiview.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("shaders/glsl/draw_multiview/draw_multiview.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 #else
-	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_multview/draw_multview.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multview/draw_multview.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_multiview/draw_multiview.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multiview/draw_multiview.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 #endif
 
 	VkGraphicsPipelineCreateInfo pipelineCI = Render::Vulkan::Initializer::PipelineCreateInfo(m_pipelineLayout, m_multivewPass.renderPass);
@@ -173,11 +173,11 @@ void ApplicationWin::PreparePipeline()
 	//2个视角
 	for (uint32_t i = 0; i < 2; i++) {
 #if defined __ANDROID__
-		shaderStages[0] = LoadShader("shaders/glsl/draw_multview/draw_display.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		shaderStages[1] = LoadShader("shaders/glsl/draw_multview/draw_display.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		shaderStages[0] = LoadShader("shaders/glsl/draw_multiview/draw_display.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = LoadShader("shaders/glsl/draw_multiview/draw_display.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 #else
-		shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_multview/draw_display.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
-		shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multview/draw_display.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+		shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_multiview/draw_display.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multiview/draw_display.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 #endif
 		shaderStages[1].pSpecializationInfo = &specializationInfo;
 		multiviewArrayLayer = (float)i;
