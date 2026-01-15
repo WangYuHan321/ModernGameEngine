@@ -24,6 +24,13 @@ struct UniformData
 	float distortionAlpha = 0.2f;
 };
 
+struct Vertex
+{
+	glm::vec3 pos;
+	glm::vec3 normal;
+	glm::vec3 color;
+};
+
 class ApplicationWin : public ApplicationBase
 {
 public:
@@ -60,9 +67,11 @@ public:
 
 
 	void PrepareMultView();
-	void PrepareGraphicsPipeline();
+	void PrepareDescriptor();
+	void UpdateDescriptors();
+	void PreparePipeline();
 	void PrepareUniformBuffer();
-	void BuildGraphicsCommandBuffer();
+	void BuildCommandBuffer();
 
 	void Prepare() override;
 	void Render();

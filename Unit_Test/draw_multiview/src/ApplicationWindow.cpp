@@ -55,8 +55,139 @@ void ApplicationWin::CreateDescriptorPool()
 
 }
 
-void ApplicationWin::PrepareGraphicsPipeline()
+void ApplicationWin::PreparePipeline()
 {
+	VkPhysicalDeviceFeatures2KHR deviceFeatures2{};
+	VkPhysicalDeviceMultiviewFeaturesKHR extFeatures{};
+
+	extFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES_KHR;
+	deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+	deviceFeatures2.pNext = &extFeatures;
+	PFN_vkGetPhysicalDeviceFeatures2KHR vkGetPhysicalDeviceFeatures2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceFeatures2KHR>(vkGetInstanceProcAddr(m_instance, "vkGetPhysicalDeviceFeatures2KHR"));
+	vkGetPhysicalDeviceFeatures2KHR(m_physicalDevice, &deviceFeatures2);
+	std::cout << "Multiview features:" << std::endl;
+	std::cout << "\tmultiview = " << extFeatures.multiview << std::endl;
+	std::cout << "\tmultiviewGeometryShader = " << extFeatures.multiviewGeometryShader << std::endl;
+	std::cout << "\tmultiviewTessellationShader = " << extFeatures.multiviewTessellationShader << std::endl;
+	std::cout << std::endl;
+
+	VkPhysicalDeviceProperties2KHR deviceProps2{};
+	VkPhysicalDeviceMultiviewPropertiesKHR extProps{};
+	extProps.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES_KHR;
+	deviceProps2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+	deviceProps2.pNext = &extProps;
+	PFN_vkGetPhysicalDeviceProperties2KHR vkGetPhysicalDeviceProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties2KHR>(vkGetInstanceProcAddr(m_instance, "vkGetPhysicalDeviceProperties2KHR"));
+	vkGetPhysicalDeviceProperties2KHR(m_physicalDevice, &deviceProps2);
+	std::cout << "Multiview properties:" << std::endl;
+	std::cout << "\tmaxMultiviewViewCount = " << extProps.maxMultiviewViewCount << std::endl;
+	std::cout << "\tmaxMultiviewInstanceIndex = " << extProps.maxMultiviewInstanceIndex << std::endl;
+
+	/*
+	*	创建图形Pipeline
+	*/
+
+	VkPipelineInputAssemblyStateCreateInfo inputAssemblyStateCI = Render::Vulkan::Initializer::PipelineInputAssemblyStateCreateInfo(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 0, VK_FALSE);
+	VkPipelineRasterizationStateCreateInfo rasterizationStateCI = Render::Vulkan::Initializer::PipelineRasterizationStateCreateInfo(VK_POLYGON_MODE_FILL, VK_CULL_MODE_BACK_BIT, VK_FRONT_FACE_COUNTER_CLOCKWISE);
+	VkPipelineColorBlendAttachmentState blendAttachmentState = Render::Vulkan::Initializer::PipelineColorBlendAttachmentState(0xf, VK_FALSE);
+	VkPipelineColorBlendStateCreateInfo colorBlendStateCI = Render::Vulkan::Initializer::PipelineColorBlendStateCreateInfo(1, &blendAttachmentState);
+	VkPipelineDepthStencilStateCreateInfo depthStencilStateCI = Render::Vulkan::Initializer::PipelineDepthStencilStateCreateInfo(VK_TRUE, VK_TRUE, VK_COMPARE_OP_LESS_OR_EQUAL);
+	VkPipelineViewportStateCreateInfo viewportStateCI = Render::Vulkan::Initializer::PipelineViewportStateCreateInfo(1, 1, 0);
+	VkPipelineMultisampleStateCreateInfo multisampleStateCI = Render::Vulkan::Initializer::PipelineMultisampleStateCreateInfo(VK_SAMPLE_COUNT_1_BIT);
+	std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
+	VkPipelineDynamicStateCreateInfo dynamicStateCI = Render::Vulkan::Initializer::PipelineDynamicStateCreateInfo(dynamicStateEnables);
+	VkPipelineVertexInputStateCreateInfo vertexInputState = Render::Vulkan::
+		Initializer::PipelineVertexInputStateCreateInfo();
+
+	VkVertexInputBindingDescription vertexInputBinding{};
+	vertexInputBinding.binding = 0;
+	vertexInputBinding.stride = sizeof(Vertex);
+	vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+	VkVertexInputAttributeDescription vertexInputAttr0{};
+	vertexInputAttr0.location = 0;
+	vertexInputAttr0.binding = 0;
+	vertexInputAttr0.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr0.offset = offsetof(Vertex, pos);
+
+	VkVertexInputAttributeDescription vertexInputAttr1{};
+	vertexInputAttr1.location = 1;
+	vertexInputAttr1.binding = 0;
+	vertexInputAttr1.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr1.offset = offsetof(Vertex, normal);
+
+	VkVertexInputAttributeDescription vertexInputAttr2{};
+	vertexInputAttr2.location = 2;
+	vertexInputAttr2.binding = 0;
+	vertexInputAttr2.format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttr2.offset = offsetof(Vertex, color);
+
+	std::vector<VkVertexInputBindingDescription> vertexInputBindings = {
+		vertexInputBinding
+	};
+
+	std::vector<VkVertexInputAttributeDescription> vertexInputAttrs = {
+		vertexInputAttr0, vertexInputAttr1, vertexInputAttr2
+	};
+
+	vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexInputBindings.size());
+	vertexInputState.pVertexBindingDescriptions = vertexInputBindings.data();
+	vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttrs.size());
+	vertexInputState.pVertexAttributeDescriptions = vertexInputAttrs.data();
+
+	std::array<VkPipelineShaderStageCreateInfo, 2> shaderStages{};
+
+#if defined __ANDROID__
+	shaderStages[0] = LoadShader("shaders/glsl/draw_multview/draw_multview.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("shaders/glsl/draw_multview/draw_multview.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
+	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_multview/draw_multview.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multview/draw_multview.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#endif
+
+	VkGraphicsPipelineCreateInfo pipelineCI = Render::Vulkan::Initializer::PipelineCreateInfo(m_pipelineLayout, m_renderPass, 0);
+	pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
+	pipelineCI.pRasterizationState = &rasterizationStateCI;
+	pipelineCI.pColorBlendState = &colorBlendStateCI;
+	pipelineCI.pMultisampleState = &multisampleStateCI;
+	pipelineCI.pViewportState = &viewportStateCI;
+	pipelineCI.pDepthStencilState = &depthStencilStateCI;
+	pipelineCI.pDynamicState = &dynamicStateCI;
+	pipelineCI.stageCount = static_cast<uint32_t>(shaderStages.size());
+	pipelineCI.pStages = shaderStages.data();
+	pipelineCI.pVertexInputState = &vertexInputState;
+
+	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCI, nullptr, &m_pipeline));
+
+	float multiviewArrayLayer = 0.0f;
+
+	VkSpecializationMapEntry specializationMapEntry{ 0, 0, sizeof(float) };
+
+	VkSpecializationInfo specializationInfo{};
+	specializationInfo.dataSize = sizeof(float);
+	specializationInfo.mapEntryCount = 1;
+	specializationInfo.pMapEntries = &specializationMapEntry;
+	specializationInfo.pData = &multiviewArrayLayer;
+
+	rasterizationStateCI.cullMode = VK_CULL_MODE_FRONT_BIT;
+
+	//2个视角
+	for (uint32_t i = 0; i < 2; i++) {
+#if defined __ANDROID__
+		shaderStages[0] = LoadShader("shaders/glsl/draw_multview/draw_display.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = LoadShader("shaders/glsl/draw_multview/draw_display.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
+		shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_multview/draw_display.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+		shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multview/draw_display.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#endif
+		shaderStages[1].pSpecializationInfo = &specializationInfo;
+		multiviewArrayLayer = (float)i;
+		VkPipelineVertexInputStateCreateInfo emptyInputState = Render::Vulkan::Initializer::PipelineVertexInputStateCreateInfo();
+		pipelineCI.pVertexInputState = &emptyInputState;
+		pipelineCI.layout = m_pipelineLayout;
+		pipelineCI.renderPass = m_renderPass;
+		VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCI, nullptr, &viewDisplayPipelines[i]));
+	}
+
 }
 
 void ApplicationWin::PrepareUniformBuffer()
@@ -69,17 +200,92 @@ void ApplicationWin::PrepareUniformBuffer()
 	}
 }
 
-void ApplicationWin::BuildGraphicsCommandBuffer()
+void ApplicationWin::BuildCommandBuffer()
 {
+	VkCommandBuffer cmdBuffer = m_drawCmdBuffers[m_currentBuffer];
+
+	VkCommandBufferBeginInfo cmdBufInfo =  Render::Vulkan::Initializer::CommandBufferBeginInfo();
+
+
+	VkClearValue clearValue[2]{};
+	clearValue[0].color = VkClearColorValue{0,0,0,1};
+	clearValue[1].depthStencil = { 1.0f, 0 };
+
+	VkRenderPassBeginInfo renderPassBeginInfo = Render::Vulkan::Initializer::RenderPassBeginInfo();
+	renderPassBeginInfo.renderArea.offset.x = 0;
+	renderPassBeginInfo.renderArea.offset.y = 0;
+	renderPassBeginInfo.renderArea.extent.width = width;
+	renderPassBeginInfo.renderArea.extent.height = height;
+	renderPassBeginInfo.clearValueCount = 2;
+	renderPassBeginInfo.pClearValues = clearValue;
+
+	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
+
+	// Update the layered multiview image attachment with the scene from two different viewpors
+	{
+		renderPassBeginInfo.renderPass = m_multivewPass.renderPass;
+		renderPassBeginInfo.framebuffer = m_multivewPass.frameBuffer;
+
+		vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width, (float)height, 0.0f, 1.0f);
+		vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+		VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width, height, 0, 0);
+		vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+		vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_currentBuffer], 0, nullptr);
+		vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipeline);
+		m_model.Draw(cmdBuffer);
+
+		vkCmdEndRenderPass(cmdBuffer);
+	}
+
+	// Display the multiview images
+	{
+		renderPassBeginInfo.renderPass = m_renderPass;
+		renderPassBeginInfo.framebuffer = m_frameBuffers[m_currentImageIndex];
+
+		vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)width / 2.0f, (float)height, 0.0f, 1.0f);
+		VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(width / 2, height, 0, 0);
+		vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+		vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+		vkCmdBindDescriptorSets(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_pipelineLayout, 0, 1, &m_descriptorSets[m_currentBuffer], 0, nullptr);
+
+		// Left eye
+		vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, viewDisplayPipelines[0]);
+		vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
+
+		// Right eye
+		viewport.x = (float)width / 2;
+		scissor.offset.x = width / 2;
+		vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
+		vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
+
+		vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, viewDisplayPipelines[1]);
+		vkCmdDraw(cmdBuffer, 3, 1, 0, 0);
+
+		DrawUI(cmdBuffer);
+
+		vkCmdEndRenderPass(cmdBuffer);
+	}
+
+	VK_CHECK_RESULT(vkEndCommandBuffer(cmdBuffer));
 }
 
 void ApplicationWin::Prepare() 
 {
 	ApplicationBase::Prepare();
+#if defined (__ANDROID__)
+	LoadAsset("mesh/room/sampleroom.gltf"); // 加载图片
+#else
 	LoadAsset("./Asset/mesh/room/sampleroom.gltf"); // 加载图片
-	PrepareUniformBuffer();
+#endif
 	CreateDescriptorPool();
-	PrepareGraphicsPipeline();
+	PrepareUniformBuffer();
+	PrepareMultView();
+	PrepareDescriptor();
+	PreparePipeline();
 	prepared = true;
 }
 
@@ -304,16 +510,57 @@ void ApplicationWin::PrepareMultView()
 void ApplicationWin::PrepareDescriptor()
 {
 	//pool
-	std::vector<VkDescriptorPoolSize> poolSize
+	std::vector<VkDescriptorPoolSize> poolSizes
 	{
-		Render::Vulkan::Initializer::DescriptorPoolSize
+		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT),
+		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT)
+	};
+	
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = Render::Vulkan::Initializer::DescriptorPoolCreateInfo(static_cast<uint32_t>(poolSizes.size()), poolSizes.data(), MAX_FRAMES_IN_FLIGHT);
+	VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
+
+	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+			Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0),
+			Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1)
+	};
+
+	VkDescriptorSetLayoutCreateInfo descriptorLayout = Render::Vulkan::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings);
+	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorLayout, nullptr, &m_descriptorSetLayout));
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(&m_descriptorSetLayout, 1);
+	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &m_pipelineLayout));
+
+	UpdateDescriptors();
+}
+
+void ApplicationWin::UpdateDescriptors()
+{
+	VkDescriptorSetAllocateInfo allocInfo = Render::Vulkan::Initializer::DescriptorSetAllocateInfo(m_descriptorPool, &m_descriptorSetLayout, 1);
+	for (int i = 0;i < m_uniformBuffers.size();i++)
+	{
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &m_descriptorSets[i]));
+		std::vector<VkWriteDescriptorSet> writeDescriptorSets = {
+			Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSets[i],VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0 ,&m_uniformBuffers[i].descriptor),
+			Render::Vulkan::Initializer::WriteDescriptorSet(m_descriptorSets[i],VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 ,&m_multivewPass.descriptor),
+		};
+		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
 	}
-
-
 }
 
 void ApplicationWin::Render()
 {
+	if (!prepared)
+		return;
+
+	VK_CHECK_RESULT(vkWaitForFences(m_device, 1, &m_waitFences[m_currentBuffer], VK_TRUE, UINT64_MAX));
+	VK_CHECK_RESULT(vkResetFences(m_device, 1, &m_waitFences[m_currentBuffer]));
+	m_swapChain.AcquireNextImage(m_presentCompleteSemaphores[m_currentBuffer], m_currentImageIndex);
+
+	UpdateUniformBuffers();
+	BuildCommandBuffer();
+
+	ApplicationBase::SubmitFrame(false);
+
+	vkQueueWaitIdle(m_queue);
 }
 
 void ApplicationWin::LoadAsset(std::string fileNamePath)
