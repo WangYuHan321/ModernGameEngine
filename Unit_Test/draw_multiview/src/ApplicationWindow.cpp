@@ -4,10 +4,10 @@ ApplicationWin::ApplicationWin():
 	ApplicationBase()
 {
 	title = " ApplicationMultiviewView ";
-	m_camera.type = Camera::CameraType::lookat;
-	m_camera.setPosition(glm::vec3(0.0f, 0.0f, -2.0f));
-	m_camera.setRotation(glm::vec3(0.0f));
-	m_camera.setPerspective(60.0f, (float)width * 0.5f / (float)height, 1.0f, 256.0f);
+	m_camera.type = Camera::CameraType::firstperson;
+	m_camera.setRotation(glm::vec3(0.0f, 90.0f, 0.0f));
+	m_camera.setTranslation(glm::vec3(7.0f, 3.2f, 0.0f));
+	m_camera.movementSpeed = 5.0f;
 
 	m_enabledDeviceExtensions.push_back(VK_KHR_MULTIVIEW_EXTENSION_NAME);
 	m_enabledInstanceExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
@@ -144,7 +144,7 @@ void ApplicationWin::PreparePipeline()
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_multview/draw_multview.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 #endif
 
-	VkGraphicsPipelineCreateInfo pipelineCI = Render::Vulkan::Initializer::PipelineCreateInfo(m_pipelineLayout, m_renderPass, 0);
+	VkGraphicsPipelineCreateInfo pipelineCI = Render::Vulkan::Initializer::PipelineCreateInfo(m_pipelineLayout, m_multivewPass.renderPass);
 	pipelineCI.pInputAssemblyState = &inputAssemblyStateCI;
 	pipelineCI.pRasterizationState = &rasterizationStateCI;
 	pipelineCI.pColorBlendState = &colorBlendStateCI;
@@ -208,7 +208,7 @@ void ApplicationWin::BuildCommandBuffer()
 
 
 	VkClearValue clearValue[2]{};
-	clearValue[0].color = VkClearColorValue{0,0,0,1};
+	clearValue[0].color = VkClearColorValue{0.2,0.2,0.4,1};
 	clearValue[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassBeginInfo = Render::Vulkan::Initializer::RenderPassBeginInfo();
@@ -281,17 +281,66 @@ void ApplicationWin::Prepare()
 #else
 	LoadAsset("./Asset/mesh/room/sampleroom.gltf"); // 加载图片
 #endif
-	CreateDescriptorPool();
-	PrepareUniformBuffer();
 	PrepareMultView();
+	PrepareUniformBuffer();
 	PrepareDescriptor();
+	CreateDescriptorPool();
 	PreparePipeline();
 	prepared = true;
 }
 
 void ApplicationWin::UpdateUniformBuffers()
 {
+	// Matrices for the two viewports
+// See http://paulbourke.net/stereographics/stereorender/
 
+	float eyeSeparation = 0.08f;
+	const float focalLength = 0.5f;
+	const float fov = 90.0f;
+	const float zNear = 0.1f;
+	const float zFar = 256.0f;
+
+// Calculate some variables
+	float aspectRatio = (float)(width * 0.5f) / (float)height;
+	float wd2 = 0.1 * tan(glm::radians(fov / 2.0f));
+	float ndfl = zNear / focalLength;
+	float left, right;
+	float top = wd2;
+	float bottom = -wd2;
+
+	glm::vec3 camFront;
+	camFront.x = -cos(glm::radians(m_camera.rotation.x)) * sin(glm::radians(m_camera.rotation.y));
+	camFront.y = sin(glm::radians(m_camera.rotation.x));
+	camFront.z = cos(glm::radians(m_camera.rotation.x)) * cos(glm::radians(m_camera.rotation.y));
+	camFront = glm::normalize(camFront);
+	glm::vec3 camRight = glm::normalize(glm::cross(camFront, glm::vec3(0.0f, 1.0f, 0.0f)));
+
+	glm::mat4 rotM = glm::mat4(1.0f);
+	glm::mat4 transM;
+
+	rotM = glm::rotate(rotM, glm::radians(m_camera.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(m_camera.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
+	rotM = glm::rotate(rotM, glm::radians(m_camera.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+
+	// Left eye
+	left = -aspectRatio * wd2 - 0.5f * eyeSeparation * ndfl;
+	right = aspectRatio * wd2 - 0.5f * eyeSeparation * ndfl;
+
+	transM = glm::translate(glm::mat4(1.0f), m_camera.position - camRight * (eyeSeparation / 2.0f));
+
+	m_uniformData.projection[0] = glm::frustum(left, right, bottom, top, zNear, zFar);
+	m_uniformData.modelview[0] = rotM * transM;
+
+	// Right eye
+	left = -aspectRatio * wd2 + 0.5f * eyeSeparation * ndfl;
+	right = aspectRatio * wd2 + 0.5f * eyeSeparation * ndfl;
+
+	transM = glm::translate(glm::mat4(1.0f), m_camera.position + camRight * (eyeSeparation / 2.0f));
+
+	m_uniformData.projection[1] = glm::frustum(left, right, bottom, top, zNear, zFar);
+	m_uniformData.modelview[1] = rotM * transM;
+
+	memcpy(m_uniformBuffers[m_currentBuffer].mapped, &m_uniformData, sizeof(UniformData));
 }
 
 void ApplicationWin::PrepareMultView()
