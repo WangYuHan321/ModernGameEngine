@@ -8,7 +8,7 @@ static uint32_t alignedSize(uint32_t value, uint32_t alignment)
 ApplicationWin::ApplicationWin():
 	ApplicationRaytracingBase()
 {
-	title = " ApplicationRayShadow ";
+	title = " ApplicationRayTexture ";
 
 	m_camera.type = Camera::CameraType::lookat;
 	m_camera.setPerspective(60.0f, (float)width / (float)height, 0.1f, 512.0f);
