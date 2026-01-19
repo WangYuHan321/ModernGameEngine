@@ -6,9 +6,9 @@
 
 namespace FrameGraph
 {
-	enum class EBlendFactor : uint8_t
-	{
+	//
+	//   FrameGraph 接口
+	//
 
-	};
 
 }
