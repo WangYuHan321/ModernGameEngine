@@ -3,10 +3,19 @@
 file(GLOB PUBLIC_SRC "./Public/*.h" "./Public/*.cpp" "./Public/*.hpp")
 file(GLOB SHARED_SRC "./Shared/*.h" "./Shared/*.cpp" "./Shared/*.hpp")
 file(GLOB VULKAN_SRC "./Vulkan/*.h" "./Vulkan/*.cpp" "./Vulkan/*.hpp")
+file(GLOB STL_SRC "./STL/*.h" "./STL/*.cpp" "./STL/*.hpp")
+file(GLOB STL_ALGORITHMS_SRC "./STL/Algorithms/*.h" "./STL/Algorithms/*.cpp" "./STL/Algorithms/*.hpp")
+file(GLOB STL_CONTAINERS_SRC "./STL/Containers/*.h" "./STL/Containers/*.cpp" "./STL/Containers/*.hpp")
+file(GLOB STL_MEMORY_SRC "./STL/Memory/*.h" "./STL/Memory/*.cpp" "./STL/Memory/*.hpp")
 
 SOURCE_GROUP(Public FILES  ${PUBLIC_SRC})
 SOURCE_GROUP(Shared FILES  ${SHARED_SRC})
 SOURCE_GROUP(Vulkan FILES  ${VULKAN_SRC})
+SOURCE_GROUP(STL FILES  ${STL_SRC})
+SOURCE_GROUP(STL/Algorithms FILES  ${STL_ALGORITHMS_SRC})
+SOURCE_GROUP(STL/Containers FILES  ${STL_CONTAINERS_SRC})
+SOURCE_GROUP(STL/Memory FILES  ${STL_MEMORY_SRC})
+
 
 project(FrameGraph)
 
@@ -41,6 +50,10 @@ set(SRC_FILES
 	${PUBLIC_SRC}
 	${SHARED_SRC}
 	${VULKAN_SRC}
+	${STL_SRC}
+	${STL_MEMORY_SRC}
+	${STL_CONTAINERS_SRC}
+	${STL_ALGORITHMS_SRC}
 	${IMGUI_SRC}
 	)
 
