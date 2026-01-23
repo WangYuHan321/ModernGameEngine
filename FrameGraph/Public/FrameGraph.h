@@ -4,6 +4,12 @@
 #include <cstdint>
 #include <vector>
 
+#include "./ShaderEnums.h"
+#include "./ResourceEnums.h"
+
+#include "./MipmapLevel.h"
+#include "./ImageLayer.h"
+
 namespace FrameGraph
 {
 	//
