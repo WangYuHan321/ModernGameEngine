@@ -7,6 +7,7 @@ file(GLOB STL_SRC "./STL/*.h" "./STL/*.cpp" "./STL/*.hpp")
 file(GLOB STL_ALGORITHMS_SRC "./STL/Algorithms/*.h" "./STL/Algorithms/*.cpp" "./STL/Algorithms/*.hpp")
 file(GLOB STL_CONTAINERS_SRC "./STL/Containers/*.h" "./STL/Containers/*.cpp" "./STL/Containers/*.hpp")
 file(GLOB STL_MEMORY_SRC "./STL/Memory/*.h" "./STL/Memory/*.cpp" "./STL/Memory/*.hpp")
+file(GLOB STL_MATH_SRC "./STL/Math/*.h" "./STL/Math/*.cpp" "./STL/Math/*.hpp")
 
 SOURCE_GROUP(Public FILES  ${PUBLIC_SRC})
 SOURCE_GROUP(Shared FILES  ${SHARED_SRC})
@@ -15,6 +16,7 @@ SOURCE_GROUP(STL FILES  ${STL_SRC})
 SOURCE_GROUP(STL/Algorithms FILES  ${STL_ALGORITHMS_SRC})
 SOURCE_GROUP(STL/Containers FILES  ${STL_CONTAINERS_SRC})
 SOURCE_GROUP(STL/Memory FILES  ${STL_MEMORY_SRC})
+SOURCE_GROUP(STL/Math FILES  ${STL_MATH_SRC})
 
 
 project(FrameGraph)
@@ -51,6 +53,7 @@ set(SRC_FILES
 	${SHARED_SRC}
 	${VULKAN_SRC}
 	${STL_SRC}
+	${STL_MATH_SRC}
 	${STL_MEMORY_SRC}
 	${STL_CONTAINERS_SRC}
 	${STL_ALGORITHMS_SRC}
