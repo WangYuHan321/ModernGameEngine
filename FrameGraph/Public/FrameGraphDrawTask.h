@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include "./FrameGraph.h"
+#include "../STL/Math/Vec.h"
 #include "../STL/Containers/StaticString.h"
 
 namespace FrameGraph
@@ -36,11 +37,16 @@ namespace FrameGraph
 		{
 			EShaderDebugMode mode = {};
 			EShaderStage stages = {};
-			
+			short2       fragCoord{ 0,0 };
 		};
 
+		//
+		//Render States
+		//
+		struct VertexBuffer
+		{
 
-
+		};
 
 	}
 
