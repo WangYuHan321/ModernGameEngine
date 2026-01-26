@@ -1,33 +1,48 @@
 ﻿#pragma once
 
-#include "./Config.h"
+#include "../Common.h"
 
-#ifdef  COMPILER_MSVC
-#define and &&
-#define or  ||
-#define not !
-#endif //  COMPILER_MSVC
+namespace FrameGraph
+{
+	//
+	// Hash Value
+	//
+	
+	struct HashVal
+	{
+		//variables
+	private:
+		size_t _value = 0;
 
-#ifndef null
-#define null nullptr
-#endif // !null
+		//method
+	public:
+		constexpr HashVal() {}
+		explicit constexpr HashVal(size_t val) : _value(val) {}
 
-#ifndef forceinline
+		GND constexpr bool	operator == (const HashVal& rhs)	const { return _value == rhs._value; }
+		GND constexpr bool	operator != (const HashVal& rhs)	const { return not (*this == rhs); }
+		GND constexpr bool	operator >  (const HashVal& rhs)	const { return _value > rhs._value; }
+		GND constexpr bool  operator <  (const HashVal& rhs)	const { return _value < rhs._value; }
 
-#define forceinline inline
+		constexpr HashVal& operator << (const HashVal& rhs)
+		{
+			const size_t	mask = (sizeof(_value) * 8 - 1);
+			size_t			val = rhs._value;
+			size_t			shift = 8;
 
-#endif
+			shift &= mask;
+			_value ^= (val << shift) | (val >> (~(shift - 1) & mask));
 
+			return *this;
+		}
 
-#ifdef COMPILER_MSVC
+		GND constexpr const HashVal  operator + (const HashVal& rhs) const
+		{
+			return HashVal(*this) << rhs;
+		}
 
+		GND explicit constexpr operator size_t () const { return _value; }
+	};
 
-#endif
-
-
-
-
-
-
-
+}
 

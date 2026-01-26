@@ -8,6 +8,7 @@ file(GLOB STL_ALGORITHMS_SRC "./STL/Algorithms/*.h" "./STL/Algorithms/*.cpp" "./
 file(GLOB STL_CONTAINERS_SRC "./STL/Containers/*.h" "./STL/Containers/*.cpp" "./STL/Containers/*.hpp")
 file(GLOB STL_MEMORY_SRC "./STL/Memory/*.h" "./STL/Memory/*.cpp" "./STL/Memory/*.hpp")
 file(GLOB STL_MATH_SRC "./STL/Math/*.h" "./STL/Math/*.cpp" "./STL/Math/*.hpp")
+file(GLOB STL_COMPILETIME_SRC "./STL/CompileTime/*.h" "./STL/CompileTime/*.cpp" "./STL/CompileTime/*.hpp")
 
 SOURCE_GROUP(Public FILES  ${PUBLIC_SRC})
 SOURCE_GROUP(Shared FILES  ${SHARED_SRC})
@@ -17,6 +18,8 @@ SOURCE_GROUP(STL/Algorithms FILES  ${STL_ALGORITHMS_SRC})
 SOURCE_GROUP(STL/Containers FILES  ${STL_CONTAINERS_SRC})
 SOURCE_GROUP(STL/Memory FILES  ${STL_MEMORY_SRC})
 SOURCE_GROUP(STL/Math FILES  ${STL_MATH_SRC})
+SOURCE_GROUP(STL/CompileTime FILES  ${STL_COMPILETIME_SRC})
+
 
 
 project(FrameGraph)
@@ -57,6 +60,7 @@ set(SRC_FILES
 	${STL_MEMORY_SRC}
 	${STL_CONTAINERS_SRC}
 	${STL_ALGORITHMS_SRC}
+	${STL_COMPILETIME_SRC}
 	${IMGUI_SRC}
 	)
 

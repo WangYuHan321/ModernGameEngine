@@ -3,7 +3,7 @@
 ApplicationWin::ApplicationWin():
 	ApplicationBase()
 {
-	title = " ApplicationMultiviewView ";
+	title = " ApplicationRayShadow ";
 	m_camera.type = Camera::CameraType::firstperson;
 	m_camera.setRotation(glm::vec3(0.0f, 90.0f, 0.0f));
 	m_camera.setTranslation(glm::vec3(7.0f, 3.2f, 0.0f));

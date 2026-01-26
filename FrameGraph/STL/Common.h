@@ -17,6 +17,8 @@
 #include <shared_mutex>
 #include <algorithm>
 
+#include "./Algorithms/Hash.h"
+
 #ifndef GND
 
 #if defined (_MSC_VER)
@@ -24,13 +26,13 @@
 #     define  GND       [[nodiscard]]
 #  endif
 #elif defined(__clang__)
-#     define  G_ND       [[nodiscard]]
+#     define  GND       [[nodiscard]]
 #elif defined(__gcc__)
-#     define  G_ND       [[nodiscard]]
+#     define  GND       [[nodiscard]]
 #endif 
 
 #ifndef GND
-#   #define   G_ND
+#   #define   GND
 #endif
 
 #endif
