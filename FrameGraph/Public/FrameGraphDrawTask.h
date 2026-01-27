@@ -4,8 +4,12 @@
 #include <cstdint>
 #include <vector>
 #include "./FrameGraph.h"
+
+#include "../STL/Math/Bytes.h"
 #include "../STL/Math/Vec.h"
 #include "../STL/Containers/StaticString.h"
+
+#include "./IDs.h"
 
 namespace FrameGraph
 {
@@ -45,8 +49,38 @@ namespace FrameGraph
 		//
 		struct VertexBuffer
 		{
+			RawBufferID id;
+			BytesU    offset;
+		};
+
+		struct PushConstantData
+		{
+			PushConstantID id;
+			Bytes<uint16_t> size;
+			uint8_t data[GFG_MAXPushConstantsSize];
+		};
+
+		using PushConstants_t = FixedArray<PushConstantData, 4>;
+
+		struct DynamicStates
+		{
+			EStenCilOp
+		};
+
+
+		//
+		//Base Draw Call
+		//
+		template <typename TaskType>
+		struct BaseDrawCall : BaseDrawTask<TaskType>
+		{
+			//types
+			using StaencilValue_t decltype()
+
+
 
 		};
+
 
 	}
 

@@ -1,28 +1,26 @@
 ﻿#pragma once
 
 #include "./Config.h"
+#include "../Common.h"
 
-#ifdef  COMPILER_MSVC
-#define and &&
-#define or  ||
-#define not !
-#endif //  COMPILER_MSVC
+namespace FrameGraph
+{
+	template <typename To, typename From>
+	GND inline constexpr To  CheckCast(const From& src)
+	{
+		if constexpr (std::is_signed_v<From> and std::is_unsigned_v<To>)
+		{
+			ASSERT(src >= 0);
+		}
 
-#ifndef null
-#define null nullptr
-#endif // !null
+		ASSERT(static_cast<From>(static_cast<To>(src)) == src);
 
-#ifndef forceinline
+		return static_cast<To>(src);
+	}
 
-#define forceinline inline
-
-#endif
-
-
-#ifdef COMPILER_MSVC
+}
 
 
-#endif
 
 
 

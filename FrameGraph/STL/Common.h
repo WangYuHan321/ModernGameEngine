@@ -18,6 +18,8 @@
 #include <algorithm>
 
 #include "./Algorithms/Hash.h"
+#include "../STL/Algorithms/Cast.h"
+#include "../STL/CompileTime/TypeTraits.h"s
 
 #ifndef GND
 
