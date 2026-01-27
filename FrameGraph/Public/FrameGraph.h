@@ -1,14 +1,13 @@
 ﻿#pragma once
 
-#include <assert.h>
-#include <cstdint>
-#include <vector>
-
+#include "./IDs.h"
 #include "./ShaderEnums.h"
 #include "./ResourceEnums.h"
-
+#include "./RenderState.h"
 #include "./MipmapLevel.h"
+#include "./BindingIndex.h"
 #include "./ImageLayer.h"
+#include "./EResourceState.h"
 
 namespace FrameGraph
 {
