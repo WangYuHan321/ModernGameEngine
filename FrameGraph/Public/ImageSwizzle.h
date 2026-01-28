@@ -1,14 +1,26 @@
 ﻿#pragma once
 
-#include <assert.h>
-#include <cstdint>
-#include <vector>
+#include "FrameGraph.h"
 
 namespace FrameGraph
 {
 	//
-	//   FrameGraph 接口
+	//   ImageSwizzle
 	//
 
+	struct ImageSwizzle
+	{
+		//variables
+	private:
+		uint _value = {};
+
+		//method
+	public:
+		constexpr ImageSwizzle() {}
+
+
+
+
+	};
 
 }

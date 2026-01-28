@@ -286,4 +286,67 @@ namespace FrameGraph
 		Unknown = ~0u,
 	};
 
+	enum class EImageSampler : uint
+	{
+		// dimension
+		_DimOffset = CT_IntLog2< uint(EPixelFormat::_Count) > +1,
+		_DimMask = 0xF << _DimOffset,
+		_1D = 1 << _DimOffset,
+		_1DArray = 2 << _DimOffset,
+		_2D = 3 << _DimOffset,
+		_2DArray = 4 << _DimOffset,
+		_2DMS = 5 << _DimOffset,
+		_2DMSArray = 6 << _DimOffset,
+		_Cube = 7 << _DimOffset,
+		_CubeArray = 8 << _DimOffset,
+		_3D = 9 << _DimOffset,
+
+		// type
+		_TypeOffset = _DimOffset + 4,
+		_TypeMask = 0xF << _TypeOffset,
+		_Float = 1 << _TypeOffset,
+		_Int = 2 << _TypeOffset,
+		_Uint = 3 << _TypeOffset,
+
+		// flags
+		_FlagsOffset = _TypeOffset + 4,
+		_FlagsMask = 0xF << _FlagsOffset,
+		_Shadow = 1 << _FlagsOffset,
+
+		// format
+		_FormatMask = (1u << _DimOffset) - 1,
+
+		// default
+		Float1D = _Float | _1D,
+		Float1DArray = _Float | _1DArray,
+		Float2D = _Float | _2D,
+		Float2DArray = _Float | _2DArray,
+		Float2DMS = _Float | _2DMS,
+		Float2DMSArray = _Float | _2DMSArray,
+		FloatCube = _Float | _Cube,
+		FloatCubeArray = _Float | _CubeArray,
+		Float3D = _Float | _3D,
+
+		Int1D = _Int | _1D,
+		Int1DArray = _Int | _1DArray,
+		Int2D = _Int | _2D,
+		Int2DArray = _Int | _2DArray,
+		Int2DMS = _Int | _2DMS,
+		Int2DMSArray = _Int | _2DMSArray,
+		IntCube = _Int | _Cube,
+		IntCubeArray = _Int | _CubeArray,
+		Int3D = _Int | _3D,
+
+		Uint1D = _Uint | _1D,
+		Uint1DArray = _Uint | _1DArray,
+		Uint2D = _Uint | _2D,
+		Uint2DArray = _Uint | _2DArray,
+		Uint2DMS = _Uint | _2DMS,
+		Uint2DMSArray = _Uint | _2DMSArray,
+		UintCube = _Uint | _Cube,
+		UintCubeArray = _Uint | _CubeArray,
+		Uint3D = _Uint | _3D,
+
+		Unknown = ~0u,
+	};
 }

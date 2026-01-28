@@ -8,7 +8,6 @@
 #include "../STL/Math/Bytes.h"
 #include "../STL/Math/Vec.h"
 #include "../STL/Containers/StaticString.h"
-
 #include "./IDs.h"
 
 namespace FrameGraph
@@ -64,7 +63,7 @@ namespace FrameGraph
 
 		struct DynamicStates
 		{
-			EStenCilOp
+			uint8_t			stencilReference;				// front & back
 		};
 
 
@@ -75,7 +74,12 @@ namespace FrameGraph
 		struct BaseDrawCall : BaseDrawTask<TaskType>
 		{
 			//types
-			using StaencilValue_t decltype()
+			using StaencilValue_t = decltype(DynamicStates::stencilReference);
+			using DebugMode = GraphicsShaderDebugMode;
+
+			//variables
+			PipelineResourceSet
+
 
 
 

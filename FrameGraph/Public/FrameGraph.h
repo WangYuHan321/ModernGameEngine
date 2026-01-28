@@ -1,6 +1,9 @@
 ﻿#pragma once
 
 #include "./IDs.h"
+#include "ImageSwizzle.h"
+#include "MultiSamples.h"
+#include "./BufferDesc.h"
 #include "./ShaderEnums.h"
 #include "./ResourceEnums.h"
 #include "./RenderState.h"

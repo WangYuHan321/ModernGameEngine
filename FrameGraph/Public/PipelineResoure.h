@@ -3,6 +3,7 @@
 #include "FrameGraph.h"
 #include "../STL/Math/Bytes.h"
 
+
 namespace FrameGraph
 {
 	//
@@ -36,6 +37,8 @@ namespace FrameGraph
 			struct Element
 			{
 				Local::RawBufferID bufferID;
+				BytesU             offset;
+				BytesU             size;
 			};
 
 			BindingIndex index;
@@ -45,6 +48,54 @@ namespace FrameGraph
 			BytesU arrayStride;
 			const uint16_t elementCapacity;
 			uint16_t elementCount;
+			Element elements[1];
+		};
+
+		struct TexelBuffer
+		{
+			static constexpr EDescriptorType TypeId = EDescriptorType::TexelBuffer;
+
+			struct Element
+			{
+				Local::RawBufferID bufferID;
+				BufferViewDesc desc;
+			};
+
+			BindingIndex index;
+			EResourceState state;
+			const uint16_t elementCapacity;
+			uint16_t elementCount;
+			Element elements[1];
+		};
+
+		struct Image
+		{
+			static constexpr EDescriptorType TypeId = EDescriptorType::Image;
+
+			struct Element
+			{
+				Local::RawImageID imageId;
+				ImageViewDesc desc;
+				bool hasDesc;
+			};
+
+			BindingIndex index;
+			EResourceState state;
+			EImageSampler imageType;
+			const uint16_t elementCapacity;
+			uint16_t elementCount;
+			Element elements[1];
+		};
+
+		struct Texture
+		{
+			static constexpr EDescriptorType TypeId = EDescriptorType::Texture;
+
+			struct Element
+			{
+
+			};
+
 		};
 	};
 
