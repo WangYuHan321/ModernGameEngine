@@ -2,6 +2,8 @@
 
 #include "FrameGraph.h"
 #include "../STL/Math/Bytes.h"
+#include "../STL/Containers/FixedArray.h"
+#include "../STL/Containers/FixedMap.h"
 
 
 namespace FrameGraph
@@ -93,10 +95,13 @@ namespace FrameGraph
 
 			struct Element
 			{
-
+				Local::RawImageID imageId;
 			};
 
 		};
+
+
+		using PipelineResourceSet = FixedMap<DescriptorSetID, Ptr<const PipelineResources>, GFG_MaxDescriptorSets>;
 	};
 
 

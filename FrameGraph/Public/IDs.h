@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include "../FrameGraph/Public/FrameGraph.h"
 #include "../STL/Algorithms/Hash.h"
 #include "../STL/CompileTime/Hash.h"
 
@@ -91,17 +92,19 @@ namespace FrameGraph
 			Color_1 = 1,
 			Color_2 = 2,
 			Color_3 = 3,
-			_LastColor = FG_MaxColorBuffer - 1,
-			DepthStencil = FG_MaxColorBuffer,
+			_LastColor = GFG_MaxColorBuffers - 1,
+			DepthStencil = GFG_MaxColorBuffers,
 			Depth = DepthStencil,
 			Unknown = ~0u
 		};
 
-		static_assert(uint(RenderTargetID::_LastColor) <= FG_MaxColorBuffers);
+		static_assert(uint(RenderTargetID::_LastColor) <= GFG_MaxColorBuffers);
 
 		using UniformID = FrameGraph::Local::IDWithString<32, 1, false>;
-		using PushConstantID = FrameGraph::Local::IDWithString<32, 1, false>;
+		using PushConstantID = FrameGraph::Local::IDWithString<32, 2, false>;
+		using DescriptorSetID = FrameGraph::Local::IDWithString<32, 4, false>;
 		using RawBufferID = FrameGraph::Local::ResourceID< 1 >;
+		using RawImageID = FrameGraph::Local::ResourceID< 2 >;
 
 	}
 
