@@ -103,8 +103,23 @@ namespace FrameGraph
 		using UniformID = FrameGraph::Local::IDWithString<32, 1, false>;
 		using PushConstantID = FrameGraph::Local::IDWithString<32, 2, false>;
 		using DescriptorSetID = FrameGraph::Local::IDWithString<32, 4, false>;
+		
 		using RawBufferID = FrameGraph::Local::ResourceID< 1 >;
 		using RawImageID = FrameGraph::Local::ResourceID< 2 >;
+		using RawGPipelineID = FrameGraph::Local::ResourceID< 3 >;
+		using RawMPipelineID = FrameGraph::Local::ResourceID< 4 >;
+		using RawCPipelineID = FrameGraph::Local::ResourceID< 5 >;
+		using RawRTPipelineID = FrameGraph::Local::ResourceID< 6 >;
+		using RawSamplerID = FrameGraph::Local::ResourceID< 7 >;
+		using RawDescriptorSetLayoutID = FrameGraph::Local::ResourceID< 8 >;
+		using RawPipelineResourcesID = FrameGraph::Local::ResourceID< 9 >;
+		using LogicalPassID = FrameGraph::Local::ResourceID< 10 >;
+		using RawRTSceneID = FrameGraph::Local::ResourceID< 11 >;
+		using RawRTGeometryID = FrameGraph::Local::ResourceID< 12 >;
+		using RawRTShaderTableID = FrameGraph::Local::ResourceID< 13 >;
+		using RawSwapchainID = FrameGraph::Local::ResourceID< 14 >;
+
+
 
 	}
 

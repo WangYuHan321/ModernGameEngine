@@ -10,6 +10,8 @@
 #include "./MipmapLevel.h"
 #include "./BindingIndex.h"
 #include "./ImageLayer.h"
+#include "./ImageView.h"
+#include "./ImageDesc.h"
 #include "./EResourceState.h"
 
 namespace FrameGraph

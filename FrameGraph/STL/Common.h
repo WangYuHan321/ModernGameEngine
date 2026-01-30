@@ -61,5 +61,7 @@ namespace FrameGraph
 	template <typename T>	using WeakPtr = std::weak_ptr< T >;
 
 	template <typename T>	using Function = std::function< T >;
+
+	template<typename T> using Atomic = std::atomic< T >;
 }
 

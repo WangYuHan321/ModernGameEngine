@@ -55,7 +55,7 @@ namespace FrameGraph
 		template <bool Test, typename Type = void>
 		using DisableIf = std::enable_if_t< !Test, Type >;
 
-
+		// Test 为 True   是 IfTrue类型
 		template <bool Test, typename IfTrue, typename IfFalse>
 		using Conditional = std::conditional_t< Test, IfTrue, IfFalse >;
 
