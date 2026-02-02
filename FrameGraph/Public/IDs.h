@@ -103,6 +103,7 @@ namespace FrameGraph
 		using UniformID = FrameGraph::Local::IDWithString<32, 1, false>;
 		using PushConstantID = FrameGraph::Local::IDWithString<32, 2, false>;
 		using DescriptorSetID = FrameGraph::Local::IDWithString<32, 4, false>;
+		using SpecializationID = FrameGraph::Local::IDWithString<32, 5, false>;
 		
 		using RawBufferID = FrameGraph::Local::ResourceID< 1 >;
 		using RawImageID = FrameGraph::Local::ResourceID< 2 >;

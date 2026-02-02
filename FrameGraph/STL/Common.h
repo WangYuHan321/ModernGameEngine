@@ -63,5 +63,10 @@ namespace FrameGraph
 	template <typename T>	using Function = std::function< T >;
 
 	template<typename T> using Atomic = std::atomic< T >;
+
+	template <typename Key,
+		typename Value,
+		typename Hasher = std::hash<Key>>
+		using HashMap = std::unordered_map< Key, Value, Hasher >;
 }
 
