@@ -283,4 +283,33 @@ namespace FrameGraph
 			void _SetPushConstants(ArrayView<_PushConstant> values);
 	};
 
+	///
+	/// Graphics Pipelie Description
+	/// 
+	class GraphicsPipelineDesc final : PipelineDescription
+	{
+		//types
+		struct FragmentOutput
+		{
+			//variables
+			uint index = {};
+			EFragOutput type = {};
+
+			// methods
+			FragmentOutput() {}
+			FragmentOutput(uint index, EFragOutput type) : index{ index }, type{ type } {}
+
+			GND bool operator == (const FragmentOutput& rhs) const;
+		};
+
+		using Self = GraphicsPipelineDesc;
+		using TopologyBits_t = BitSet< uint(EPrimitive::_Count) >;
+		using Shaders_t = FixedMap< EShader, Shader, 8 >;
+		using VertexAttrib = VertexInputState::VertexAttrib;
+		using VertexAttribs_t = FixedArray< VertexAttrib, FG_MaxVertexAttribs >;
+		using FragmentOutputs_t = FixedArray< FragmentOutput, FG_MaxColorBuffers >;
+
+	};
+
+
 }

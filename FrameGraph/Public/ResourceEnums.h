@@ -349,4 +349,12 @@ namespace FrameGraph
 
 		Unknown = ~0u,
 	};
+
+	enum class EFragOutput : uint
+	{
+		Unknown =0,
+		Int4 = uint(EPixelFormat::RGBA32I),
+		UInt4 = uint(EPixelFormat::RGBA32U),
+		Float4 = uint(EPixelFormat::RGBA32F),
+	};
 }

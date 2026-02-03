@@ -1,14 +1,22 @@
 ﻿#pragma once
 
-#include <assert.h>
-#include <cstdint>
-#include <vector>
+#include "./VertexDesc.h"
+#include "./IDs.h"
 
 namespace FrameGraph
 {
 	//
-	//   FrameGraph 接口
+	//Vertex Input State
 	//
+	class VertexInputState
+	{
+		//types
+	public:
+		struct VertexAttrib
+		{
+			Local::VertexID id;
+		};
+	};
 
 
 }
