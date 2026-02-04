@@ -7,6 +7,7 @@
 
 #include "../STL/Math/Bytes.h"
 #include "../STL/Math/Vec.h"
+#include "../STL/Containers/FixedArray.h"
 #include "../STL/Containers/StaticString.h"
 #include "./IDs.h"
 
@@ -63,9 +64,45 @@ namespace FrameGraph
 
 		struct DynamicStates
 		{
+			EStencilOp stemcilFailOp;// 仅模板测试失败时的操作
+			EStencilOp stemcilDepthOp;// 模板通过但深度测试失败时的操作 
+			EStencilOp stemcilPassOp;// 模板和深度都通过时的操作
 			uint8_t			stencilReference;				// front & back
+			uint8_t			stencilWriteMask;				// front & back
+			uint8_t			stencilCompareMask;				// front & back
+
+			ECullMode		cullMode;
+
+			ECompareOp		depthCompareOp;
+			bool			depthTest : 1;
+			bool			depthWrite : 1;
+			bool			stencilTest : 1;	// enable stencil test
+
+			bool			rasterizerDiscard : 1;
+			bool			frontFaceCCW : 1;
+
+			bool			hasStencilTest : 1;
+			bool			hasStencilFailOp : 1;
+			bool			hasStencilDepthFailOp : 1;
+			bool			hasStencilPassOp : 1;
+			bool			hasStencilReference : 1;
+			bool			hasStencilWriteMask : 1;
+			bool			hasStencilCompareMask : 1;
+			bool			hasDepthCompareOp : 1;
+			bool			hasDepthTest : 1;
+			bool			hasDepthWrite : 1;
+			bool			hasCullMode : 1;
+			bool			hasRasterizedDiscard : 1;
+			bool			hasFrontFaceCCW : 1;
+			
+			DynamicStates()
+			{
+				memset(this, 0, sizeof(*this));
+			}
 		};
 
+		using ColorBuffers_t = FixedMap<Local::RenderTargetID, RenderState::ColorBuffer, 4>;
+		using Scissors_t = FixedArray< RectI, GFG_MaxViewports >;
 
 		//
 		//Base Draw Call
@@ -78,8 +115,9 @@ namespace FrameGraph
 			using DebugMode = GraphicsShaderDebugMode;
 
 			//variables
-			PipelineResourceSet
-
+			PipelineResourceSet resources;
+			PushConstants_t pushConstants;
+			Scissors_t
 
 
 

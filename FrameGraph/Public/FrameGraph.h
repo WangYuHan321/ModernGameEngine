@@ -7,6 +7,8 @@
 #include "./ShaderEnums.h"
 #include "./ResourceEnums.h"
 #include "./RenderState.h"
+#include "./RenderStateEnum.h"
+#include "./VertexInputState.h"
 #include "./MipmapLevel.h"
 #include "./BindingIndex.h"
 #include "./ImageLayer.h"

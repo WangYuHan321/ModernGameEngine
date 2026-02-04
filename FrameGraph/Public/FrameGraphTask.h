@@ -62,7 +62,7 @@ namespace FrameGraph
 		//
 		struct RayTracingShaderDebugMode
 		{
-			EShaderDebugMode	mode = Default;
+			EShaderDebugMode	mode = {};
 			uint3				launchID{ ~0u };
 		};
 	}

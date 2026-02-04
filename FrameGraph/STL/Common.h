@@ -60,6 +60,9 @@ namespace FrameGraph
 	template <typename T>	using SharedPtr = std::shared_ptr< T >;
 	template <typename T>	using WeakPtr = std::weak_ptr< T >;
 
+	template <typename T> using Deque = std::deque<T>;
+	template <size_t N> using BitSet = std::bitset<N>;
+
 	template <typename T>	using Function = std::function< T >;
 
 	template<typename T> using Atomic = std::atomic< T >;

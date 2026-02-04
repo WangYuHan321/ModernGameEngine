@@ -306,8 +306,18 @@ namespace FrameGraph
 		using TopologyBits_t = BitSet< uint(EPrimitive::_Count) >;
 		using Shaders_t = FixedMap< EShader, Shader, 8 >;
 		using VertexAttrib = VertexInputState::VertexAttrib;
-		using VertexAttribs_t = FixedArray< VertexAttrib, FG_MaxVertexAttribs >;
-		using FragmentOutputs_t = FixedArray< FragmentOutput, FG_MaxColorBuffers >;
+		using VertexAttribs_t = FixedArray< VertexAttrib, GFG_MaxVertexAttribs >;
+		using FragmentOutputs_t = FixedArray< FragmentOutput, GFG_MaxColorBuffers >;
+
+		//variables
+		Shaders_t _shaders;
+		TopologyBits_t _supportedTopology;
+		
+
+
+
+
+
 
 	};
 
