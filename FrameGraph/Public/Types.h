@@ -7,12 +7,14 @@
 #include <atomic>
 
 #include "../STL/Common.h"
+#include "../STL/Containers/Ptr.h"
 
 namespace FrameGraph
 {
-	//
-	//   FrameGraph 接口
-	//
+	using PipelineCompiler = SharedPtr<class IPipelineCompiler>;
+	using FrameGraph = SharedPtr<class IFrameGraph>;
 
+	using Task = Ptr< class IFrameGraphTask>;
 
+	using Nanosecond = std::chrono::nanoseconds;
 }
