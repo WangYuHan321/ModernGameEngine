@@ -71,5 +71,9 @@ namespace FrameGraph
 		typename Value,
 		typename Hasher = std::hash<Key>>
 		using HashMap = std::unordered_map< Key, Value, Hasher >;
+
+	template<typename FirstT,
+			typename SecondT>
+	using Pair = std::pair<FirstT, SecondT>;
 }
 
