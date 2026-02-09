@@ -88,41 +88,40 @@ namespace FrameGraph
 
 			void Merge(const Statistics&);
 		};
-	}
-	
-	//---------------------------------------------
+
+		//---------------------------------------------
 	//device features & property
 
-	struct DeviceProperties
-	{
-		bool geometryShader : 1;
-		bool tessellationShader : 1;
-		bool vertexPipelineStoresAndAtomics : 1;
-		bool fragmentStoresAndAtomics : 1;
-		bool dedicatedAllocation : 1;
-		bool dispatchBase : 1;
-		bool imageCubeArray : 1;
-		bool array2DCompatible : 1;
-		bool blockTexelView : 1;
-		bool samplerMirrorClamp : 1;
-		bool descriptorIndexing : 1;
-		bool drawIndirectCount : 1;
-		bool swapchain : 1;
-		bool meshShaderNV : 1;
-		bool rayTracingNV : 1;
+		struct DeviceProperties
+		{
+			bool geometryShader : 1;
+			bool tessellationShader : 1;
+			bool vertexPipelineStoresAndAtomics : 1;
+			bool fragmentStoresAndAtomics : 1;
+			bool dedicatedAllocation : 1;
+			bool dispatchBase : 1;
+			bool imageCubeArray : 1;
+			bool array2DCompatible : 1;
+			bool blockTexelView : 1;
+			bool samplerMirrorClamp : 1;
+			bool descriptorIndexing : 1;
+			bool drawIndirectCount : 1;
+			bool swapchain : 1;
+			bool meshShaderNV : 1;
+			bool rayTracingNV : 1;
 
-		bool shadingRateImageNV : 1;
+			bool shadingRateImageNV : 1;
 
-		BytesU minSorageBufferOffsetAlignment;
-		BytesU minUniformBufferOffsetAlignment;
-		uint maxDrawIndirectCount;
+			BytesU minSorageBufferOffsetAlignment;
+			BytesU minUniformBufferOffsetAlignment;
+			uint maxDrawIndirectCount;
 
-		uint maxDrawIndexedIndexValue;
-	};
+			uint maxDrawIndexedIndexValue;
+		};
 
-	static constexpr auto	MaxTimeout = Nanosecond{ 60'000'000'000 };
+		static constexpr auto	MaxTimeout = Nanosecond{ 60'000'000'000 };
 
-	//接口
+		//接口
 	public:
 
 		//初始化//
@@ -133,7 +132,26 @@ namespace FrameGraph
 
 		virtual ~IFrameGraph() {};
 
+		virtual void Deinitialize() = 0;
 
+		virtual bool AddPipelineCompiler(const PipelineCompiler& comp) = 0;
 
+		virtual bool SetShaderDebugCallback(ShaderDebugCallback_t&&) = 0;
+
+		GND virtual DeviceInfo_t GetDeviceInfo() const = 0;
+
+		GND virtual EQueueUsage GetAvilableQueues() const = 0;
+
+		GND virtual DeviceProperties GetDeviceProperties() const = 0;
+
+		//资源管理
+
+		//创建资源 ： Pipeline image buffer
+		// 
+ 
+
+	}
+	
+	
 
 }

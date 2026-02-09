@@ -121,6 +121,14 @@ namespace FrameGraph
 		using RawRTShaderTableID = FrameGraph::Local::ResourceID< 13 >;
 		using RawSwapchainID = FrameGraph::Local::ResourceID< 14 >;
 
+		//strong reference
+		using BufferID = FrameGraph::Local::ResourceIDWrap < RawBufferID >;
+		using ImageID = FrameGraph::Local::ResourceIDWrap < RawImageID >;
+		using GPipelineID = FrameGraph::Local::ResourceIDWrap < RawGPipelineID >;
+		using MPipelineID = FrameGraph::Local::ResourceIDWrap < RawMPipelineID >;
+		using CPipelineID = FrameGraph::Local::ResourceIDWrap < RawCPipelineID >;
+		using RTPipelineID = FrameGraph::Local::ResourceIDWrap< RawRTPipelineID >;
+
 
 
 	}
