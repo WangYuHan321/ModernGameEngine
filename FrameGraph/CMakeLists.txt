@@ -4,6 +4,7 @@ file(GLOB PUBLIC_SRC "./Public/*.h" "./Public/*.cpp" "./Public/*.hpp")
 file(GLOB SHARED_SRC "./Shared/*.h" "./Shared/*.cpp" "./Shared/*.hpp")
 file(GLOB VULKAN_SRC "./Vulkan/*.h" "./Vulkan/*.cpp" "./Vulkan/*.hpp")
 file(GLOB VULKAN_BUFFER_SRC "./Vulkan/Buffer/*.h" "./Vulkan/Buffer/*.cpp" "./Vulkan/Buffer/*.hpp")
+file(GLOB VULKAN_UTILS_SRC "./Vulkan/Utils/*.h" "./Vulkan/Utils/*.cpp" "./Vulkan/Utils/*.hpp")
 file(GLOB STL_SRC "./STL/*.h" "./STL/*.cpp" "./STL/*.hpp")
 file(GLOB STL_ALGORITHMS_SRC "./STL/Algorithms/*.h" "./STL/Algorithms/*.cpp" "./STL/Algorithms/*.hpp")
 file(GLOB STL_CONTAINERS_SRC "./STL/Containers/*.h" "./STL/Containers/*.cpp" "./STL/Containers/*.hpp")
@@ -15,6 +16,7 @@ SOURCE_GROUP(Public FILES  ${PUBLIC_SRC})
 SOURCE_GROUP(Shared FILES  ${SHARED_SRC})
 SOURCE_GROUP(Vulkan FILES  ${VULKAN_SRC})
 SOURCE_GROUP(Vulkan/Buffer FILES  ${VULKAN_BUFFER_SRC})
+SOURCE_GROUP(Vulkan/Utils FILES  ${VULKAN_UTILS_SRC})
 SOURCE_GROUP(STL FILES  ${STL_SRC})
 SOURCE_GROUP(STL/Algorithms FILES  ${STL_ALGORITHMS_SRC})
 SOURCE_GROUP(STL/Containers FILES  ${STL_CONTAINERS_SRC})
@@ -58,6 +60,7 @@ set(SRC_FILES
 	${SHARED_SRC}
 	${VULKAN_SRC}
 	${VULKAN_BUFFER_SRC}
+	${VULKAN_UTILS_SRC}
 	${STL_SRC}
 	${STL_MATH_SRC}
 	${STL_MEMORY_SRC}
