@@ -1,5 +1,7 @@
 ﻿#pragma once
 #include "../Public/FrameGraph.h"
+#include "../Shared/LocalResourceID.h"
+#include "../STL/Common.h"
 #include "vulkan/vulkan.h"
 
 namespace FrameGraph
@@ -20,6 +22,12 @@ namespace FrameGraph
 	private:
 		VkBuffer _buffer = VK_NULL_HANDLE;
 		MemoryID _memoryId;
+		BufferDesc _desc;
+
+		mutable SharedMutex  _viewMapLock;
+		mutable BufferViewMap_t _viewMap;
+
+		
 
 
 	};
