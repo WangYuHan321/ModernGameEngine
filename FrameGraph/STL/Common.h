@@ -63,6 +63,9 @@ namespace FrameGraph
 	template <typename T> using Deque = std::deque<T>;
 	template <size_t N> using BitSet = std::bitset<N>;
 
+	using Mutex = std::mutex;
+	using SharedMutex = std::shared_mutex;
+
 	template <typename T>	using Function = std::function< T >;
 
 	template<typename T> using Atomic = std::atomic< T >;
