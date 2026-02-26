@@ -9,7 +9,9 @@ file(GLOB STL_SRC "./STL/*.h" "./STL/*.cpp" "./STL/*.hpp")
 file(GLOB STL_ALGORITHMS_SRC "./STL/Algorithms/*.h" "./STL/Algorithms/*.cpp" "./STL/Algorithms/*.hpp")
 file(GLOB STL_CONTAINERS_SRC "./STL/Containers/*.h" "./STL/Containers/*.cpp" "./STL/Containers/*.hpp")
 file(GLOB STL_MEMORY_SRC "./STL/Memory/*.h" "./STL/Memory/*.cpp" "./STL/Memory/*.hpp")
+file(GLOB STL_LOG_SRC "./STL/Log/*.h" "./STL/Log/*.cpp" "./STL/Log/*.hpp")
 file(GLOB STL_MATH_SRC "./STL/Math/*.h" "./STL/Math/*.cpp" "./STL/Math/*.hpp")
+file(GLOB STL_THREADSAFE_SRC "./STL/ThreadSafe/*.h" "./STL/ThreadSafe/*.cpp" "./STL/ThreadSafe/*.hpp")
 file(GLOB STL_COMPILETIME_SRC "./STL/CompileTime/*.h" "./STL/CompileTime/*.cpp" "./STL/CompileTime/*.hpp")
 
 SOURCE_GROUP(Public FILES  ${PUBLIC_SRC})
@@ -21,7 +23,9 @@ SOURCE_GROUP(STL FILES  ${STL_SRC})
 SOURCE_GROUP(STL/Algorithms FILES  ${STL_ALGORITHMS_SRC})
 SOURCE_GROUP(STL/Containers FILES  ${STL_CONTAINERS_SRC})
 SOURCE_GROUP(STL/Memory FILES  ${STL_MEMORY_SRC})
+SOURCE_GROUP(STL/Log FILES  ${STL_LOG_SRC})
 SOURCE_GROUP(STL/Math FILES  ${STL_MATH_SRC})
+SOURCE_GROUP(STL/ThreadSafe FILES  ${STL_THREADSAFE_SRC})
 SOURCE_GROUP(STL/CompileTime FILES  ${STL_COMPILETIME_SRC})
 
 
@@ -62,8 +66,10 @@ set(SRC_FILES
 	${VULKAN_BUFFER_SRC}
 	${VULKAN_UTILS_SRC}
 	${STL_SRC}
+	${STL_LOG_SRC}
 	${STL_MATH_SRC}
 	${STL_MEMORY_SRC}
+	${STL_THREADSAFE_SRC}
 	${STL_CONTAINERS_SRC}
 	${STL_ALGORITHMS_SRC}
 	${STL_COMPILETIME_SRC}
