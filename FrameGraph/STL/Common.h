@@ -4,6 +4,8 @@
 
 #include <vector>
 #include <string>
+#include <functional>    // <-- add this
+#include <string_view>   // <-- add this
 #include <array>
 #include <memory>		// shared_ptr, weak_ptr, unique_ptr
 #include <deque>
@@ -17,9 +19,7 @@
 #include <shared_mutex>
 #include <algorithm>
 
-#include "./Algorithms/Hash.h"
-#include "../STL/Algorithms/Cast.h"
-#include "../STL/CompileTime/TypeTraits.h"s
+#include "../STL/CompileTime/TypeTraits.h"
 
 #ifndef GND
 
@@ -66,9 +66,11 @@ namespace FrameGraph
 	using Mutex = std::mutex;
 	using SharedMutex = std::shared_mutex;
 
-	template <typename T>	using Function = std::function< T >;
+	template <typename T> using Function = std::function< T >;
 
 	template<typename T> using Atomic = std::atomic< T >;
+
+	static constexpr std::memory_order	memory_order_acquire = std::memory_order_seq_cst;
 
 	template <typename Key,
 		typename Value,
