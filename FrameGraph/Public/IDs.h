@@ -1,7 +1,8 @@
 ﻿#pragma once
 #include "../FrameGraph/Public/FrameGraph.h"
-#include "../STL/Algorithms/Hash.h"
 #include "../STL/CompileTime/Hash.h"
+#include "../STL/Algorithms/Hash.h"
+#include "../STL/Containers/StringView.h"
 
 namespace FrameGraph
 {
@@ -20,13 +21,13 @@ namespace FrameGraph
 		private:
 
 			HashVal _hash;
-
+			HashVal _emptyHash{};
 
 		public:
 			constexpr IDWithString() : _hash{  } {}
 			explicit constexpr IDWithString(HashVal hash) : _hash{ hash } {}
 			explicit constexpr IDWithString(StringView name) : _hash{ CT_Hash(name.data(), name.length(), Seed) } {}
-			explicit constexpr IDWithString(const char* name) : _hash{ CT_Hash(name, UMax, Seed) } {}
+			explicit constexpr IDWithString(const char* name) : _hash{ CT_Hash(name, {}, Seed) } {}
 
 			GND constexpr bool operator == (const Self& rhs) const { return _hash == rhs._hash; }
 			GND constexpr bool operator != (const Self& rhs) const { return not (*this == rhs); }
@@ -70,7 +71,7 @@ namespace FrameGraph
 			explicit constexpr ResourceID(Value_t data) : _value{ data } {}
 			explicit constexpr ResourceID(Index_t val, InstanceID_t inst) : _value{ Value_t(val) | (Value_t(inst) << _InstOffset) } {}
 
-			GND constexpr bool			IsValid()						const { return _value != {}; }
+			GND constexpr bool			IsValid()						const { return false; }
 			GND constexpr Index_t		Index()						const { return _value & _IndexMask; }
 			GND constexpr InstanceID_t	InstanceID()					const { return _value >> _InstOffset; }
 			GND constexpr HashVal		GetHash()						const { return HashOf(_value) + HashVal{ UID }; }

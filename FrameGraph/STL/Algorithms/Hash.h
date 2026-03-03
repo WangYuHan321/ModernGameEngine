@@ -44,5 +44,6 @@ namespace FrameGraph
 		GND explicit constexpr operator size_t () const { return _value; }
 	};
 
+
 }
 

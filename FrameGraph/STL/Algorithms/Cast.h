@@ -1,12 +1,14 @@
 ﻿#pragma once
 
-#include "./Config.h"
+#include "../Config.h"
 #include "../Common.h"
+#include "../Defines.h"
 
 namespace FrameGraph
 {
+
 	template <typename To, typename From>
-	GND inline constexpr To  CheckCast(const From& src)
+	GND forceinline constexpr To CheckCast(const From& src)
 	{
 		if constexpr (std::is_signed_v<From> and std::is_unsigned_v<To>)
 		{
@@ -18,7 +20,7 @@ namespace FrameGraph
 		return static_cast<To>(src);
 	}
 
-}
+};
 
 
 

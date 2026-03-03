@@ -66,9 +66,9 @@ namespace FrameGraph
 		CT_Hash (string)
 	=================================================
 	*/
-	GND inline constexpr HashVal  CT_Hash (const char *str, size_t len, uint seed)
-	{
-		return HashVal{Local::crc32_hash( str, len, seed )};
-	}
+	//GND inline constexpr HashVal  CT_Hash (const char *str, size_t len, uint seed)
+	//{
+	//	return HashVal{Local::crc32_hash( str, len, seed )};
+	//}
 }
 

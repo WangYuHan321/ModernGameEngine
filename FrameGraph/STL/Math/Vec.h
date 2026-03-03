@@ -1,7 +1,9 @@
 ﻿#pragma once
 
 #include "../Common.h"
+#include "../CompileTime/TypeTraits.h"
 
+using namespace FrameGraph::Local;
 namespace FrameGraph
 {
 
@@ -293,13 +295,13 @@ namespace FrameGraph
 	}
 
 	template <typename T, uint I, typename S>
-	GND inline constexpr EnableIf<IsScalar<S>, Vec<bool, I>>  operator >  (const Vec<T, I>& lhs, const S& rhs)
+	GND inline constexpr Local::EnableIf<Local::IsScalar<S>, Vec<bool, I>>  operator >  (const Vec<T, I>& lhs, const S& rhs)
 	{
 		return lhs > Vec<T, I>(rhs);
 	}
 
 	template <typename T, uint I, typename S>
-	GND inline constexpr EnableIf<IsScalar<S>, Vec<bool, I>>  operator >  (const S& lhs, const Vec<T, I>& rhs)
+	GND inline constexpr Local::EnableIf<Local::IsScalar<S>, Vec<bool, I>>  operator >  (const S& lhs, const Vec<T, I>& rhs)
 	{
 		return Vec<T, I>(lhs) > rhs;
 	}
@@ -316,13 +318,13 @@ namespace FrameGraph
 	}
 
 	template <typename T, uint I, typename S>
-	GND inline constexpr EnableIf<IsScalar<S>, Vec<bool, I>>  operator <  (const Vec<T, I>& lhs, const S& rhs)
+	GND inline constexpr Local::EnableIf<Local::IsScalar<S>, Vec<bool, I>>  operator <  (const Vec<T, I>& lhs, const S& rhs)
 	{
 		return rhs > lhs;
 	}
 
 	template <typename T, uint I, typename S>
-	GND inline constexpr EnableIf<IsScalar<S>, Vec<bool, I>>  operator <  (const S& lhs, const Vec<T, I>& rhs)
+	GND inline constexpr Local::EnableIf<Local::IsScalar<S>, Vec<bool, I>>  operator <  (const S& lhs, const Vec<T, I>& rhs)
 	{
 		return rhs > lhs;
 	}
@@ -339,13 +341,13 @@ namespace FrameGraph
 	}
 
 	template <typename T, uint I, typename S>
-	GND inline constexpr EnableIf<IsScalar<S>, Vec<bool, I>>  operator >= (const Vec<T, I>& lhs, const S& rhs)
+	GND inline constexpr Local::EnableIf<Local::IsScalar<S>, Vec<bool, I>>  operator >= (const Vec<T, I>& lhs, const S& rhs)
 	{
 		return not (lhs < rhs);
 	}
 
 	template <typename T, uint I, typename S>
-	GND inline constexpr EnableIf<IsScalar<S>, Vec<bool, I>>  operator >= (const S& lhs, const Vec<T, I>& rhs)
+	GND inline constexpr Local::EnableIf<Local::IsScalar<S>, Vec<bool, I>>  operator >= (const S& lhs, const Vec<T, I>& rhs)
 	{
 		return not (lhs < rhs);
 	}
