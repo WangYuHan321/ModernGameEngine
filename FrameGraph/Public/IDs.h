@@ -3,7 +3,7 @@
 #include "../STL/CompileTime/Hash.h"
 #include "../STL/Algorithms/Hash.h"
 #include "../STL/Containers/StringView.h"
-
+#include "../Public/Config.h"
 namespace FrameGraph
 {
 
@@ -12,7 +12,7 @@ namespace FrameGraph
 		//
 		//字符串转换ID
 		//
-		template <size_t Size, uint UID, bool Optimize, uint Seed >
+		template <size_t Size, uint UID, bool Optimize, uint Seed = 1 >
 		struct IDWithString
 		{
 			//types
@@ -85,6 +85,28 @@ namespace FrameGraph
 			GND static constexpr uint	GetUID() { return UID; }
 
 
+		};
+
+		template <typename T>
+		struct ResourceIDWrap;
+		
+		template<uint UID>
+		struct ResourceIDWrap<ResourceID<UID>>
+		{
+		public:
+			using Self = ResourceIDWrap<ResourceID<UID>>;
+			using IDType = ResourceID<UID>;
+			
+		private:
+			IDType _id;
+		
+		public:
+			constexpr ResourceIDWrap() {}
+			constexpr ResourceIDWrap(const IDType& id) : _id{ id } {}
+			constexpr ResourceIDWrap(const Self& other) : _id{ other._id } {}
+			GND constexpr bool operator == (const Self& rhs) const { return _id == rhs._id; }
+			GND constexpr bool operator != (const Self& rhs) const { return not (*this == rhs); }
+			GND explicit constexpr operator bool() const { return _id.IsValid(); }
 		};
 
 		enum class RenderTargetID : uint

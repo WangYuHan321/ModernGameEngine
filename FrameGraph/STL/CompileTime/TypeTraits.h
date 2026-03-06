@@ -11,7 +11,7 @@ namespace FrameGraph
 		static constexpr bool IsFloatPoint = std::is_floating_point<T>::value; //检测是否是float类型
 
 		template<typename T>
-		static constexpr bool IsInteger = std::integral<T>::Value;
+		static constexpr bool IsInteger = std::is_integral<T>::value;
 
 		template <typename T>
 		static constexpr bool	IsSignedInteger = std::is_integral<T>::value && std::is_signed<T>::value;
