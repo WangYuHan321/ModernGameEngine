@@ -68,6 +68,10 @@ namespace FrameGraph
 
 	template <typename T> using Function = std::function< T >;
 
+	template<typename T,
+			size_t ArraySize>
+	using StaticArray = std::array<T, ArraySize>;
+
 	template<typename T> using Atomic = std::atomic< T >;
 
 	static constexpr std::memory_order	memory_order_acquire = std::memory_order_seq_cst;
