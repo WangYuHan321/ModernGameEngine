@@ -1,6 +1,9 @@
 ﻿#pragma once
 
 #include "../Common.h"
+#include "../../STL/CompileTime/TypeTraits.h"
+
+using namespace FrameGraph::Local;
 
 namespace FrameGraph
 {
@@ -43,7 +46,13 @@ namespace FrameGraph
 
 		GND explicit constexpr operator size_t () const { return _value; }
 	};
-
-
 }
+
+template<typename T>
+GND forceinline EnableIf<not IsFloatPoint<T>, FrameGraph::HashVal> HashOf(const T& value)
+{
+	return FrameGraph::HashVal(size_t(value));
+}
+
+
 
