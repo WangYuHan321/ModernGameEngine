@@ -2,6 +2,8 @@
 
 #include "./Config.h"
 
+#include "../STL/Log/Log.h"
+
 #ifdef  COMPILER_MSVC
 #define and &&
 #define or  ||
@@ -63,8 +65,26 @@
 							FG_PRIVATE_GETARG_2( __VA_ARGS__, __FILE__, __LINE__ ))
 #endif
 
+#ifndef FG_LOGE
+#define FG_LOGE( ... )\
+		FG_PRIVATE_LOGE(FG_PRIVATE_GETARG_0( __VA_ARGS__, "" ), \
+							FG_PRIVATE_GETARG_1( __VA_ARGS__, __FILE__ ), \
+							FG_PRIVATE_GETARG_2( __VA_ARGS__, __FILE__, __LINE__ ))
+#endif
 
 
+#	define if_likely( ... )		if ( __VA_ARGS__ )
+
+//bit operators
+#define FG_BIT_OPERATORS( _type_ ) \
+	ND_ constexpr _type_  operator |  (_type_ lhs, _type_ rhs)	{ return _type_( FGC::ToNearUInt(lhs) | FGC::ToNearUInt(rhs) ); } \
+	ND_ constexpr _type_  operator &  (_type_ lhs, _type_ rhs)	{ return _type_( FGC::ToNearUInt(lhs) & FGC::ToNearUInt(rhs) ); } \
+	\
+	constexpr _type_&  operator |= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( FGC::ToNearUInt(lhs) | FGC::ToNearUInt(rhs) ); } \
+	constexpr _type_&  operator &= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( FGC::ToNearUInt(lhs) & FGC::ToNearUInt(rhs) ); } \
+	\
+	ND_ constexpr _type_  operator ~ (_type_ lhs)				{ return _type_(~FGC::ToNearUInt(lhs)); } \
+	ND_ constexpr bool   operator ! (_type_ lhs)				{ return not FGC::ToNearUInt(lhs); } \
 
 // debug only check
 #ifndef ASSERT
@@ -80,7 +100,7 @@
 #	define FG_PRIVATE_CHECK( _expr_, _text_ ) \
 		{if_likely (( _expr_ )) {} \
 		 else { \
-			FG_LOGE( _text_ ); \
+			FG_LOGE( _text_ ) \
 		}}
 
 #   define CHECK( _func_ ) \

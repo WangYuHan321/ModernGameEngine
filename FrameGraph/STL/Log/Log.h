@@ -31,13 +31,13 @@ namespace FrameGraph
 
 
 
-#define FG_PRIVATE_LOGX( _level, _msg_, _file_, _line_ ) \
+#define FG_PRIVATE_LOGX( _level_, _msg_, _file_, _line_ ) \
 	{\
 		switch (Logger::_level_((_msg_),(FUNCTION_NAME), (_file_), (_line_)))\
 		{\
-			Logger::EResult::Continue: break;\
-			Logger::EResult::Break: break;\
-			Logger::EResult::Abort: std::abort();\
+			case Logger::EResult::Continue: break;\
+			case Logger::EResult::Break: break;\
+			case Logger::EResult::Abort: std::abort();\
 		}\
 	}\
 
