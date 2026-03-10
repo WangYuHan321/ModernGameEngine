@@ -106,4 +106,6 @@ namespace FrameGraph
 
 	};
 
+	FG_BIT_OPERATORS(EResourceState);
+
 }

@@ -3,6 +3,7 @@
 #include "./Config.h"
 
 #include "../STL/Log/Log.h"
+#include "../STL/Math/BitMath.h"
 
 #ifdef  COMPILER_MSVC
 #define and &&
@@ -77,14 +78,14 @@
 
 //bit operators
 #define FG_BIT_OPERATORS( _type_ ) \
-	ND_ constexpr _type_  operator |  (_type_ lhs, _type_ rhs)	{ return _type_( FGC::ToNearUInt(lhs) | FGC::ToNearUInt(rhs) ); } \
-	ND_ constexpr _type_  operator &  (_type_ lhs, _type_ rhs)	{ return _type_( FGC::ToNearUInt(lhs) & FGC::ToNearUInt(rhs) ); } \
+	ND_ constexpr _type_  operator |  (_type_ lhs, _type_ rhs)	{ return _type_( FrameGraph::ToNearUInt(lhs) | FrameGraph::ToNearUInt(rhs) ); } \
+	ND_ constexpr _type_  operator &  (_type_ lhs, _type_ rhs)	{ return _type_( FrameGraph::ToNearUInt(lhs) & FrameGraph::ToNearUInt(rhs) ); } \
 	\
-	constexpr _type_&  operator |= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( FGC::ToNearUInt(lhs) | FGC::ToNearUInt(rhs) ); } \
-	constexpr _type_&  operator &= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( FGC::ToNearUInt(lhs) & FGC::ToNearUInt(rhs) ); } \
+	constexpr _type_&  operator |= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( FrameGraph::ToNearUInt(lhs) | FrameGraph::ToNearUInt(rhs) ); } \
+	constexpr _type_&  operator &= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( FrameGraph::ToNearUInt(lhs) & FrameGraph::ToNearUInt(rhs) ); } \
 	\
-	ND_ constexpr _type_  operator ~ (_type_ lhs)				{ return _type_(~FGC::ToNearUInt(lhs)); } \
-	ND_ constexpr bool   operator ! (_type_ lhs)				{ return not FGC::ToNearUInt(lhs); } \
+	ND_ constexpr _type_  operator ~ (_type_ lhs)				{ return _type_(~FrameGraph::ToNearUInt(lhs)); } \
+	ND_ constexpr bool   operator ! (_type_ lhs)				{ return not FrameGraph::ToNearUInt(lhs); } \
 
 // debug only check
 #ifndef ASSERT
