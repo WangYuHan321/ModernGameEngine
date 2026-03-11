@@ -46,13 +46,15 @@ namespace FrameGraph
 
 		GND explicit constexpr operator size_t () const { return _value; }
 	};
+
+	template<typename T>
+	GND forceinline EnableIf<not IsFloatPoint<T>, HashVal> HashOf(const T& value)
+	{
+		return HashVal(size_t(value));
+	}
 }
 
-template<typename T>
-GND forceinline EnableIf<not IsFloatPoint<T>, FrameGraph::HashVal> HashOf(const T& value)
-{
-	return FrameGraph::HashVal(size_t(value));
-}
+
 
 
 
