@@ -44,7 +44,7 @@ namespace FrameGraph
 			};
 
 			BindingIndex index;
-			EResourceState state;
+			//EResourceState state;
 			uint  dynamicOffsetIndex;
 			BytesU staticSize;
 			BytesU arrayStride;
@@ -64,7 +64,7 @@ namespace FrameGraph
 			};
 
 			BindingIndex index;
-			EResourceState state;
+			//EResourceState state;
 			const uint16_t elementCapacity;
 			uint16_t elementCount;
 			Element elements[1];
@@ -82,7 +82,7 @@ namespace FrameGraph
 			};
 
 			BindingIndex index;
-			EResourceState state;
+			//EResourceState state;
 			EImageSampler imageType;
 			const uint16_t elementCapacity;
 			uint16_t elementCount;
@@ -102,7 +102,7 @@ namespace FrameGraph
 			};
 
 			BindingIndex index;
-			EResourceState state;
+			//EResourceState state;
 			EImageSampler samplerType;
 			const uint16_t elementCapacity;
 			uint16_t elementCount;

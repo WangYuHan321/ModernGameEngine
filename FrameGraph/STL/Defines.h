@@ -78,14 +78,14 @@
 
 //bit operators
 #define FG_BIT_OPERATORS( _type_ ) \
-	ND_ constexpr _type_  operator |  (_type_ lhs, _type_ rhs)	{ return _type_( FrameGraph::ToNearUInt(lhs) | FrameGraph::ToNearUInt(rhs) ); } \
-	ND_ constexpr _type_  operator &  (_type_ lhs, _type_ rhs)	{ return _type_( FrameGraph::ToNearUInt(lhs) & FrameGraph::ToNearUInt(rhs) ); } \
+	GND constexpr _type_  operator |  (_type_ lhs, _type_ rhs)	{ return _type_( ToNearUInt(lhs) | ToNearUInt(rhs) ); } \
+	GND constexpr _type_  operator &  (_type_ lhs, _type_ rhs)	{ return _type_( ToNearUInt(lhs) & ToNearUInt(rhs) ); } \
 	\
-	constexpr _type_&  operator |= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( FrameGraph::ToNearUInt(lhs) | FrameGraph::ToNearUInt(rhs) ); } \
-	constexpr _type_&  operator &= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( FrameGraph::ToNearUInt(lhs) & FrameGraph::ToNearUInt(rhs) ); } \
+	constexpr _type_&  operator |= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( ToNearUInt(lhs) | ToNearUInt(rhs) ); } \
+	constexpr _type_&  operator &= (_type_ &lhs, _type_ rhs)	{ return lhs = _type_( ToNearUInt(lhs) & ToNearUInt(rhs) ); } \
 	\
-	ND_ constexpr _type_  operator ~ (_type_ lhs)				{ return _type_(~FrameGraph::ToNearUInt(lhs)); } \
-	ND_ constexpr bool   operator ! (_type_ lhs)				{ return not FrameGraph::ToNearUInt(lhs); } \
+	GND constexpr _type_  operator ~ (_type_ lhs)				{ return _type_(~ToNearUInt(lhs)); } \
+	GND constexpr bool   operator ! (_type_ lhs)				{ return not ToNearUInt(lhs); } \
 
 // debug only check
 #ifndef ASSERT

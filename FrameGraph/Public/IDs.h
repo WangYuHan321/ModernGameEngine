@@ -128,6 +128,7 @@ namespace FrameGraph
 		using DescriptorSetID = FrameGraph::Local::IDWithString<32, 4, false>;
 		using SpecializationID = FrameGraph::Local::IDWithString<32, 5, false>;
 		using VertexID = FrameGraph::Local::IDWithString< 32, 6, false >;
+		using VertexBufferID = FrameGraph::Local::IDWithString< 32, 7, false >;
 		
 		using RawBufferID = FrameGraph::Local::ResourceID< 1 >;
 		using RawImageID = FrameGraph::Local::ResourceID< 2 >;

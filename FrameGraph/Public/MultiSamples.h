@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "FrameGraph.h"
+#include "../STL/Algorithms/Cast.h"
 
 namespace FrameGraph
 {
