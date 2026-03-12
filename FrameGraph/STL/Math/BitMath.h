@@ -29,6 +29,23 @@ namespace FrameGraph
 		return static_cast<NearUInt<T>>(value);
 	}
 
+	template <typename T>
+	int  IntLog2(const T& x)
+	{
+		STATIC_ASSERT(Local::IsInteger<T> or Local::IsEnum<T>);
+
+		constexpr int	INVALID_INDEX = std::numeric_limits<int>::min();
+
+		unsigned long	index;
+
+		if constexpr (sizeof(x) == 8)
+			return _BitScanReverse64( & index, uint64_t(x)) ? index : INVALID_INDEX;
+		
+		if constexpr (sizeof(x) <= 4)
+			return _BitScanReverse( & index, uint(x)) ? index : INVALID_INDEX;
+
+
+	}
 
 };
 
