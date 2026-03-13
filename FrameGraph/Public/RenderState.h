@@ -9,23 +9,23 @@ namespace FrameGraph
 	//
 	//   渲染状态
 	//
-	
+
 	struct RenderState
 	{
-	//类型
+		//类型
 	public:
-	struct ColorBuffer
-	{
-		
-	}
-	
-	
-	
-	}
-	
-	
-	
-	
-	
-	
-}
+		struct ColorBuffer
+		{
+
+		};
+
+
+	};
+
+
+
+
+
+
+
+};

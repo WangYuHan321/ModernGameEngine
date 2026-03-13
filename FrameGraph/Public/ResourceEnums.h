@@ -289,7 +289,8 @@ namespace FrameGraph
 	enum class EImageSampler : uint
 	{
 		// dimension
-		_DimOffset = CT_IntLog2< uint(EPixelFormat::_Count) > +1,
+		//_DimOffset = CT_IntLog2< uint(EPixelFormat::_Count) > +1,
+		_DimOffset = 0,
 		_DimMask = 0xF << _DimOffset,
 		_1D = 1 << _DimOffset,
 		_1DArray = 2 << _DimOffset,
