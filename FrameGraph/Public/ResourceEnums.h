@@ -104,6 +104,7 @@ namespace FrameGraph
 
 		Unknown = 0,
 	};
+	FG_BIT_OPERATORS(EImageFlags);
 
 	enum class EImageUsage : uint
 	{
@@ -128,6 +129,7 @@ namespace FrameGraph
 		Transfer = TransferSrc | TransferDst,
 		Unknown = 0,
 	};
+	FG_BIT_OPERATORS(EImageUsage);
 
 	enum class EImageAspect : unsigned int
 	{
@@ -141,6 +143,7 @@ namespace FrameGraph
 		Auto = ~0u,
 		Unknown = 0,
 	};
+	FG_BIT_OPERATORS(EImageAspect);
 
 	enum class EPixelFormat : uint
 	{
@@ -350,6 +353,7 @@ namespace FrameGraph
 
 		Unknown = ~0u,
 	};
+	FG_BIT_OPERATORS(EImageSampler);
 
 	enum class EFragOutput : uint
 	{
@@ -358,4 +362,5 @@ namespace FrameGraph
 		UInt4 = uint(EPixelFormat::RGBA32U),
 		Float4 = uint(EPixelFormat::RGBA32F),
 	};
+
 }
