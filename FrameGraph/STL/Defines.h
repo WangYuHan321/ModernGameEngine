@@ -11,6 +11,14 @@
 #define not !
 #endif //  COMPILER_MSVC
 
+#ifndef OUT
+#	define OUT
+#endif
+
+#ifndef INOUT
+#	define INOUT
+#endif
+
 #ifndef null
 #define null nullptr
 #endif // !null
