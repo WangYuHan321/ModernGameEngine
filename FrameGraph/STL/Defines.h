@@ -39,6 +39,14 @@
 #define FG_PRIVATE_UNITE( _arg0_, _arg1_ ) _arg0_ ## _arg1_
 #define FG_PRIVATE_UNITE_RAW( _arg0_, _arg1_ ) FG_PRIVATE_UNITE( _arg0_, _arg1_ )
 
+
+#ifndef STATIC_ASSERT
+#define STATIC_ASSERT( ... ) \
+	static_assert( FG_PRIVATE_GETARG_0( __VA_ARGS__ ), \
+		FG_PRIVATE_GETARG_1( __VA_ARGS__, FG_PRIVATE_TOSTRING(__VA_ARGS__) ))
+#endif
+
+
 //自动管理锁的生命周期：当程序执行超出变量作用域时，锁会自动释放   防止命名冲突：使用__COUNTER__生成唯一变量名   简化代码：一行代码就能实现加锁和解锁
 //__scopeLock 作为前缀，与 __COUNTER__ 拼接后，在预处理阶段会生成一个唯一的标识符（如 __scopeLock0）。
 //std::unique_lock 人为确定是互斥锁 能写
