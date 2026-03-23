@@ -2,6 +2,7 @@
 
 #include "./FrameGraph.h"
 #include "../STL/Math/Vec.h"
+#include "../Public/ImageLayer.h"
 
 namespace FrameGraph
 {

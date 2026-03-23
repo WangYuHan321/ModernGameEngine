@@ -3,8 +3,10 @@
 #include "./VertexDesc.h"
 #include "./IDs.h"
 #include "../STL/Math/Bytes.h"
+#include "../STL/CompileTime/Constants.h"
 #include "../STL/Containers/FixedMap.h"
 #include "../STL/Containers/ArrayView.h"
+#include "../STL/CompileTime/DefaultType.h"
 namespace FrameGraph
 {
 	//
@@ -56,6 +58,8 @@ namespace FrameGraph
 			GND bool  operator == (const BufferBinding& rhs) const;
 		};
 
+		static constexpr uint BindingIndex_Auto = UMax;
+		static constexpr uint VertexIndex_Unknown = UMax;
 
 		using Vertices_t = FixedMap< Local::VertexID, VertexInput, GFG_MaxVertexAttribs >;
 		using Bindings_t = FixedMap< Local::VertexBufferID, BufferBinding, GFG_MaxVertexBuffers >;

@@ -36,4 +36,21 @@ namespace FrameGraph
 		GND constexpr bool	operator >= (const ImageLayer& rhs) const { return _value >= rhs._value; }
 		GND constexpr bool	operator <= (const ImageLayer& rhs) const { return _value <= rhs._value; }
 	};
+
+	GND inline ImageLayer operator "" _layer(unsigned long long value)
+	{
+		return ImageLayer{ CheckCast<uint64_t>(value) };
+	}
+}
+
+namespace std
+{
+	template<>
+	struct hash<FrameGraph::ImageLayer>
+	{
+		size_t operator()(const FrameGraph::ImageLayer& layer) const noexcept
+		{
+			return size_t(FrameGraph::HashOf(layer.Get()));
+		}
+	};
 }

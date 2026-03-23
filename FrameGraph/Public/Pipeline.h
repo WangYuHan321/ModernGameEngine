@@ -22,8 +22,8 @@ namespace FrameGraph
 
 		struct Texture
 		{
-			EResourceState state = {};
-			EImageSampler textureType = {};
+			EResourceState state = Default;
+			EImageSampler textureType = Default;
 
 			GND bool  operator == (const Texture& rhs) const;
 		};
@@ -114,7 +114,7 @@ namespace FrameGraph
 			const uint arraySize;
 			const EShaderStage stageFlags;
 
-			_SamplerUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStages stageFlags);
+			_SamplerUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags);
 		};
 
 		struct _SubpassInputUniform

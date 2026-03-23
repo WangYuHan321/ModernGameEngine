@@ -7,60 +7,67 @@ bool FrameGraph::PipelineDescription::Texture::operator==(const Texture& rhs) co
 
 GND bool FrameGraph::PipelineDescription::Sampler::operator==(const Sampler& rhs) const
 {
-	return GND bool();
+	return false;
 }
 
 GND bool FrameGraph::PipelineDescription::SubpassInput::operator==(const SubpassInput& rhs) const
 {
-	return GND bool();
+	return false;
 }
 
 GND bool FrameGraph::PipelineDescription::StorageBuffer::operator==(const StorageBuffer& rhs) const
 {
-	return GND bool();
+	return false;
 }
 
 GND bool FrameGraph::PipelineDescription::RayTracingScene::operator==(const RayTracingScene& rhs) const
 {
-	return GND bool();
+	return false;
 }
 
 FrameGraph::PipelineDescription::_TextureUniform::_TextureUniform(const Local::UniformID& id, EImageSampler textureType, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
-FrameGraph::PipelineDescription::_SamplerUniform::_SamplerUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStages stageFlags)
+FrameGraph::PipelineDescription::_SamplerUniform::_SamplerUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
 FrameGraph::PipelineDescription::_SubpassInputUniform::_SubpassInputUniform(const Local::UniformID& id, uint attachmentIndex, bool isMultisample, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
 FrameGraph::PipelineDescription::_ImageUniform::_ImageUniform(const Local::UniformID& id, EImageSampler imageType, EShaderAccess access, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
 FrameGraph::PipelineDescription::_UBufferUniform::_UBufferUniform(const Local::UniformID& id, BytesU size, const BindingIndex& index, uint arraySize, EShaderStage stageFlags, uint dynamicOffsetIndex)
+	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
 FrameGraph::PipelineDescription::_StorageBufferUniform::_StorageBufferUniform(const Local::UniformID& id, BytesU staticSize, BytesU arrayStride, EShaderAccess access, const BindingIndex& index, uint arraySize, EShaderStage stageFlags, uint dynamicOffsetIndex)
+	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
 FrameGraph::PipelineDescription::_RayTracingSceneUniform::_RayTracingSceneUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
 GND bool FrameGraph::PipelineDescription::Uniform::operator==(const Uniform& rhs) const
 {
-	return GND bool();
+	return false;
 }
 
 GND bool FrameGraph::GraphicsPipelineDesc::FragmentOutput::operator==(const FragmentOutput& rhs) const
 {
-	return GND bool();
+	return false;
 }
 
 void FrameGraph::PipelineDescription::Shader::AddShaderData(EShaderLangFormat fmt, StringView entry, String&& src, StringView dbgName)

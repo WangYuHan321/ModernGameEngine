@@ -18,7 +18,7 @@
 #include "./ImageDesc.h"
 #include "./VulkanType.h"
 #include "./EResourceState.h"
-
+#include "../STL/Containers/Union.h"
 #include<functional>
 
 namespace FrameGraph
