@@ -32,7 +32,7 @@ namespace FrameGraph
 	template <typename T>
 	int  IntLog2(const T& x)
 	{
-		STATIC_ASSERT(Local::IsInteger<T> or Local::IsEnum<T>);
+		static_assert(Local::IsInteger<T> or Local::IsEnum<T>);
 
 		constexpr int	INVALID_INDEX = std::numeric_limits<int>::min();
 
@@ -42,7 +42,7 @@ namespace FrameGraph
 			return _BitScanReverse64( & index, uint64_t(x)) ? index : INVALID_INDEX;
 		
 		if constexpr (sizeof(x) <= 4)
-			return _BitScanReverse( & index, uint(x)) ? index : INVALID_INDEX;
+			return _BitScanReverse( & index, x) ? index : INVALID_INDEX;
 
 
 	}

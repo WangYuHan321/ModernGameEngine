@@ -1,9 +1,9 @@
 ﻿#pragma once
-#include "../STL/Common.h"
+#include <cstdint> 
 
 namespace FrameGraph
 {
-	enum class EResourceState : uint
+	enum class EResourceState : uint32_t
 	{
 		Unknown = 0,
 

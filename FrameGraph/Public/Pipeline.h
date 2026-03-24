@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "FrameGraph.h"
 #include"../STL/Math/Bytes.h"
 #include "../STL/Containers/Union.h"
 #include "../STL/Containers/ArrayView.h"
@@ -35,7 +34,7 @@ namespace FrameGraph
 
 		struct SubpassInput
 		{
-			EResourceState state = {};
+			EResourceState state = Default;
 			uint attachmentIndex = {};
 			bool isMultisample = false;
 
@@ -44,7 +43,7 @@ namespace FrameGraph
 
 		struct Image
 		{
-			EResourceState state = {};
+			EResourceState state = Default;
 			EImageSampler textureType = {};
 
 			GND bool  operator == (const Texture& rhs) const;
@@ -52,7 +51,7 @@ namespace FrameGraph
 
 		struct UniformBuffer
 		{
-			EResourceState state = {};
+			EResourceState state = Default;
 			uint dynamicOffsetIndex = STATIC_OFFSET;
 			BytesU size;
 
@@ -89,7 +88,7 @@ namespace FrameGraph
 
 		struct RayTracingScene
 		{
-			EResourceState state = {};
+			EResourceState state = Default;
 
 			GND bool  operator == (const RayTracingScene& rhs) const;
 		};
