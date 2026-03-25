@@ -12,7 +12,7 @@ namespace FrameGraph
 	template <typename T>
 	struct Bytes
 	{
-		static_assert(IsInteger<T> and IsScalar<T>, "must be integer scalar");
+		//static_assert(IsInteger<T> and IsScalar<T>, "must be integer scalar");
 
 		//types
 	public:

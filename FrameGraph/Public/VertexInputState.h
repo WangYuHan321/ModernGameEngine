@@ -1,12 +1,13 @@
 ﻿#pragma once
-
+#include "../Public/IDs.h"
 #include "./VertexDesc.h"
-#include "./IDs.h"
 #include "../STL/Math/Bytes.h"
 #include "../STL/CompileTime/Constants.h"
 #include "../STL/Containers/FixedMap.h"
 #include "../STL/Containers/ArrayView.h"
 #include "../STL/CompileTime/DefaultType.h"
+#include "../Public/VertexEnums.h"
+
 namespace FrameGraph
 {
 	//
@@ -18,7 +19,7 @@ namespace FrameGraph
 	public:
 		struct VertexAttrib
 		{
-			Local::VertexID id;
+			VertexID id;
 			uint index;
 			EVertexType type;
 
@@ -61,8 +62,8 @@ namespace FrameGraph
 		static constexpr uint BindingIndex_Auto = UMax;
 		static constexpr uint VertexIndex_Unknown = UMax;
 
-		using Vertices_t = FixedMap< Local::VertexID, VertexInput, GFG_MaxVertexAttribs >;
-		using Bindings_t = FixedMap< Local::VertexBufferID, BufferBinding, GFG_MaxVertexBuffers >;
+		using Vertices_t = FixedMap< VertexID, VertexInput, GFG_MaxVertexAttribs >;
+		using Bindings_t = FixedMap< VertexBufferID, BufferBinding, GFG_MaxVertexBuffers >;
 
 		friend struct std::hash < VertexInputState::VertexInput >;
 		friend struct std::hash < VertexInputState::BufferBinding >;
@@ -79,15 +80,15 @@ namespace FrameGraph
 		VertexInputState() {}
 
 		template <typename ClassType, typename ValueType>
-		Self& Add(const Local::VertexID & id, ValueType ClassType::* vertex, const Local::VertexBufferID& bufferId = Default);
+		Self& Add(const VertexID & id, ValueType ClassType::* vertex, const VertexBufferID& bufferId = Default);
 
 		template <typename ClassType, typename ValueType>
-		Self& Add(const Local::VertexID& id, ValueType ClassType::* vertex, bool norm, const Local::VertexBufferID& bufferId = Default);
+		Self& Add(const VertexID& id, ValueType ClassType::* vertex, bool norm, const VertexBufferID& bufferId = Default);
 
-		Self& Add(const Local::VertexID& id, EVertexType type, BytesU offset, const Local::VertexBufferID& bufferId = Default);
+		Self& Add(const VertexID& id, EVertexType type, BytesU offset, const VertexBufferID& bufferId = Default);
 
-		Self& Bind(const Local::VertexBufferID& bufferId, Bytes<uint> stride, uint index = BindingIndex_Auto, EVertexInputRate rate = EVertexInputRate::Vertex);
-		Self& Bind(const Local::VertexBufferID& bufferId, BytesU stride, uint index = BindingIndex_Auto, EVertexInputRate rate = EVertexInputRate::Vertex);
+		Self& Bind(const VertexBufferID& bufferId, Bytes<uint> stride, uint index = BindingIndex_Auto, EVertexInputRate rate = EVertexInputRate::Vertex);
+		Self& Bind(const VertexBufferID& bufferId, BytesU stride, uint index = BindingIndex_Auto, EVertexInputRate rate = EVertexInputRate::Vertex);
 
 		void  Clear();
 
@@ -100,5 +101,17 @@ namespace FrameGraph
 
 	};
 
+
+	template<typename ClassType, typename ValueType>
+	inline VertexInputState::Self& VertexInputState::Add(const VertexID& id, ValueType ClassType::* vertex, const VertexBufferID& bufferId)
+	{
+		// TODO: insert return statement here
+	}
+
+	template<typename ClassType, typename ValueType>
+	inline VertexInputState::Self& VertexInputState::Add(const VertexID& id, ValueType ClassType::* vertex, bool norm, const VertexBufferID& bufferId)
+	{
+		// TODO: insert return statement here
+	}
 
 }

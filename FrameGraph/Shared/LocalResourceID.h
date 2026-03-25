@@ -8,16 +8,16 @@
 
 namespace FrameGraph
 {
-	using RawMemoryID = FrameGraph::Local::ResourceID<15>;
-	using RawPipelineLayoutID = FrameGraph::Local::ResourceID<16>;
-	using RawRenderPassID = FrameGraph::Local::ResourceID<17>;
-	using RawFrameBufferID = FrameGraph::Local::ResourceID<18>;
-	using RawDescriptorPoolID = FrameGraph::Local::ResourceID<19>;
+	using RawMemoryID = ResourceID<15>;
+	using RawPipelineLayoutID = ResourceID<16>;
+	using RawRenderPassID = ResourceID<17>;
+	using RawFrameBufferID = ResourceID<18>;
+	using RawDescriptorPoolID = ResourceID<19>;
 
-	using MemoryID = FrameGraph::Local::ResourceIDWrap<RawMemoryID>;
-	using PipelineLayoutID = FrameGraph::Local::ResourceIDWrap<RawPipelineLayoutID>;
-	using RenderPassID = FrameGraph::Local::ResourceIDWrap<RawRenderPassID>;
-	using FrameBufferID = FrameGraph::Local::ResourceIDWrap<RawFrameBufferID>;
-	using DescriptorPoolID = FrameGraph::Local::ResourceIDWrap<RawDescriptorPoolID>;
+	using MemoryID = ResourceIDWrap<RawMemoryID>;
+	using PipelineLayoutID = ResourceIDWrap<RawPipelineLayoutID>;
+	using RenderPassID = ResourceIDWrap<RawRenderPassID>;
+	using FrameBufferID = ResourceIDWrap<RawFrameBufferID>;
+	using DescriptorPoolID = ResourceIDWrap<RawDescriptorPoolID>;
 
 }

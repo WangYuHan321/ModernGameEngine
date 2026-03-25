@@ -85,6 +85,7 @@ FrameGraph::Logger::EResult FrameGraph::Logger::Error(const StringView& msg, con
 	IDEConsoleMessage(msg, file, line, true);
 	ExternalLogger(msg, file, line, true);
 
+	return Logger::EResult(~0u);
 }
 
 

@@ -6,6 +6,16 @@
 #include "../STL/Containers/StringView.h"
 #include "../STL/Containers/FixedMap.h"
 #include "../STL/Containers/FixedArray.h"
+#include "../STL/CompileTime/DefaultType.h"
+#include "../STL/CompileTime/Constants.h"
+#include "../Public/EResourceState.h"
+#include "../Public/ResourceEnums.h"
+#include "../Public/IDs.h"
+#include "../Public/BindingIndex.h"
+#include "../Public/ShaderEnums.h"
+#include "../Public/VulkanType.h"
+#include "../Public/RenderStateEnum.h"
+#include "../Public/VertexInputState.h"
 
 namespace FrameGraph
 {
@@ -96,83 +106,83 @@ namespace FrameGraph
 		//uniform 
 		struct _TextureUniform
 		{
-			const Local::UniformID id;
+			const UniformID id;
 			const Texture data;
 			const BindingIndex index;
 			const uint arraySize;
 			const EShaderStage stageFlags;
 
-			_TextureUniform(const Local::UniformID& id, EImageSampler textureType, const BindingIndex& index, uint arraySize, EShaderStage stageFlags);
+			_TextureUniform(const UniformID& id, EImageSampler textureType, const BindingIndex& index, uint arraySize, EShaderStage stageFlags);
 		};
 
 		struct _SamplerUniform
 		{
-			const Local::UniformID id;
+			const UniformID id;
 			const Sampler data;
 			const BindingIndex index;
 			const uint arraySize;
 			const EShaderStage stageFlags;
 
-			_SamplerUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags);
+			_SamplerUniform(const UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags);
 		};
 
 		struct _SubpassInputUniform
 		{
-			const Local::UniformID			id;
+			const UniformID			id;
 			const SubpassInput		data;
 			const BindingIndex		index;
 			const uint				arraySize;
 			const EShaderStage		stageFlags;
 
-			_SubpassInputUniform(const Local::UniformID& id, uint attachmentIndex, bool isMultisample, const BindingIndex& index,
+			_SubpassInputUniform(const UniformID& id, uint attachmentIndex, bool isMultisample, const BindingIndex& index,
 				uint arraySize, EShaderStage stageFlags);
 		};
 
 		struct _ImageUniform
 		{
-			const Local::UniformID			id;
+			const UniformID			id;
 			const Image				data;
 			const BindingIndex		index;
 			const uint				arraySize;
 			const EShaderStage		stageFlags;
 
-			_ImageUniform(const Local::UniformID& id, EImageSampler imageType, EShaderAccess access,
+			_ImageUniform(const UniformID& id, EImageSampler imageType, EShaderAccess access,
 				const BindingIndex& index, uint arraySize, EShaderStage stageFlags);
 		};
 
 		struct _UBufferUniform
 		{
-			const Local::UniformID			id;
+			const UniformID			id;
 			const UniformBuffer		data;
 			const BindingIndex		index;
 			const uint				arraySize;
 			const EShaderStage		stageFlags;
 
-			_UBufferUniform(const Local::UniformID& id, BytesU size, const BindingIndex& index, uint arraySize,
+			_UBufferUniform(const UniformID& id, BytesU size, const BindingIndex& index, uint arraySize,
 				EShaderStage stageFlags, uint dynamicOffsetIndex = STATIC_OFFSET);
 		};
 
 		struct _StorageBufferUniform
 		{
-			const Local::UniformID			id;
+			const UniformID			id;
 			const StorageBuffer		data;
 			const BindingIndex		index;
 			const uint				arraySize;
 			const EShaderStage		stageFlags;
 
-			_StorageBufferUniform(const Local::UniformID& id, BytesU staticSize, BytesU arrayStride, EShaderAccess access, const BindingIndex& index,
+			_StorageBufferUniform(const UniformID& id, BytesU staticSize, BytesU arrayStride, EShaderAccess access, const BindingIndex& index,
 				uint arraySize, EShaderStage stageFlags, uint dynamicOffsetIndex = STATIC_OFFSET);
 		};
 
 		struct _RayTracingSceneUniform
 		{
-			const Local::UniformID			id;
+			const UniformID			id;
 			const RayTracingScene	data;
 			const BindingIndex		index;
 			const uint				arraySize;
 			const EShaderStage		stageFlags;
 
-			_RayTracingSceneUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags);
+			_RayTracingSceneUniform(const UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags);
 		};
 
 		struct PushConstant
@@ -187,15 +197,15 @@ namespace FrameGraph
 
 		struct _PushConstant
 		{
-			Local::PushConstantID		id;
+			PushConstantID		id;
 			PushConstant		data;
 
-			_PushConstant(const Local::PushConstantID& id, EShaderStage stages, BytesU offset, BytesU size) : id{ id }, data{ stages, offset, size } {}
+			_PushConstant(const PushConstantID& id, EShaderStage stages, BytesU offset, BytesU size) : id{ id }, data{ stages, offset, size } {}
 		};
 
 		struct SpecConstant
 		{
-			Local::SpecializationID id;
+			SpecializationID id;
 			uint index;
 		};
 
@@ -211,18 +221,18 @@ namespace FrameGraph
 			GND bool operator == (const Uniform& rhs) const;
 		};
 
-		using UniformMap_t = HashMap<Local::UniformID, Uniform>;
+		using UniformMap_t = HashMap<UniformID, Uniform>;
 		using UniformMapPtr = SharedPtr<const UniformMap_t>;
 
 		struct DescriptorSet
 		{
-			Local::DescriptorSetID		id;
+			DescriptorSetID		id;
 			uint				bindingIndex = UMax;
 			UniformMapPtr		uniforms;
 		};
 
 		using DescriptorSets_t = FixedArray< DescriptorSet, GFG_MaxDescriptorSets >;
-		using PushConstants_t = FixedMap< Local::PushConstantID, PushConstant, GFG_MaxPushConstants >;
+		using PushConstants_t = FixedMap< PushConstantID, PushConstant, GFG_MaxPushConstants >;
 
 		struct PipelineLayout
 		{
@@ -249,7 +259,7 @@ namespace FrameGraph
 
 		using ShaderDataUnion_t = Union< NullUnion, ShaderSourcePtr, SpirvShaderPtr, VkShaderPtr >;
 		using ShaderDataMap_t = HashMap< EShaderLangFormat, ShaderDataUnion_t >;
-		using SpecConstants_t = FixedMap< Local::SpecializationID, uint, GFG_MaxSpecConstants >;	// id, index
+		using SpecConstants_t = FixedMap< SpecializationID, uint, GFG_MaxSpecConstants >;	// id, index
 
 		struct Shader
 		{
@@ -269,7 +279,7 @@ namespace FrameGraph
 		protected:
 			PipelineDescription() {}
 
-			void _AddDescriptorSet(const Local::DescriptorSetID & id,
+			void _AddDescriptorSet(const DescriptorSetID & id,
 				uint									index,
 				ArrayView< _TextureUniform >			textures,
 				ArrayView< _SamplerUniform >			samplers,

@@ -25,37 +25,37 @@ GND bool FrameGraph::PipelineDescription::RayTracingScene::operator==(const RayT
 	return false;
 }
 
-FrameGraph::PipelineDescription::_TextureUniform::_TextureUniform(const Local::UniformID& id, EImageSampler textureType, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+FrameGraph::PipelineDescription::_TextureUniform::_TextureUniform(const UniformID& id, EImageSampler textureType, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
 : id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
-FrameGraph::PipelineDescription::_SamplerUniform::_SamplerUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+FrameGraph::PipelineDescription::_SamplerUniform::_SamplerUniform(const UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
 	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
-FrameGraph::PipelineDescription::_SubpassInputUniform::_SubpassInputUniform(const Local::UniformID& id, uint attachmentIndex, bool isMultisample, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+FrameGraph::PipelineDescription::_SubpassInputUniform::_SubpassInputUniform(const UniformID& id, uint attachmentIndex, bool isMultisample, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
 	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
-FrameGraph::PipelineDescription::_ImageUniform::_ImageUniform(const Local::UniformID& id, EImageSampler imageType, EShaderAccess access, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+FrameGraph::PipelineDescription::_ImageUniform::_ImageUniform(const UniformID& id, EImageSampler imageType, EShaderAccess access, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
 	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
-FrameGraph::PipelineDescription::_UBufferUniform::_UBufferUniform(const Local::UniformID& id, BytesU size, const BindingIndex& index, uint arraySize, EShaderStage stageFlags, uint dynamicOffsetIndex)
+FrameGraph::PipelineDescription::_UBufferUniform::_UBufferUniform(const UniformID& id, BytesU size, const BindingIndex& index, uint arraySize, EShaderStage stageFlags, uint dynamicOffsetIndex)
 	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
-FrameGraph::PipelineDescription::_StorageBufferUniform::_StorageBufferUniform(const Local::UniformID& id, BytesU staticSize, BytesU arrayStride, EShaderAccess access, const BindingIndex& index, uint arraySize, EShaderStage stageFlags, uint dynamicOffsetIndex)
+FrameGraph::PipelineDescription::_StorageBufferUniform::_StorageBufferUniform(const UniformID& id, BytesU staticSize, BytesU arrayStride, EShaderAccess access, const BindingIndex& index, uint arraySize, EShaderStage stageFlags, uint dynamicOffsetIndex)
 	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
 
-FrameGraph::PipelineDescription::_RayTracingSceneUniform::_RayTracingSceneUniform(const Local::UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
+FrameGraph::PipelineDescription::_RayTracingSceneUniform::_RayTracingSceneUniform(const UniformID& id, const BindingIndex& index, uint arraySize, EShaderStage stageFlags)
 	: id{ id }, data{ }, index{ index }, arraySize{ arraySize }, stageFlags{ stageFlags }
 {
 }
@@ -78,10 +78,12 @@ void FrameGraph::PipelineDescription::Shader::AddShaderData(EShaderLangFormat fm
 {
 }
 
-void FrameGraph::PipelineDescription::_AddDescriptorSet(const Local::DescriptorSetID& id, uint index, ArrayView<_TextureUniform> textures, ArrayView<_SamplerUniform> samplers, ArrayView<_SubpassInputUniform> subpassInputs, ArrayView<_ImageUniform> images, ArrayView<_UBufferUniform> uniformBuffers, ArrayView<_StorageBufferUniform> storageBuffers, ArrayView<_RayTracingSceneUniform> rtScenes)
+void FrameGraph::PipelineDescription::_AddDescriptorSet(const DescriptorSetID& id, uint index, ArrayView<_TextureUniform> textures, ArrayView<_SamplerUniform> samplers, ArrayView<_SubpassInputUniform> subpassInputs, ArrayView<_ImageUniform> images, ArrayView<_UBufferUniform> uniformBuffers, ArrayView<_StorageBufferUniform> storageBuffers, ArrayView<_RayTracingSceneUniform> rtScenes)
 {
 }
 
 void FrameGraph::PipelineDescription::_SetPushConstants(ArrayView<_PushConstant> values)
 {
 }
+
+

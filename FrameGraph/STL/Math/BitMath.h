@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "../STL/Defines.h"
+#include <limits>
 #include "../STL/CompileTime/TypeTraits.h"
 
 namespace FrameGraph

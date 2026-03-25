@@ -1,9 +1,9 @@
 ﻿#pragma once
-#include "../FrameGraph/Public/FrameGraph.h"
 #include "../STL/CompileTime/Hash.h"
 #include "../STL/Algorithms/Hash.h"
 #include "../STL/Containers/StringView.h"
 #include "../Public/Config.h"
+
 namespace FrameGraph
 {
 
@@ -123,39 +123,38 @@ namespace FrameGraph
 
 		static_assert(uint(RenderTargetID::_LastColor) <= GFG_MaxColorBuffers);
 
-		using UniformID = FrameGraph::Local::IDWithString<32, 1, false>;
-		using PushConstantID = FrameGraph::Local::IDWithString<32, 2, false>;
-		using DescriptorSetID = FrameGraph::Local::IDWithString<32, 4, false>;
-		using SpecializationID = FrameGraph::Local::IDWithString<32, 5, false>;
-		using VertexID = FrameGraph::Local::IDWithString< 32, 6, false >;
-		using VertexBufferID = FrameGraph::Local::IDWithString< 32, 7, false >;
-		
-		using RawBufferID = FrameGraph::Local::ResourceID< 1 >;
-		using RawImageID = FrameGraph::Local::ResourceID< 2 >;
-		using RawGPipelineID = FrameGraph::Local::ResourceID< 3 >;
-		using RawMPipelineID = FrameGraph::Local::ResourceID< 4 >;
-		using RawCPipelineID = FrameGraph::Local::ResourceID< 5 >;
-		using RawRTPipelineID = FrameGraph::Local::ResourceID< 6 >;
-		using RawSamplerID = FrameGraph::Local::ResourceID< 7 >;
-		using RawDescriptorSetLayoutID = FrameGraph::Local::ResourceID< 8 >;
-		using RawPipelineResourcesID = FrameGraph::Local::ResourceID< 9 >;
-		using LogicalPassID = FrameGraph::Local::ResourceID< 10 >;
-		using RawRTSceneID = FrameGraph::Local::ResourceID< 11 >;
-		using RawRTGeometryID = FrameGraph::Local::ResourceID< 12 >;
-		using RawRTShaderTableID = FrameGraph::Local::ResourceID< 13 >;
-		using RawSwapchainID = FrameGraph::Local::ResourceID< 14 >;
-
-		//strong reference
-		using BufferID = FrameGraph::Local::ResourceIDWrap < RawBufferID >;
-		using ImageID = FrameGraph::Local::ResourceIDWrap < RawImageID >;
-		using GPipelineID = FrameGraph::Local::ResourceIDWrap < RawGPipelineID >;
-		using MPipelineID = FrameGraph::Local::ResourceIDWrap < RawMPipelineID >;
-		using CPipelineID = FrameGraph::Local::ResourceIDWrap < RawCPipelineID >;
-		using RTPipelineID = FrameGraph::Local::ResourceIDWrap< RawRTPipelineID >;
-		using SamplerID = FrameGraph::Local::ResourceIDWrap< RawSamplerID >;
+	};
 
 
+	using UniformID = Local::IDWithString<32, 1, false>;
+	using PushConstantID = Local::IDWithString<32, 2, false>;
+	using DescriptorSetID = Local::IDWithString<32, 4, false>;
+	using SpecializationID = Local::IDWithString<32, 5, false>;
+	using VertexID = Local::IDWithString<32, 6, false>;
+	using VertexBufferID = Local::IDWithString< 32, 7, false >;
 
-	}
+	using RawBufferID = Local::ResourceID< 1 >;
+	using RawImageID = Local::ResourceID< 2 >;
+	using RawGPipelineID = Local::ResourceID< 3 >;
+	using RawMPipelineID = Local::ResourceID< 4 >;
+	using RawCPipelineID = Local::ResourceID< 5 >;
+	using RawRTPipelineID = Local::ResourceID< 6 >;
+	using RawSamplerID = Local::ResourceID< 7 >;
+	using RawDescriptorSetLayoutID = Local::ResourceID< 8 >;
+	using RawPipelineResourcesID = Local::ResourceID< 9 >;
+	using LogicalPassID = Local::ResourceID< 10 >;
+	using RawRTSceneID = Local::ResourceID< 11 >;
+	using RawRTGeometryID = Local::ResourceID< 12 >;
+	using RawRTShaderTableID = Local::ResourceID< 13 >;
+	using RawSwapchainID = Local::ResourceID< 14 >;
+
+	//strong reference
+	using BufferID = Local::ResourceIDWrap < RawBufferID >;
+	using ImageID = Local::ResourceIDWrap < RawImageID >;
+	using GPipelineID = Local::ResourceIDWrap < RawGPipelineID >;
+	using MPipelineID = Local::ResourceIDWrap < RawMPipelineID >;
+	using CPipelineID = Local::ResourceIDWrap < RawCPipelineID >;
+	using RTPipelineID = Local::ResourceIDWrap< RawRTPipelineID >;
+	using SamplerID = Local::ResourceIDWrap< RawSamplerID >;
 
 }

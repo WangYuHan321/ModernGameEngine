@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "../Common.h"
+#include <type_traits>
 
 namespace FrameGraph
 {

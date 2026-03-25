@@ -1,6 +1,9 @@
 ﻿#pragma once
 
 #include <string_view>
+#include "../STL/CompileTime/TypeTraits.h"
+
+using namespace FrameGraph::Local;
 
 namespace FrameGraph
 {
