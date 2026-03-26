@@ -16,6 +16,13 @@ namespace FrameGraph
 		Unknown = Ignored,
 	};
 
+	enum class EQueueFamilyMask : uint
+	{
+		All = ~0u,
+		Unknown = 0,
+	};
+	
+	FG_BIT_OPERATORS(EQueueFamilyMask);
 
 }
 
