@@ -16,6 +16,14 @@ namespace FrameGraph
 		Unknown = Ignored,
 	};
 
+	enum class ExeOrderIndex : uint
+	{
+		Initial = 0,
+		First = 1,
+		Final = 0x80000000,
+		Unknown = ~0u,
+	};
+
 	enum class EQueueFamilyMask : uint
 	{
 		All = ~0u,
@@ -23,6 +31,7 @@ namespace FrameGraph
 	};
 	
 	FG_BIT_OPERATORS(EQueueFamilyMask);
+
 
 }
 
