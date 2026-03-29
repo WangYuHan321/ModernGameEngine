@@ -100,8 +100,6 @@ namespace FrameGraph
 
 	struct SubmitRenderPass final : Local::BaseTask<SubmitRenderPass>
 	{
-		//types
-		using Images_t = 
 
 	};
 
