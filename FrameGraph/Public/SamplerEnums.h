@@ -6,9 +6,19 @@
 
 namespace FrameGraph
 {
-	//
-	//   FrameGraph 接口
-	//
+	enum class EFilter
+	{
+		Nearest,
+		Linear,
 
+		Unknown = ~0u,
+	};
+
+	enum class EMipmapMode
+	{
+		Nearest,
+		Linear,
+		Unknown = ~0u,
+	};
 
 }
