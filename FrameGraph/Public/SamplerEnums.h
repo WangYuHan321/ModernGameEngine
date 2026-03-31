@@ -21,4 +21,15 @@ namespace FrameGraph
 		Unknown = ~0u,
 	};
 
+	enum class EAddressMode
+	{
+		Repeat,
+		MirroredRepeat,
+		ClampToEdge,
+		ClampToBorder,
+		MirrorClampToEdge,
+		
+		Unknown = ~0u,
+	};
+
 }
