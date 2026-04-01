@@ -32,4 +32,17 @@ namespace FrameGraph
 		Unknown = ~0u,
 	};
 
+	enum class EBorderColor 
+	{
+		FloatTransparentBlack,
+		FloatOpaqueBlack,
+		FloatOpaqueWhite,
+
+		IntTransparentBlack,
+		IntOpaqueBlack,
+		IntOpaqueWhite,
+
+		Unknown = ~0u,
+	};
+
 }
