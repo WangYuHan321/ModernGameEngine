@@ -17,7 +17,7 @@ namespace FrameGraph
 		using value_type = CharT;
 		using iterator = CharT*;
 		using const_iterator = CharT const*;
-		using View_t = BasicStringView;
+		using View_t = BasicStringView<CharT>;
 		using Self = TStaticString<CharT, StringSize>;
 
 	private:
