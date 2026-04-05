@@ -3,6 +3,8 @@
 #include "../Shared/LocalResourceID.h"
 #include "../STL/Common.h"
 #include "vulkan/vulkan.h"
+#include "../Utils/VEnum.h"
+#include "../VCommon.h"
 
 namespace FrameGraph
 {
@@ -27,7 +29,11 @@ namespace FrameGraph
 		mutable SharedMutex  _viewMapLock;
 		mutable BufferViewMap_t _viewMap;
 
-		
+		EQueueFamilyMask _queueFamilyMask = Default;
+		VkAccessFlagBits _readAccessMask = Zero;
+
+		DebugName_t  _debugName;
+		OnRelease_t _onRelease;
 
 	};
 
