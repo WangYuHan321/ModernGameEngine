@@ -40,7 +40,15 @@ namespace FrameGraph
 		virtual void PushConstants(const PushConstantID& id, const void* data, BytesU dataSize) = 0;
 		virtual void BindShadingRateImage(RawImageID value, ImageLayer layer = Default, MipmapLevel = Default) = 0;
 
+		//vertex attributes and index buffer
+		virtual void BindVertexAttributes(const VertexInputState&) = 0;
+		virtual void BindIndexBuffer(const VertexBufferID& id, RawBufferID vbuf, BytesU offset) = 0;
+		virtual void BindIndexBuffer(RawBufferID ibuf, BytesU offset, EIndex type) = 0;
 
+		//render states
+		virtual void SetColorBuffer(RenderTargetID id, const RenderState::ColorBuffer& value) = 0;
+		virtual void SetLogicOp(ELogicOp value) = 0;
+		virtual void SetBlendColor(const RGBA32f& value) = 0;
 	};
 
 }
