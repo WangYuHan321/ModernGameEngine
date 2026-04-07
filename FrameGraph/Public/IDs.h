@@ -156,5 +156,5 @@ namespace FrameGraph
 	using CPipelineID = Local::ResourceIDWrap < RawCPipelineID >;
 	using RTPipelineID = Local::ResourceIDWrap< RawRTPipelineID >;
 	using SamplerID = Local::ResourceIDWrap< RawSamplerID >;
-
+	using SwapchainID = Local::ResourceIDWrap< RawSwapchainID >;
 }
