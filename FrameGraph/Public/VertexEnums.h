@@ -134,6 +134,8 @@ namespace FrameGraph
 		Unknown = 0,
 	};
 
+	FG_BIT_OPERATORS(EVertexType);
+
 	enum class EVertexInputRate : uint
 	{
 		Vertex,
