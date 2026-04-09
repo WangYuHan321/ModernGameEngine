@@ -79,9 +79,36 @@ namespace FrameGraph
 	public:
 		RWDataRaceCheck() {}
 
+		//独占锁
 		GND bool LockExclusive()
 		{
-			
+			//我要开始修改数据了，此时绝对不能有其他线程在读或写。
+			bool	locked = _lockWrite.try_lock();
+			CHECK_ERR(locked);	// 确保当前没有其他线程持有写锁。如果能锁住，说明你是唯一的写者。
+
+			int		expected = _readCounter.load(memory_order_acquire);
+			CHECK_ERR(expected <= 0);	// 断言 expected <= 0（即没有读锁）
+
+			//通过 expected-1 将其设为一个负数（比如 -1），用这个特殊值来标记“现在写锁被持有了”。   
+			// compare_exchange_strong  CPU 提供 LOCK CMPXCHG 指令，在执行期间锁住内存总线或缓存行  锁住的时间是纳秒级，只针对这一个内存地址
+			_readCounter.compare_exchange_strong(INOUT expected, expected - 1, memory_order_relaxed);
+			CHECK_ERR(expected <= 0);	// 断言 expected <= 0 检查的是 CAS 操作失败时，expected 被更新成的那个值。
+
+			/*
+			compare_exchange_strong 的语义是：
+
+			如果 _readCounter 当前值等于 expected（也就是进入时的值），则将其设为 expected - 1，返回 true
+
+			如果不等于，则将 expected 更新为 _readCounter 的当前值，返回 false
+			*/
+
+			return true;
+		}
+
+		GND UnlockExclusive()
+		{
+			_readCounter.fetch_add(1, memory_order_relaxed);	// 将 _readCounter 加回 1，表示写锁被释放了。
+			_lockWrite.unlock();	// 释放写锁
 		}
 
 
