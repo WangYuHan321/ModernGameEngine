@@ -6,9 +6,5 @@
 
 namespace FrameGraph
 {
-	//
-	//   FrameGraph 接口
-	//
-
 
 }
