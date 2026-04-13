@@ -6,6 +6,7 @@
 
 #include "../STL/Math/Bytes.h"
 #include "../Public/VertexEnums.h"
+#include "../Public/ShaderEnums.h"
 
 namespace FrameGraph
 {
@@ -20,7 +21,18 @@ namespace FrameGraph
 	}
 
 
-
+	GND inline EShaderDebugMode EShaderDebugMode_FromFlags(EShaderLangFormat value)
+	{
+		switch (value & EShaderLangFormat::_DebugModeMask)
+		{
+		//case EShaderLangFormat::Unknown:				return EShaderDebugMode::None;
+		case EShaderLangFormat::EnableDebugTrace: return EShaderDebugMode::Trace;
+		case EShaderLangFormat::EnableProfiling: return EShaderDebugMode::Profiling;
+		case EShaderLangFormat::EnableTimeMap: return EShaderDebugMode::Timemap;
+		default:
+			return EShaderDebugMode::Unknown;
+		}
+	}
 
 
 

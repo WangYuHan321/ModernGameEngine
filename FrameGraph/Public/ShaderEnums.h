@@ -139,6 +139,8 @@ namespace FrameGraph
 		VkShader_120 = Vulkan_120 | ShaderModule,
 	};
 
+	FG_BIT_OPERATORS(EShaderLangFormat);
+
 	enum class EShaderDebugMode : uint
 	{
 		None = 0, 
