@@ -7,6 +7,7 @@
 #include "../STL/Math/Bytes.h"
 #include "../Public/VertexEnums.h"
 #include "../Public/ShaderEnums.h"
+#include "../Public/EResourceState.h"
 
 namespace FrameGraph
 {
@@ -35,10 +36,15 @@ namespace FrameGraph
 	}
 
 
-
-
-
-
-
+	GND inline EResourceState  EResourceState_FromShaderAccess(EShaderAccess access)
+	{
+		switch (access) {
+		case EShaderAccess::ReadOnly:		return EResourceState::ShaderRead;
+		case EShaderAccess::WriteOnly:		return EResourceState::ShaderWrite;
+		case EShaderAccess::ReadWrite:		return EResourceState::ShaderReadWrite;
+		case EShaderAccess::WriteDiscard:	return EResourceState::ShaderWrite | EResourceState::InvalidateBefore;
+		}
+	}
 	
+
 }

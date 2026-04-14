@@ -57,7 +57,7 @@ namespace FrameGraph
 
 	enum class EShaderAccess : uint
 	{
-		ReadyOnly,
+		ReadOnly,
 		WriteOnly,
 		WriteDiscard,
 		ReadWrite,
