@@ -21,7 +21,6 @@ namespace FrameGraph
 		}
 	}
 
-
 	GND inline EShaderDebugMode EShaderDebugMode_FromFlags(EShaderLangFormat value)
 	{
 		switch (value & EShaderLangFormat::_DebugModeMask)
@@ -45,6 +44,5 @@ namespace FrameGraph
 		case EShaderAccess::WriteDiscard:	return EResourceState::ShaderWrite | EResourceState::InvalidateBefore;
 		}
 	}
-	
 
 }
