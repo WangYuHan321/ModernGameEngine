@@ -108,4 +108,5 @@ namespace FrameGraph
 
 	FG_BIT_OPERATORS(EResourceState);
 
+	STATIC_ASSERT(EResourceState::_AccessLast < EResourceState::_AccessMask);
 }
