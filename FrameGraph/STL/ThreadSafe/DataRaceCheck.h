@@ -112,6 +112,36 @@ namespace FrameGraph
 		}
 
 
+		GND bool LockShared() const
+		{
+			int expected = 0;           // 期望值：希望 _readCounter 当前是 0
+			bool locked = false;        // 是否成功获得锁
+
+			do {
+				// 尝试原子操作：如果 _readCounter == expected(0)，则将其设为 expected+1(1)
+				// 如果失败，expected 会被更新为 _readCounter 的当前值
+				locked = _readCounter.compare_exchange_weak(INOUT expected, expected + 1,
+					memory_order_relaxed);
+
+				// 关键检查：如果发现有写锁(expected < 0) 且 当前线程能获取写锁  CAS 失败
+				if (expected < 0 and _lockWrite.try_lock())
+				{
+					_lockWrite.unlock();  // 立即释放写锁
+					return false;         // 返回失败，不要调用 UnlockShared
+				}
+
+				// 断言：确保 expected 不是负数（即没有其他线程持有写锁）
+				CHECK_ERR(expected >= 0);// -1 >= 0? false → 断言触发！
+
+			} while (not locked);  // 如果 CAS 失败，重试
+
+			return true;  // 成功获取读锁
+		}
+
+		void UnlockShared() const
+		{
+			_readCounter.fetch_sub(1, memory_order_relaxed);
+		}
 	};
 }
 
