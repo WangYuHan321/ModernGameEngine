@@ -5,6 +5,7 @@
 #include "vulkan/vulkan.h"
 #include "../Utils/VEnum.h"
 #include "../VCommon.h"
+#include "../STL/ThreadSafe/DataRaceCheck.h"
 
 namespace FrameGraph
 {
@@ -34,6 +35,18 @@ namespace FrameGraph
 
 		DebugName_t  _debugName;
 		OnRelease_t _onRelease;
+
+		RWDataRaceCheck _drCheck;
+
+
+	//方法
+	public:
+		VBuffer() {}
+		VBuffer(VBuffer&&) = delete;
+		VBuffer(const VBuffer&) = delete;
+
+
+
 
 	};
 
