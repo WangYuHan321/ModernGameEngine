@@ -1,0 +1,1 @@
+﻿#include "VResourceManager.h"
