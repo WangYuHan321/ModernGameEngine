@@ -124,6 +124,20 @@
 		FG_PRIVATE_CHECK( (_func_), FG_PRIVATE_TOSTRING( _func_ ) )
 #endif
 
+//检测函数返回值，并在失败时返回错误代码
+#ifndef CHECK_ERR
+#	define FG_PRIVATE_CHECK_ERR( _expr_, _ret_ ) \
+		{if_likely (( _expr_ )) {} \
+		 else { \
+			FG_LOGE( FG_PRIVATE_TOSTRING ( _expr_ ) ) \
+			return (_ret_); \
+		}}
+
+#   define CHECK_ERR( ... ) \
+		FG_PRIVATE_CHECK_ERR( (_func_), FG_PRIVATE_TOSTRING( _func_ ) )
+#endif
+
+
 
 #ifndef forceinline
 
