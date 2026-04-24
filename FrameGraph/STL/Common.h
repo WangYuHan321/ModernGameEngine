@@ -74,8 +74,6 @@ namespace FrameGraph
 
 	template<typename T> using Atomic = std::atomic< T >;
 
-	static constexpr std::memory_order	memory_order_acquire = std::memory_order_seq_cst;
-
 	template <typename Key,
 		typename Value,
 		typename Hasher = std::hash<Key>>
@@ -84,5 +82,27 @@ namespace FrameGraph
 	template<typename FirstT,
 			typename SecondT>
 	using Pair = std::pair<FirstT, SecondT>;
+
+
+	/*
+	
+			内存顺序	含义	性能
+			memory_order_relaxed	最弱顺序，只保证原子性，不保证任何顺序约束	最快
+			memory_order_acquire	后续读写不能重排到此操作之前（读锁）	较慢
+			memory_order_release	之前的读写不能重排到此操作之后（写锁）	较慢
+			memory_order_acq_rel	acquire + release 的组合（RMW 操作）	较慢
+			memory_order_seq_cst	最强顺序，全局顺序一致性	最慢
+	
+	*/
+#ifdef FRAMEGRAPH_OPTIMAL_MEMORY_ORDER
+
+#else
+	static constexpr std::memory_order	memory_order_acquire = std::memory_order_seq_cst;
+	static constexpr std::memory_order	memory_order_release = std::memory_order_seq_cst;
+	static constexpr std::memory_order	memory_order_acq_rel = std::memory_order_seq_cst;
+	static constexpr std::memory_order	memory_order_relaxed = std::memory_order_seq_cst;
+#endif
+
+
 }
 
