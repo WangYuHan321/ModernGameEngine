@@ -134,7 +134,7 @@
 		}}
 
 #   define CHECK_ERR( ... ) \
-		FG_PRIVATE_CHECK_ERR( (_func_), FG_PRIVATE_TOSTRING( _func_ ) )
+		FG_PRIVATE_CHECK_ERR( FG_PRIVATE_GETARG_0( __VA_ARGS__ ), FG_PRIVATE_GETARG_1( __VA_ARGS__, ::FrameGraph::Default ) )
 #endif
 
 
