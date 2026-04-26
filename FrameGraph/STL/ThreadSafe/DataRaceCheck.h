@@ -105,7 +105,7 @@ namespace FrameGraph
 			return true;
 		}
 
-		GND UnlockExclusive()
+		GND void UnlockExclusive()
 		{
 			_readCounter.fetch_add(1, memory_order_relaxed);	// 将 _readCounter 加回 1，表示写锁被释放了。
 			_lockWrite.unlock();	// 释放写锁
