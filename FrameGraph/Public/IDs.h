@@ -64,6 +64,7 @@ namespace FrameGraph
 			static constexpr Index_t _IndexMask = (1 << sizeof(Index_t) * 8) - 1;//0xFFFFFFFFFF
 			static constexpr Value_t _InstOffset = sizeof(Index_t) * 8;
 
+		public:
 			//method
 
 			constexpr ResourceID() {}
