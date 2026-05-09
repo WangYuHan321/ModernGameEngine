@@ -33,7 +33,9 @@ namespace FrameGraph
 		GND bool Lock() const
 		{
 			// 1. 获取当前线程ID的哈希值作为唯一标识
-			const size_t id = size_t(HashOf(std::this_thread::get_id()));
+			auto thread_id = std::this_thread::get_id();
+			size_t id_hash = std::hash<std::thread::id>{}(thread_id);
+			const size_t id = size_t(HashOf(id_hash));
 
 			// 2. 读取当前状态（谁持有锁）
 			size_t curr = _state.load(memory_order_acquire);

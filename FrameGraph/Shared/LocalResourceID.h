@@ -14,6 +14,7 @@ namespace FrameGraph
 	using RawFrameBufferID = ResourceID<18>;
 	using RawDescriptorPoolID = ResourceID<19>;
 
+	
 	using MemoryID = ResourceIDWrap<RawMemoryID>;
 	using PipelineLayoutID = ResourceIDWrap<RawPipelineLayoutID>;
 	using RenderPassID = ResourceIDWrap<RawRenderPassID>;

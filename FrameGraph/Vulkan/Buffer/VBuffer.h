@@ -19,7 +19,7 @@ namespace FrameGraph
 		//类型
 	private:
 		using OnRelease_t = IFrameGraph::OnExternalBufferReleased_t;
-		using BufferViewMap_t = HashMap<BufferViewDesc, VkBufferView>;
+		//using BufferViewMap_t = HashMap<BufferViewDesc, VkBufferView>;
 
 		//变量
 	private:
@@ -28,7 +28,7 @@ namespace FrameGraph
 		BufferDesc _desc;
 
 		mutable SharedMutex  _viewMapLock;
-		mutable BufferViewMap_t _viewMap;
+		//mutable BufferViewMap_t _viewMap;
 
 		EQueueFamilyMask _queueFamilyMask = Default;
 		VkAccessFlagBits _readAccessMask = Zero;
