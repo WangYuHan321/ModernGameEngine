@@ -40,9 +40,29 @@ namespace FrameGraph
 			format{ format }, offset{ offset }, size{ size } {
 		}
 
-		void Validate(const BufferDesc& desc);
+		void Validate(const BufferDesc& desc) {};
 
-		GND bool operator == (const BufferViewDesc& rhs) const;
+		GND bool operator == (const BufferViewDesc& rhs) const {};
 	};
 
+}
+
+namespace std
+{
+	template <>
+	struct hash< FrameGraph::BufferViewDesc >
+	{
+		GND size_t  operator () (const FrameGraph::BufferViewDesc& value) const
+		{
+#if FG_FAST_HASH
+			return size_t(FGC::HashOf(AddressOf(value), sizeof(value)));
+#else
+			FrameGraph::HashVal	result;
+			result << FrameGraph::HashOf(value.format);
+			result << FrameGraph::HashOf(value.offset);
+			result << FrameGraph::HashOf(value.size);
+			return size_t(result);
+#endif
+		}
+	};
 }
