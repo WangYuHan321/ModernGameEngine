@@ -41,6 +41,10 @@ namespace FrameGraph
 	//  Vulkan Device
 	//
 
+	class VDevice final
+	{
+
+	};
 
 }
 
