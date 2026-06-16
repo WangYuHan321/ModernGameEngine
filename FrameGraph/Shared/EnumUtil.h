@@ -21,6 +21,8 @@ namespace FrameGraph
 		case EIndex::UInt:		return SizeOf<uint32_t>;
 		case EIndex::Unknown:	break;
 		}
+		ASSERT(false && "unknown index type");
+		return 0_b;
 	}
 
 	GND inline EShaderDebugMode EShaderDebugMode_FromFlags(EShaderLangFormat value)
@@ -76,6 +78,8 @@ namespace FrameGraph
 		case EShaderAccess::ReadWrite:		return EResourceState::ShaderReadWrite;
 		case EShaderAccess::WriteDiscard:	return EResourceState::ShaderWrite | EResourceState::InvalidateBefore;
 		}
+		ASSERT(false && "unknown shader access");
+		return EResourceState::Unknown;
 	}
 
 }

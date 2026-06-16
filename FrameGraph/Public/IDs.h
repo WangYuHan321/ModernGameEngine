@@ -57,11 +57,11 @@ namespace FrameGraph
 
 			//variables
 		private:
-			Value_t _value = {};
+			Value_t _value = ~Value_t{ 0 };	// 全 1 表示空/无效句柄
 
 			static_assert(sizeof(_value) == (sizeof(Index_t) + sizeof(InstanceID_t)));
 
-			static constexpr Index_t _IndexMask = (1 << sizeof(Index_t) * 8) - 1;//0xFFFFFFFFFF
+			static constexpr Index_t _IndexMask = Index_t(~Index_t{ 0 });	// 0xFFFF
 			static constexpr Value_t _InstOffset = sizeof(Index_t) * 8;
 
 		public:
@@ -72,7 +72,7 @@ namespace FrameGraph
 			explicit constexpr ResourceID(Value_t data) : _value{ data } {}
 			explicit constexpr ResourceID(Index_t val, InstanceID_t inst) : _value{ Value_t(val) | (Value_t(inst) << _InstOffset) } {}
 
-			GND constexpr bool			IsValid()						const { return false; }
+			GND constexpr bool			IsValid()						const { return _value != ~Value_t{ 0 }; }
 			GND constexpr Index_t		Index()						const { return _value & _IndexMask; }
 			GND constexpr InstanceID_t	InstanceID()					const { return _value >> _InstOffset; }
 			GND constexpr HashVal		GetHash()						const { return HashOf(_value) + HashVal{ UID }; }

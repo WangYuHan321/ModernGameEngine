@@ -40,9 +40,20 @@ namespace FrameGraph
 			format{ format }, offset{ offset }, size{ size } {
 		}
 
-		void Validate(const BufferDesc& desc) {};
+		void Validate(const BufferDesc& desc)
+		{
+			offset = offset < desc.size ? offset : desc.size;
 
-		GND bool operator == (const BufferViewDesc& rhs) const {};
+			const size_t rem = desc.size - offset;
+			size = (size == 0 || size > rem) ? rem : size;
+		}
+
+		GND bool operator == (const BufferViewDesc& rhs) const
+		{
+			return	(format == rhs.format)	&
+					(offset == rhs.offset)	&
+					(size == rhs.size);
+		}
 	};
 
 }

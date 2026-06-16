@@ -151,6 +151,4 @@ namespace FrameGraph
  
 
 	};
-	
-	#define UMax  {}
 }

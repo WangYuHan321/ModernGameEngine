@@ -30,6 +30,7 @@ namespace FrameGraph
 		_Last,
 		All = ((_Last - 1) << 1) - 1,
 	};
+	FG_BIT_OPERATORS(EQueueUsage);
 
 	enum class EBufferUsage : uint
 	{
@@ -53,6 +54,7 @@ namespace FrameGraph
 		Transfer = TransferDst | TransferSrc,
 		Unknown = 0,
 	};
+	FG_BIT_OPERATORS(EBufferUsage);
 
 	enum class EImageDim : uint8_t
 	{

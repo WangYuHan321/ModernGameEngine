@@ -38,6 +38,48 @@ if (MSVC)
     add_compile_options("/utf-8")
 endif()
 
+# =========================================================
+#  Extensions（扩展 / 第三方库）
+# =========================================================
+# 目标 Vulkan 版本：100 / 110 / 120（0 = 关闭扩展中的 Vulkan 相关库）
+if (NOT DEFINED FG_VULKAN_VERSION)
+	set(FG_VULKAN_VERSION "120" CACHE STRING "Target Vulkan version for extensions: 100 / 110 / 120 (0 = off)")
+endif()
+
+# 是否构建随仓库附带的 VulkanLoader 扩展库。
+# 该扩展为 azhirnov/FrameGraph 的原始源码，依赖其原始 STL（FGC 命名空间、
+# NtStringView / Singleton / StringUtils / BEGIN_ENUM_CHECKS 等），与本项目的
+# STL/ 尚不兼容；且本项目当前直接使用 vulkan.h 原型函数，无需该动态加载器即可工作，
+# 故默认关闭。需要时打开（并先把其源码移植到本项目 STL）。
+option(FG_ENABLE_VULKAN_LOADER "Build the bundled VulkanLoader extension (needs source port to this project's STL)" OFF)
+
+# 把 extensions 目录纳入构建树（其中按需登记各扩展 / 第三方库）
+add_subdirectory(extensions)
+
+# ---------------------------------------------------------
+#  Vulkan 头文件来源
+# ---------------------------------------------------------
+# 使用扩展里自带的 Vulkan 头文件（省去对系统 Vulkan SDK 头的依赖）。
+# 注意：链接阶段仍需系统 Vulkan 运行库（${Vulkan_LIBRARY}），因为本项目
+# 直接使用 vulkan.h 的原型函数。
+option(FG_USE_BUNDLED_VULKAN_HEADERS "Use Vulkan headers bundled in extensions/vulkan_loader instead of the system SDK" ON)
+
+if (FG_VULKAN_VERSION STREQUAL "100")
+	set(FG_BUNDLED_VULKAN_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extensions/vulkan_loader/1.0")
+elseif (FG_VULKAN_VERSION STREQUAL "110")
+	set(FG_BUNDLED_VULKAN_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extensions/vulkan_loader/1.1")
+elseif (FG_VULKAN_VERSION STREQUAL "120")
+	set(FG_BUNDLED_VULKAN_HEADERS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/extensions/vulkan_loader/1.2")
+endif()
+
+if (FG_USE_BUNDLED_VULKAN_HEADERS AND DEFINED FG_BUNDLED_VULKAN_HEADERS_DIR)
+	set(FG_VULKAN_INCLUDE_DIR "${FG_BUNDLED_VULKAN_HEADERS_DIR}")
+	message(STATUS "FrameGraph: using bundled Vulkan headers -> ${FG_VULKAN_INCLUDE_DIR}")
+else ()
+	set(FG_VULKAN_INCLUDE_DIR "${Vulkan_INCLUDE_DIR}")
+	message(STATUS "FrameGraph: using system Vulkan headers -> ${FG_VULKAN_INCLUDE_DIR}")
+endif ()
+
 if(WIN32)
 	set(DEPENDENCY_FILES ${Vulkan_LIBRARY})	
 elseif(APPLE)
@@ -80,12 +122,14 @@ set(SRC_FILES
 	)
 
 include_directories( BEFORE
+	${FG_VULKAN_INCLUDE_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/extensions
 	${DEP_DIR}
 	${IMGUI_DIR}
 	${STB_INCLUDE_DIR}
-	${CMAKE_CURRENMT}
+	${CMAKE_CURRENT_SOURCE_DIR}
+	${CMAKE_CURRENT_SOURCE_DIR}/Vulkan
 	${GLM_INCLUDE_DIR}
-	${Vulkan_INCLUDE_DIR}
 	${GLSLANG_INCLUDE_DIR}
 	${TINYGLTF_INCLUDE_DIR}
 	${GLFW_BINARY_DIR}/include
@@ -95,6 +139,11 @@ include_directories( BEFORE
 add_library(FrameGraph STATIC ${SRC_FILES})
 
 target_link_libraries(FrameGraph PRIVATE  ${DEPENDENCY_FILES})
+
+# 链接扩展库（仅当对应目标被成功创建时）
+if (TARGET VulkanLoader)
+	target_link_libraries(FrameGraph PUBLIC VulkanLoader)
+endif()
 
 
 
