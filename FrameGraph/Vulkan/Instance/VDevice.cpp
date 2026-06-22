@@ -3,11 +3,7 @@
 namespace FrameGraph
 {
 
-	/*
-	=================================================
-		constructor
-	=================================================
-	*/
+	// 绑定外部 Vulkan 句柄，初始化属性/队列/特性
 	VDevice::VDevice(const VulkanDeviceInfo& info) :
 		_instance{ reinterpret_cast<VkInstance>(info.instance) },
 		_physicalDevice{ reinterpret_cast<VkPhysicalDevice>(info.physicalDevice) },
@@ -29,24 +25,13 @@ namespace FrameGraph
 		_features.debugUtils = (_fpSetObjectName != nullptr);
 	}
 
-	/*
-	=================================================
-		destructor
-	---
-		VDevice 只“借用”外部创建的 instance / physicalDevice / device 句柄，
-		不负责销毁它们，这里仅清空内部状态。
-	=================================================
-	*/
+	// 不销毁外部 Vulkan 对象，仅清空队列列表
 	VDevice::~VDevice()
 	{
 		_queues.clear();
 	}
 
-	/*
-	=================================================
-		_InitDeviceProperties
-	=================================================
-	*/
+	// 缓存 VkPhysicalDeviceProperties / Features / MemoryProperties
 	void VDevice::_InitDeviceProperties()
 	{
 		vkGetPhysicalDeviceProperties(_physicalDevice, OUT &_properties);
@@ -54,11 +39,7 @@ namespace FrameGraph
 		vkGetPhysicalDeviceMemoryProperties(_physicalDevice, OUT &_memoryProperties);
 	}
 
-	/*
-	=================================================
-		_InitDeviceQueues
-	=================================================
-	*/
+	// 从 VulkanDeviceInfo::queues 填充 _queues，汇总 _availableQueues
 	void VDevice::_InitDeviceQueues(const VulkanDeviceInfo& info)
 	{
 		uint familyCount = 0;
@@ -108,15 +89,7 @@ namespace FrameGraph
 		_availableQueues = EQueueUsage(availableQueues);
 	}
 
-	/*
-	=================================================
-		_InitFeatures
-	---
-		基础特性可直接从 VkPhysicalDeviceFeatures 读取；descriptorIndexing /
-		bufferDeviceAddress / 光追 / mesh shader 等需要在创建逻辑设备时启用对应
-		扩展与特性结构体，这里无法可靠探测，默认关闭，可由上层在创建后修正。
-	=================================================
-	*/
+	// 从 VkPhysicalDeviceFeatures 解析基础特性（扩展特性默认 false）
 	void VDevice::_InitFeatures()
 	{
 		EnabledFeatures& f = _features;
@@ -139,11 +112,7 @@ namespace FrameGraph
 		f.debugUtils					= false;
 	}
 
-	/*
-	=================================================
-		_InitResourceProperties
-	=================================================
-	*/
+	// 填充 IFrameGraph::DeviceProperties 摘要
 	void VDevice::_InitResourceProperties()
 	{
 		const VkPhysicalDeviceLimits&		lim = _properties.limits;
@@ -172,14 +141,7 @@ namespace FrameGraph
 		dst.maxDrawIndexedIndexValue		= lim.maxDrawIndexedIndexValue;
 	}
 
-	/*
-	=================================================
-		GetQueue
-	---
-		按用途返回最合适的逻辑队列：异步队列优先返回“专用”队列（不含图形位），
-		找不到时回退到任意满足能力的队列。
-	=================================================
-	*/
+	// 按 EQueueType 选取最合适的逻辑队列
 	VDeviceQueueInfo const*  VDevice::GetQueue(EQueueType type) const
 	{
 		switch (type)
@@ -217,11 +179,7 @@ namespace FrameGraph
 		return _queues.empty() ? nullptr : &_queues.front();
 	}
 
-	/*
-	=================================================
-		GetMemoryTypeIndex
-	=================================================
-	*/
+	// 两遍扫描：优先 include+opt flags，回退到仅 include flags
 	bool  VDevice::GetMemoryTypeIndex(uint memoryTypeBits,
 									  VkMemoryPropertyFlags includeFlags,
 									  VkMemoryPropertyFlags optFlags,
@@ -270,11 +228,7 @@ namespace FrameGraph
 		return GetMemoryTypeIndex(memoryTypeBits, flags, 0, 0, OUT memoryTypeIndex);
 	}
 
-	/*
-	=================================================
-		SetObjectName
-	=================================================
-	*/
+	// VK_EXT_debug_utils：给 Buffer / Memory 等对象设调试名
 	bool  VDevice::SetObjectName(uint64_t id, StringView name, VkObjectType type) const
 	{
 		if (not _features.debugUtils or _fpSetObjectName == nullptr or name.empty() or id == 0)

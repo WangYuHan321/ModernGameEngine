@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include "../Common.h"
+#include "../Config.h"
 #include "../Defines.h"
 
 namespace FrameGraph

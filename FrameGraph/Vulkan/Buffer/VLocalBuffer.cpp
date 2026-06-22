@@ -3,143 +3,176 @@
 namespace FrameGraph
 {
 
-	/*
-	=================================================
-		destructor
-	=================================================
-	*/
 	VLocalBuffer::~VLocalBuffer()
 	{
 		ASSERT(_bufferData == nullptr);
 	}
 
-	/*
-	=================================================
-		Create
-	=================================================
-	*/
+	// 绑定全局 VBuffer，根据 IsReadOnly 设置 _isImmutable
 	bool  VLocalBuffer::Create(VBuffer const* bufferData)
 	{
 		CHECK_ERR(_bufferData == nullptr);
 		CHECK_ERR(bufferData != nullptr and bufferData->IsCreated());
 
-		_bufferData		= bufferData;
-		_lastAccess		= BufferAccess{};
-		_pendingAccess	= BufferAccess{};
+		_bufferData = bufferData;
+		_isImmutable = bufferData->IsReadOnly();
+		_pendingAccesses.clear();
+		_accessForWrite.clear();
+		_accessForRead.clear();
 
 		return true;
 	}
 
-	/*
-	=================================================
-		Destroy
-	=================================================
-	*/
+	// 解绑；要求 pending / 历史访问已清空
 	void  VLocalBuffer::Destroy()
 	{
-		_bufferData		= nullptr;
-		_lastAccess		= BufferAccess{};
-		_pendingAccess	= BufferAccess{};
+		ASSERT(_pendingAccesses.empty());
+		ASSERT(_accessForWrite.empty());
+		ASSERT(_accessForRead.empty());
+
+		_bufferData = nullptr;
+		_isImmutable = false;
+		_pendingAccesses.clear();
+		_accessForWrite.clear();
+		_accessForRead.clear();
 	}
 
-	/*
-	=================================================
-		SetInitialState
-	=================================================
-	*/
-	void  VLocalBuffer::SetInitialState(EResourceState state)
+	VLocalBuffer::BufferRange  VLocalBuffer::_WholeRange(VkDeviceSize size)
 	{
-		_lastAccess.stages		= EResourceState_ToStage(state);
-		_lastAccess.access		= EResourceState_ToAccess(state);
-		_lastAccess.isReadable	= (uint(state) & uint(EResourceState::_Read)) != 0;
-		_lastAccess.isWritable	= (uint(state) & uint(EResourceState::_Write)) != 0;
-
-		_pendingAccess = BufferAccess{};
+		return BufferRange{ 0, size };
 	}
 
-	/*
-	=================================================
-		AddPendingState
-	=================================================
-	*/
+	// 手动覆盖不可变标志（pass 录制前设置）
+	void  VLocalBuffer::SetInitialState(bool immutable)
+	{
+		ASSERT(_pendingAccesses.empty());
+		ASSERT(_accessForWrite.empty());
+		ASSERT(_accessForRead.empty());
+		_isImmutable = immutable;
+	}
+
+	// 整 buffer 范围的 pending 访问
 	void  VLocalBuffer::AddPendingState(EResourceState state)
 	{
-		_pendingAccess.stages		|= EResourceState_ToStage(state);
-		_pendingAccess.access		|= EResourceState_ToAccess(state);
-		_pendingAccess.isReadable	|= (uint(state) & uint(EResourceState::_Read)) != 0;
-		_pendingAccess.isWritable	|= (uint(state) & uint(EResourceState::_Write)) != 0;
+		if (_bufferData == nullptr)
+			return;
+
+		AddPendingState(BufferState{ state, 0, VkDeviceSize(size_t(_bufferData->Size())) });
 	}
 
-	/*
-	=================================================
-		CommitBarrier
-	---
-		需要插入屏障的数据冒险：
-		  - 上一次为写，本次为读或写  (RAW / WAW)
-		  - 上一次为读，本次为写        (WAR)
-		读-读之间无需屏障，只累加读作用域。
-	=================================================
-	*/
+	// 记录 pending 访问；不可变 buffer 直接跳过
+	void  VLocalBuffer::AddPendingState(const BufferState& bs)
+	{
+		if (_bufferData == nullptr or _isImmutable)
+			return;
+
+		BufferAccess pending;
+		pending.range = bs.range;
+		pending.stages = EResourceState_ToStage(bs.state);
+		pending.access = EResourceState_ToAccess(bs.state);
+		pending.isReadable = (uint(bs.state) & uint(EResourceState::_Read)) != 0;
+		pending.isWritable = (uint(bs.state) & uint(EResourceState::_Write)) != 0;
+
+		_MergePending(_pendingAccesses, pending);
+	}
+
+	// 相交 range 合并为一条访问记录
+	void  VLocalBuffer::_MergePending(INOUT AccessRecords_t& arr, BufferAccess pending)
+	{
+		for (auto& rec : arr)
+		{
+			if (rec.range.IsIntersects(pending.range))
+			{
+				rec.range.Merge(pending.range);
+				rec.stages |= pending.stages;
+				rec.access |= pending.access;
+				rec.isReadable |= pending.isReadable;
+				rec.isWritable |= pending.isWritable;
+				return;
+			}
+		}
+		arr.push_back(pending);
+	}
+
+	// 判断两段访问在 range 重叠时是否读写冲突
+	bool  VLocalBuffer::_RangesConflict(const BufferAccess& prev, const BufferAccess& next)
+	{
+		if (not prev.range.IsIntersects(next.range))
+			return false;
+
+		return (prev.isWritable and (next.isReadable or next.isWritable)) or
+			   (prev.isReadable and next.isWritable);
+	}
+
+	// 输出一段 range 的 VkBufferMemoryBarrier
+	void  VLocalBuffer::_AppendBarrier(INOUT Array<VkBufferMemoryBarrier>& outBarriers,
+									   VkBuffer buffer,
+									   const BufferAccess& src,
+									   const BufferAccess& dst)
+	{
+		const BufferRange range = src.range.Intersect(dst.range);
+		if (range.IsEmpty())
+			return;
+
+		VkBufferMemoryBarrier barrier = {};
+		barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+		barrier.srcAccessMask = src.access;
+		barrier.dstAccessMask = dst.access;
+		barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+		barrier.buffer = buffer;
+		barrier.offset = range.begin;
+		barrier.size = range.end - range.begin;
+
+		outBarriers.push_back(barrier);
+	}
+
+	// pending 与历史读/写对比，生成 barrier 并合并到 _accessForWrite / _accessForRead
 	void  VLocalBuffer::CommitBarrier(INOUT Array<VkBufferMemoryBarrier>& outBarriers,
 									  INOUT VkPipelineStageFlags& srcStage,
 									  INOUT VkPipelineStageFlags& dstStage)
 	{
-		if (not (_pendingAccess.isReadable or _pendingAccess.isWritable))
+		if (_bufferData == nullptr or _pendingAccesses.empty())
 			return;
 
-		const bool needBarrier =
-			(_lastAccess.isWritable and (_pendingAccess.isReadable or _pendingAccess.isWritable)) or
-			(_lastAccess.isReadable and _pendingAccess.isWritable);
-
-		if (needBarrier and _lastAccess.stages != 0 and _bufferData != nullptr)
+		for (const BufferAccess& pending : _pendingAccesses)
 		{
-			VkBufferMemoryBarrier barrier = {};
-			barrier.sType				= VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-			barrier.srcAccessMask		= _lastAccess.access;
-			barrier.dstAccessMask		= _pendingAccess.access;
-			barrier.srcQueueFamilyIndex	= VK_QUEUE_FAMILY_IGNORED;
-			barrier.dstQueueFamilyIndex	= VK_QUEUE_FAMILY_IGNORED;
-			barrier.buffer				= _bufferData->Handle();
-			barrier.offset				= 0;
-			barrier.size				= VK_WHOLE_SIZE;
-
-			outBarriers.push_back(barrier);
-
-			srcStage |= _lastAccess.stages;
-			dstStage |= _pendingAccess.stages;
-		}
-
-		// 更新“当前访问作用域”
-		if (_pendingAccess.isWritable)
-		{
-			_lastAccess				= _pendingAccess;
-		}
-		else // 纯读
-		{
-			if (_lastAccess.isWritable)
+			for (const BufferAccess& prev : _accessForWrite)
 			{
-				_lastAccess = _pendingAccess;	// 写之后的第一批读，替换作用域
+				if (_RangesConflict(prev, pending))
+				{
+					_AppendBarrier(outBarriers, _bufferData->Handle(), prev, pending);
+					srcStage |= prev.stages;
+					dstStage |= pending.stages;
+				}
 			}
-			else
+
+			for (const BufferAccess& prev : _accessForRead)
 			{
-				_lastAccess.stages		|= _pendingAccess.stages;	// 读之后继续读，累加
-				_lastAccess.access		|= _pendingAccess.access;
-				_lastAccess.isReadable	= true;
+				if (_RangesConflict(prev, pending))
+				{
+					_AppendBarrier(outBarriers, _bufferData->Handle(), prev, pending);
+					srcStage |= prev.stages;
+					dstStage |= pending.stages;
+				}
 			}
+
+			if (pending.isWritable)
+				_MergePending(_accessForWrite, pending);
+			else if (pending.isReadable)
+				_MergePending(_accessForRead, pending);
 		}
 
-		_pendingAccess = BufferAccess{};
+		_pendingAccesses.clear();
 	}
 
-	/*
-	=================================================
-		ResetState
-	=================================================
-	*/
+	// 帧/pass 结束：丢弃全部访问历史
 	void  VLocalBuffer::ResetState()
 	{
-		_lastAccess		= BufferAccess{};
-		_pendingAccess	= BufferAccess{};
+		_pendingAccesses.clear();
+		_accessForWrite.clear();
+		_accessForRead.clear();
 	}
 
-}
+} // FrameGraph
+

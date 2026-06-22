@@ -57,11 +57,11 @@ namespace FrameGraph
 
 			//variables
 		private:
-			Value_t _value = ~Value_t{ 0 };	// 全 1 表示空/无效句柄
+			Value_t _value = ~Value_t{ 0 };	// 全 1 (UMax) 表示空/无效句柄，与原版一致
 
 			static_assert(sizeof(_value) == (sizeof(Index_t) + sizeof(InstanceID_t)));
 
-			static constexpr Index_t _IndexMask = Index_t(~Index_t{ 0 });	// 0xFFFF
+			static constexpr Index_t _IndexMask = (1 << sizeof(Index_t) * 8) - 1;
 			static constexpr Value_t _InstOffset = sizeof(Index_t) * 8;
 
 		public:
@@ -105,9 +105,13 @@ namespace FrameGraph
 			constexpr ResourceIDWrap() {}
 			constexpr ResourceIDWrap(const IDType& id) : _id{ id } {}
 			constexpr ResourceIDWrap(const Self& other) : _id{ other._id } {}
+
 			GND constexpr bool operator == (const Self& rhs) const { return _id == rhs._id; }
 			GND constexpr bool operator != (const Self& rhs) const { return not (*this == rhs); }
 			GND explicit constexpr operator bool() const { return _id.IsValid(); }
+
+			GND constexpr IDType Get() const { return _id; }
+			GND IDType Release() { IDType temp{ _id }; _id = IDType{}; return temp; }
 		};
 
 		enum class RenderTargetID : uint

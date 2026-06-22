@@ -32,6 +32,16 @@ namespace FrameGraph
 	};
 	FG_BIT_OPERATORS(EQueueUsage);
 
+	enum class EMemoryType : uint
+	{
+		Default     = 0,            // GPU local
+		HostRead    = 1 << 0,
+		HostWrite   = 1 << 1,
+		Dedicated   = 1 << 2,
+		_Last,
+	};
+	FG_BIT_OPERATORS(EMemoryType);
+
 	enum class EBufferUsage : uint
 	{
 		TransferSrc           = 1 << 0,

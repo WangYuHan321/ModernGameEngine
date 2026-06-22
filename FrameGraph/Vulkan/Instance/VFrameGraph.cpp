@@ -1,29 +1,23 @@
 ﻿#include "VFrameGraph.h"
 #include "../Buffer/VBuffer.h"
+#include "../../Public/MemoryDesc.h"
 
 namespace FrameGraph
 {
 
-	/*
-	=================================================
-		constructor / destructor
-	=================================================
-	*/
+	// 构造：创建 VDevice，状态保持 Initial（ResourceManager 在 Initialize 中创建）
 	VFrameGraph::VFrameGraph(const VulkanDeviceInfo& info) :
 		_device{ std::make_unique<VDevice>(info) },
 		_state{ EState::Initial }
 	{}
 
+	// 析构：确保 Deinitialize 被调用
 	VFrameGraph::~VFrameGraph()
 	{
 		Deinitialize();
 	}
 
-	/*
-	=================================================
-		Initialize
-	=================================================
-	*/
+	// 创建 VResourceManager，状态 Initial → Idle
 	bool  VFrameGraph::Initialize()
 	{
 		CHECK_ERR(_device and _device->IsInitialized());
@@ -33,17 +27,13 @@ namespace FrameGraph
 		return true;
 	}
 
-	/*
-	=================================================
-		Deinitialize
-	=================================================
-	*/
+	// 反初始化：幂等；等待 GPU → 清空资源池 → 释放子对象
 	void  VFrameGraph::Deinitialize()
 	{
 		if (_state == EState::Destroyed)
 			return;
 
-		// 等待 GPU 空闲后再销毁资源
+		// 等待 GPU 空闲后再销毁资源，避免 vkDestroy 时仍有引用
 		if (_device and _device->IsInitialized())
 			vkDeviceWaitIdle(_device->GetVkDevice());
 
@@ -59,11 +49,7 @@ namespace FrameGraph
 		_state = EState::Destroyed;
 	}
 
-	/*
-	=================================================
-		AddPipelineCompiler
-	=================================================
-	*/
+	// 注册 PipelineCompiler；Idle 状态下可调用
 	bool  VFrameGraph::AddPipelineCompiler(const PipelineCompiler& comp)
 	{
 		CHECK_ERR(_state == EState::Idle);
@@ -72,31 +58,21 @@ namespace FrameGraph
 		for (auto& c : _pplnCompilers)
 		{
 			if (c == comp)
-				return true;	// 已存在
+				return true; // 已存在，跳过
 		}
 
 		_pplnCompilers.push_back(comp);
 		return true;
 	}
 
-	/*
-	=================================================
-		SetShaderDebugCallback
-	=================================================
-	*/
+	// 保存 Shader 调试回调
 	bool  VFrameGraph::SetShaderDebugCallback(ShaderDebugCallback_t&& cb)
 	{
 		_shaderDebugCallback = std::move(cb);
 		return true;
 	}
 
-	/*
-	=================================================
-		GetDeviceInfo
-	---
-		由内部 VDevice 重建出 VulkanDeviceInfo（句柄经不透明类型转换）。
-	=================================================
-	*/
+	// 从 VDevice 重建 VulkanDeviceInfo，供上层跨模块传递句柄
 	IFrameGraph::DeviceInfo_t  VFrameGraph::GetDeviceInfo() const
 	{
 		if (not _device)
@@ -125,38 +101,32 @@ namespace FrameGraph
 		return DeviceInfo_t{ info };
 	}
 
-	/*
-	=================================================
-		GetAvilableQueues / GetDeviceProperties
-	=================================================
-	*/
+	// 转发 VDevice：可用队列类型
 	EQueueUsage  VFrameGraph::GetAvilableQueues() const
 	{
 		return _device ? _device->GetAvailableQueues() : EQueueUsage::Unknown;
 	}
 
+	// 转发 VDevice：设备特性与限制
 	IFrameGraph::DeviceProperties  VFrameGraph::GetDeviceProperties() const
 	{
 		return _device ? _device->GetResourceProperties() : IFrameGraph::DeviceProperties{};
 	}
 
-	/*
-	=================================================
-		CreateBuffer / GetBuffer / ReleaseBuffer
-	=================================================
-	*/
-	RawBufferID  VFrameGraph::CreateBuffer(const BufferDesc& desc, VkMemoryPropertyFlags memFlags, StringView name)
+	// 便捷接口：转发 VResourceManager::CreateBuffer（池级 Mutex + VBuffer EXLOCK）
+	RawBufferID  VFrameGraph::CreateBuffer(const BufferDesc& desc, const MemoryDesc& mem, StringView name)
 	{
 		CHECK_ERR(_resourceMngr);
-		// 默认使用独占共享模式（EQueueFamilyMask::Unknown）；跨队列族并发访问可在上层指定。
-		return _resourceMngr->CreateBuffer(desc, memFlags, EQueueFamilyMask::Unknown, name);
+		return _resourceMngr->CreateBuffer(desc, mem, EQueueFamilyMask::Unknown, name);
 	}
 
+	// 便捷接口：转发 VResourceManager::GetBuffer（池级 Mutex + VBuffer SHAREDLOCK）
 	VBuffer const*  VFrameGraph::GetBuffer(RawBufferID id) const
 	{
 		return _resourceMngr ? _resourceMngr->GetBuffer(id) : nullptr;
 	}
 
+	// 便捷接口：转发 VResourceManager::ReleaseBuffer
 	bool  VFrameGraph::ReleaseBuffer(RawBufferID id)
 	{
 		CHECK_ERR(_resourceMngr);
@@ -164,15 +134,9 @@ namespace FrameGraph
 	}
 
 
-	//
-	// IFrameGraph 静态接口
-	//
+	// ---- IFrameGraph 静态工厂 ----
 
-	/*
-	=================================================
-		CreateFrameGraph
-	=================================================
-	*/
+	// 工厂：根据 VulkanDeviceInfo 创建 VFrameGraph 并 Initialize
 	FrameGraph  IFrameGraph::CreateFrameGraph(const DeviceInfo_t& info)
 	{
 		if (const VulkanDeviceInfo* vkInfo = std::get_if<VulkanDeviceInfo>(&info))
@@ -189,21 +153,13 @@ namespace FrameGraph
 		return null;
 	}
 
-	/*
-	=================================================
-		GetVersion
-	=================================================
-	*/
+	// 返回 FrameGraph 版本字符串
 	const char*  IFrameGraph::GetVersion()
 	{
 		return "ModernGameEngine-FrameGraph 0.1.0 (Vulkan)";
 	}
 
-	/*
-	=================================================
-		Statistics::Merge
-	=================================================
-	*/
+	// 合并两帧统计数据
 	void  IFrameGraph::Statistics::Merge(const Statistics& other)
 	{
 		renderer.descriptorBinds			+= other.renderer.descriptorBinds;
@@ -234,3 +190,4 @@ namespace FrameGraph
 	}
 
 }
+

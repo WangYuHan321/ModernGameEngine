@@ -1,13 +1,11 @@
 ﻿#pragma once
 
-#include "./Defines.h"
-
 #include <vector>
 #include <string>
-#include <functional>    // <-- add this
-#include <string_view>   // <-- add this
+#include <functional>
+#include <string_view>
 #include <array>
-#include <memory>		// shared_ptr, weak_ptr, unique_ptr
+#include <memory>
 #include <deque>
 #include <unordered_set>
 #include <unordered_map>
@@ -19,7 +17,9 @@
 #include <shared_mutex>
 #include <algorithm>
 
-#include "../STL/CompileTime/TypeTraits.h"
+#include "./Config.h"
+#include "./Defines.h"
+#include "./CompileTime/TypeTraits.h"
 
 #ifndef GND
 

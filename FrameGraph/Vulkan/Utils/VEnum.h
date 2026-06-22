@@ -204,23 +204,57 @@ namespace FrameGraph
 
 	GND inline VkPipelineStageFlags  EResourceState_ToStage(EResourceState state)
 	{
-		const uint access = uint(state) & uint(EResourceState::_AccessMask);
-
-		switch (EResourceState(access))
+		// 与原版 EResourceState_ToPipelineStages 的映射保持一致
+		switch (EResourceState(uint(state) & uint(EResourceState::_AccessMask)))
 		{
+		case EResourceState::Unknown:						return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		case EResourceState::_Access_InputAttachment:		return VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 		case EResourceState::_Access_Transfer:				return VK_PIPELINE_STAGE_TRANSFER_BIT;
-		case EResourceState::_Access_Host:					return VK_PIPELINE_STAGE_HOST_BIT;
+		case EResourceState::_Access_ColorAttachment:		return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+		case EResourceState::_Access_Present:				return VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 		case EResourceState::_Access_IndirectBuffer:		return VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT;
+		case EResourceState::_Access_Host:					return VK_PIPELINE_STAGE_HOST_BIT;
 		case EResourceState::_Access_IndexBuffer:
 		case EResourceState::_Access_VertexBuffer:			return VK_PIPELINE_STAGE_VERTEX_INPUT_BIT;
-		case EResourceState::_Access_ColorAttachment:		return VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-		case EResourceState::_Access_DepthStencilAttachment:return VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-		case EResourceState::_Access_Present:				return VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		default:											break;
+
+		case EResourceState::_Access_DepthStencilAttachment:
+		{
+			VkPipelineStageFlags result = 0;
+			if (uint(state) & uint(EResourceState::EarlyFragmentTests))	result |= VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+			if (uint(state) & uint(EResourceState::LateFragmentTests))	result |= VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
+			return result != 0 ? result : (VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT);
 		}
 
+		case EResourceState::_Access_ShaderStorage:
+		case EResourceState::_Access_Uniform:
+		case EResourceState::_Access_ShaderSample:
+		default:
+			break;
+		}
+
+		// ShaderStorage / Uniform / ShaderSample：由 shader stage 位推导
 		const VkPipelineStageFlags stages = _EResourceState_ShaderStages(state);
 		return stages != 0 ? stages : VkPipelineStageFlags(VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+	}
+
+	// EMemoryType -> VkMemoryPropertyFlags
+	GND inline VkMemoryPropertyFlags  VMemoryTypeToFlags(EMemoryType type)
+	{
+		VkMemoryPropertyFlags flags = 0;
+
+		if (uint(type) == 0)
+			flags |= VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+		if (uint(type & EMemoryType::HostRead))
+			flags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+
+		if (uint(type & EMemoryType::HostWrite))
+			flags |= VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+		if (flags == 0)
+			flags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+
+		return flags;
 	}
 
 }

@@ -1,8 +1,16 @@
 ﻿#pragma once
 
-#include "../STL/Defines.h"
+#include "../Config.h"
+#include "../CompileTime/TypeTraits.h"
 #include <limits>
-#include "../STL/CompileTime/TypeTraits.h"
+
+#ifdef COMPILER_MSVC
+# include <intrin.h>
+# pragma intrinsic(_BitScanForward, _BitScanReverse)
+# if PLATFORM_BITS == 64
+#  pragma intrinsic(_BitScanForward64, _BitScanReverse64)
+# endif
+#endif
 
 namespace FrameGraph
 {
@@ -12,49 +20,54 @@ namespace FrameGraph
 	template <typename T>
 	using NearUInt = Local::Conditional<(sizeof(T) <= sizeof(uint32_t)), uint32_t, uint64_t>;
 
-
-
-
-
-	// NearInt<T>：根据类型T的大小，选择一个合适的整数类型（int32_t或int64_t）来表示T的近似整数值。
 	template <typename T>
 	inline constexpr NearInt<T> ToNearInt(T value)
 	{
 		return static_cast<NearInt<T>>(value);
 	}
 
-	// NearUInt<T>：根据类型T的大小，选择一个合适的整数类型（uint32_t或uint64_t）来表示T的近似整数值。
 	template <typename T>
 	inline constexpr NearUInt<T> ToNearUInt(T value)
 	{
 		return static_cast<NearUInt<T>>(value);
 	}
 
+	template <typename T1, typename T2>
+	inline constexpr bool AllBits(const T1& lhs, const T2& rhs)
+	{
+		return (ToNearUInt(lhs) & ToNearUInt(rhs)) == ToNearUInt(rhs);
+	}
+
+	template <typename T1, typename T2>
+	inline constexpr bool AnyBits(const T1& lhs, const T2& rhs)
+	{
+		return (ToNearUInt(lhs) & ToNearUInt(rhs)) != 0;
+	}
+
 	template <typename T>
-	int  IntLog2(const T& x)
+	inline int IntLog2(const T& x)
 	{
 		static_assert(Local::IsInteger<T> or Local::IsEnum<T>);
 
-		constexpr int	INVALID_INDEX = std::numeric_limits<int>::min();
+		constexpr int INVALID_INDEX = std::numeric_limits<int>::min();
 
-		unsigned long	index;
+#ifdef COMPILER_MSVC
+		unsigned long index = 0;
 
+# if PLATFORM_BITS == 64
 		if constexpr (sizeof(x) == 8)
-			return _BitScanReverse64( & index, uint64_t(x)) ? index : INVALID_INDEX;
-		
+			return _BitScanReverse64(&index, uint64_t(x)) ? int(index) : INVALID_INDEX;
+# endif
 		if constexpr (sizeof(x) <= 4)
-			return _BitScanReverse( & index, x) ? index : INVALID_INDEX;
+			return _BitScanReverse(&index, static_cast<unsigned long>(x)) ? int(index) : INVALID_INDEX;
 
-
+		return INVALID_INDEX;
+#else
+		if constexpr (sizeof(x) == 8)
+			return x ? int((sizeof(x) * 8) - 1 - __builtin_clzll(uint64_t(x))) : INVALID_INDEX;
+		else
+			return x ? int((sizeof(x) * 8) - 1 - __builtin_clz(uint(x))) : INVALID_INDEX;
+#endif
 	}
 
-};
-
-
-
-
-
-
-
-
-	
+} // FrameGraph

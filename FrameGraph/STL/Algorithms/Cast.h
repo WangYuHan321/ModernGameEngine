@@ -1,8 +1,8 @@
 ﻿#pragma once
 
 #include "../Config.h"
-#include "../Common.h"
 #include "../Defines.h"
+#include <type_traits>
 
 namespace FrameGraph
 {
@@ -12,7 +12,7 @@ namespace FrameGraph
 	{
 		if constexpr (std::is_signed_v<From> and std::is_unsigned_v<To>)
 		{
-			ASSERT( src>=0 );
+			ASSERT(src >= 0);
 		}
 
 		ASSERT(static_cast<From>(static_cast<To>(src)) == src);
@@ -20,14 +20,4 @@ namespace FrameGraph
 		return static_cast<To>(src);
 	}
 
-};
-
-
-
-
-
-
-
-
-
-
+}

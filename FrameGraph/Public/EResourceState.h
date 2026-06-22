@@ -1,5 +1,6 @@
 ﻿#pragma once
-#include <cstdint> 
+#include <cstdint>
+#include "../STL/Defines.h"
 
 namespace FrameGraph
 {

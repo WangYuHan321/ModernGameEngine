@@ -1,12 +1,19 @@
 ﻿#pragma once
 
 #include "../Config.h"
-#include "../Common.h"
-#include "../Defines.h"
 #include "../Containers/StringView.h"
+#include <cstdlib>
+#include <string>
+
+#ifdef _MSC_VER
+#   define FUNCTION_NAME __FUNCTION__
+#else
+#   define FUNCTION_NAME __func__
+#endif
 
 namespace FrameGraph
 {
+	using String = std::string;
 
 	struct Logger
 	{
@@ -23,35 +30,22 @@ namespace FrameGraph
 		static EResult Error(const char* msg, const char* func, const char* file, int line);
 		static EResult Error(const StringView& msg, const StringView& func, const StringView& file, int line);
 
-		using Callback_t = void (*) (void* userData, const StringView& msg, const StringView& file, int line, bool isError);
+		using Callback_t = void (*)(void* userData, const StringView& msg, const StringView& file, int line, bool isError);
 
 		static void SetCallback(Callback_t cb, void* userData);
 	};
 
+#define FG_PRIVATE_LOGX(_level_, _msg_, _file_, _line_) \
+	{ \
+		switch (Logger::_level_((_msg_), (FUNCTION_NAME), (_file_), (_line_))) \
+		{ \
+			case Logger::EResult::Continue: break; \
+			case Logger::EResult::Break: break; \
+			case Logger::EResult::Abort: std::abort(); \
+		} \
+	}
 
+#define FG_PRIVATE_LOGI(_msg_, _file_, _line_) FG_PRIVATE_LOGX(Info, (_msg_), (_file_), (_line_))
+#define FG_PRIVATE_LOGE(_msg_, _file_, _line_) FG_PRIVATE_LOGX(Error, (_msg_), (_file_), (_line_))
 
-
-#define FG_PRIVATE_LOGX( _level_, _msg_, _file_, _line_ ) \
-	{\
-		switch (Logger::_level_((_msg_),(FUNCTION_NAME), (_file_), (_line_)))\
-		{\
-			case Logger::EResult::Continue: break;\
-			case Logger::EResult::Break: break;\
-			case Logger::EResult::Abort: std::abort();\
-		}\
-	}\
-
-#define FG_PRIVATE_LOGI( _msg_, _file_, _line_ )	FG_PRIVATE_LOGX( Info, (_msg_), (_file_), (_line_) )
-#define FG_PRIVATE_LOGE( _msg_, _file_, _line_ )	FG_PRIVATE_LOGX( Error, (_msg_), (_file_), (_line_) )
-
-};
-
-
-
-
-
-
-
-
-
-
+} // FrameGraph

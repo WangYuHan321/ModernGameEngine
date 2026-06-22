@@ -1,9 +1,11 @@
+cmake_minimum_required(VERSION 3.16)
 
 #file(GLOB BASE_SRC "./include/*.h" "./src/*.pp")
 file(GLOB PUBLIC_SRC "./Public/*.h" "./Public/*.cpp" "./Public/*.hpp")
 file(GLOB SHARED_SRC "./Shared/*.h" "./Shared/*.cpp" "./Shared/*.hpp")
 file(GLOB VULKAN_SRC "./Vulkan/*.h" "./Vulkan/*.cpp" "./Vulkan/*.hpp")
 file(GLOB VULKAN_BUFFER_SRC "./Vulkan/Buffer/*.h" "./Vulkan/Buffer/*.cpp" "./Vulkan/Buffer/*.hpp")
+file(GLOB VULKAN_MEMORY_SRC "./Vulkan/Memory/*.h" "./Vulkan/Memory/*.cpp" "./Vulkan/Memory/*.hpp")
 file(GLOB VULKAN_UTILS_SRC "./Vulkan/Utils/*.h" "./Vulkan/Utils/*.cpp" "./Vulkan/Utils/*.hpp")
 file(GLOB VULKAN_INSTANCE_SRC "./Vulkan/Instance/*.h" "./Vulkan/Instance/*.cpp" "./Vulkan/Instance/*.hpp")
 file(GLOB STL_SRC "./STL/*.h" "./STL/*.cpp" "./STL/*.hpp")
@@ -19,6 +21,7 @@ SOURCE_GROUP(Public FILES  ${PUBLIC_SRC})
 SOURCE_GROUP(Shared FILES  ${SHARED_SRC})
 SOURCE_GROUP(Vulkan FILES  ${VULKAN_SRC})
 SOURCE_GROUP(Vulkan/Buffer FILES  ${VULKAN_BUFFER_SRC})
+SOURCE_GROUP(Vulkan/Memory FILES  ${VULKAN_MEMORY_SRC})
 SOURCE_GROUP(Vulkan/Utils FILES  ${VULKAN_UTILS_SRC})
 SOURCE_GROUP(Vulkan/Instance FILES  ${VULKAN_INSTANCE_SRC})
 SOURCE_GROUP(STL FILES  ${STL_SRC})
@@ -34,8 +37,11 @@ SOURCE_GROUP(STL/CompileTime FILES  ${STL_COMPILETIME_SRC})
 
 project(FrameGraph)
 
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if (MSVC)
-    add_compile_options("/utf-8")
+    add_compile_options("/utf-8" "/FS")
 endif()
 
 # =========================================================
@@ -108,6 +114,7 @@ set(SRC_FILES
 	${SHARED_SRC}
 	${VULKAN_SRC}
 	${VULKAN_BUFFER_SRC}
+	${VULKAN_MEMORY_SRC}
 	${VULKAN_UTILS_SRC}
 	${VULKAN_INSTANCE_SRC}
 	${STL_SRC}
@@ -124,6 +131,7 @@ set(SRC_FILES
 include_directories( BEFORE
 	${FG_VULKAN_INCLUDE_DIR}
 	${CMAKE_CURRENT_SOURCE_DIR}/extensions
+	${CMAKE_CURRENT_SOURCE_DIR}/STL
 	${DEP_DIR}
 	${IMGUI_DIR}
 	${STB_INCLUDE_DIR}
@@ -137,6 +145,16 @@ include_directories( BEFORE
 )
 
 add_library(FrameGraph STATIC ${SRC_FILES})
+
+# 静态库直接输出到项目根目录（FrameGraph.lib）
+set(_FG_LIB_OUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+set_target_properties(FrameGraph PROPERTIES
+	ARCHIVE_OUTPUT_DIRECTORY "${_FG_LIB_OUT_DIR}"
+	ARCHIVE_OUTPUT_DIRECTORY_DEBUG "${_FG_LIB_OUT_DIR}"
+	ARCHIVE_OUTPUT_DIRECTORY_RELEASE "${_FG_LIB_OUT_DIR}"
+	ARCHIVE_OUTPUT_DIRECTORY_RELWITHDEBINFO "${_FG_LIB_OUT_DIR}"
+	ARCHIVE_OUTPUT_DIRECTORY_MINSIZEREL "${_FG_LIB_OUT_DIR}"
+)
 
 target_link_libraries(FrameGraph PRIVATE  ${DEPENDENCY_FILES})
 

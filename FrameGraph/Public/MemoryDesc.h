@@ -1,14 +1,19 @@
 ﻿#pragma once
 
-#include <assert.h>
-#include <cstdint>
-#include <vector>
+#include "ResourceEnums.h"
 
 namespace FrameGraph
 {
 	//
-	//   FrameGraph 接口
+	// Memory Description
 	//
 
+	struct MemoryDesc
+	{
+		EMemoryType type = EMemoryType::Default;
 
-}
+		MemoryDesc() {}
+		explicit MemoryDesc(EMemoryType memType) : type{ memType } {}
+	};
+
+} // FrameGraph

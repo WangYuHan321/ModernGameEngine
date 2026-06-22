@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "../Common.h"
-#include "../../STL/CompileTime/TypeTraits.h"
+#include "../CompileTime/TypeTraits.h"
 
 using namespace FrameGraph::Local;
 

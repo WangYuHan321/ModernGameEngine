@@ -1,6 +1,11 @@
 ﻿#pragma once
 #include "Log.h"
 #include "../Common.h"
+#include <sstream>
+
+#ifdef COMPILER_MSVC
+#	include <Windows.h>
+#endif
 
 using namespace FrameGraph;
 
@@ -64,7 +69,8 @@ namespace {
 	inline void IDEConsoleMessage(FrameGraph::StringView message, FrameGraph::StringView file, int line, bool isError)
 	{
 #ifdef COMPILER_MSVC
-		const String	str = String{ file } << '(' << ToString(line) << "): " << (isError ? "Error: " : "") << message << '\n';
+		const String str = String(file) + "(" + std::to_string(line) + "): "
+			+ (isError ? "Error: " : "") + String(message) + "\n";
 
 		::OutputDebugStringA(str.c_str());
 #endif

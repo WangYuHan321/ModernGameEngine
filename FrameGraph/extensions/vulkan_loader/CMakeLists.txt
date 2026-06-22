@@ -12,7 +12,7 @@ if (NOT (${FG_VULKAN_VERSION} STREQUAL "0"))
 		target_link_libraries( "VulkanLoader" PUBLIC "STL" )
 	else ()
 		get_filename_component( _FG_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE )
-		target_include_directories( "VulkanLoader" PUBLIC "${_FG_ROOT}" )
+		target_include_directories( "VulkanLoader" PUBLIC "${_FG_ROOT}" "${_FG_ROOT}/STL" )
 	endif ()
 
 	if (${FG_VULKAN_VERSION} STREQUAL "100")
