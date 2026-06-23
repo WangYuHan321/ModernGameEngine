@@ -1,33 +1,28 @@
 ﻿#pragma once
 
-#include "./Config.h"
+#include "../Math/Bytes.h"
+#include "../CompileTime/TypeTraits.h"
+#include <new>
 
-#ifdef  COMPILER_MSVC
-#define and &&
-#define or  ||
-#define not !
-#endif //  COMPILER_MSVC
+namespace FrameGraph
+{
+	template <typename T>
+	GND forceinline decltype(auto) AddressOf(T& value)
+	{
+		return std::addressof(value);
+	}
 
-#ifndef null
-#define null nullptr
-#endif // !null
+	template <typename T, typename... Types>
+	forceinline T* PlacementNew(OUT void* ptr, Types&&... args)
+	{
+		return new (ptr) T{ std::forward<Types>(args)... };
+	}
 
-#ifndef forceinline
+	forceinline void MemCopy(void* dst, BytesU dstSize, const void* src, BytesU srcSize)
+	{
+		ASSERT(srcSize <= dstSize);
+		ASSERT(dst and src);
+		std::memcpy(dst, src, size_t(std::min(srcSize, dstSize)));
+	}
 
-#define forceinline inline
-
-#endif
-
-
-#ifdef COMPILER_MSVC
-
-
-#endif
-
-
-
-
-
-
-
-
+} // FrameGraph

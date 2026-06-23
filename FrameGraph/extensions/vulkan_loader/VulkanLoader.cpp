@@ -2,14 +2,12 @@
 
 #include "VulkanLoader.h"
 #include "VulkanCheckError.h"
-#include "stl/Algorithms/Cast.h"
-#include "stl/Algorithms/StringUtils.h"
-#include "stl/Containers/Singleton.h"
-
+#include "Algorithms/Cast.h"
+#include "Containers/Singleton.h"
 
 # if defined(PLATFORM_WINDOWS) or defined(VK_USE_PLATFORM_WIN32_KHR)
 
-#	include "stl/Platforms/WindowsHeader.h"
+#	include "Platforms/WindowsHeader.h"
 
 	using SharedLib_t	= HMODULE;
 
@@ -22,7 +20,7 @@
 # endif
 
 
-namespace FGC
+namespace FrameGraph
 {
 
 #	define VK_LOG	FG_LOGD
@@ -83,7 +81,7 @@ namespace {
 			char	buf[MAX_PATH] = "";
 			CHECK( ::GetModuleFileNameA( lib->module, buf, DWORD(CountOf(buf)) ) != FALSE );
 
-			FG_LOGI( "Vulkan library path: \""s << buf << '"' );
+			FG_LOGI(String("Vulkan library path: \"") + buf + '"');
 		}
 
 		const auto	Load =	[module = lib->module] (OUT auto& outResult, const char *procName, auto dummy)
@@ -112,7 +110,7 @@ namespace {
 			char	buf[PATH_MAX] = "";
 			CHECK( dlinfo( lib->module, RTLD_DI_ORIGIN, buf ) == 0 );
 			
-			FG_LOGI( "Vulkan library path: \""s << buf << '"' );
+			FG_LOGI(String("Vulkan library path: \"") + buf + '"');
 		}
 #		endif
 
@@ -259,9 +257,9 @@ namespace {
 	SetupInstanceBackwardCompatibility
 =================================================
 */
-	void VulkanLoader::SetupInstanceBackwardCompatibility (uint version)
+		void VulkanLoader::SetupInstanceBackwardCompatibility(uint version)
 	{
-		Unused( version );
+		(void)version;
 		
 	#define VK_COMPAT( _dst_, _src_ ) \
 		ASSERT( _var_##_src_ != null ); \
@@ -295,9 +293,10 @@ namespace {
 	SetupDeviceBackwardCompatibility
 =================================================
 */
-	void VulkanLoader::SetupDeviceBackwardCompatibility (uint version, INOUT VulkanDeviceFnTable &table)
+		void VulkanLoader::SetupDeviceBackwardCompatibility(uint version, INOUT VulkanDeviceFnTable& table)
 	{
-		Unused( version, table );
+		(void)version;
+		(void)table;
 		
 	#define VK_COMPAT( _dst_, _src_ ) \
 		ASSERT( table._var_##_src_ != null ); \
@@ -375,4 +374,4 @@ namespace {
 		_table = table;
 	}
 
-}	// FGC
+}	// FrameGraph

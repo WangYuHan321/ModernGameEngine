@@ -1,9 +1,17 @@
 ﻿#pragma once
 
-#include "./Config.h"
+// ============================================================================
+// Defines.h — 断言、日志、锁宏与枚举工具
+// ============================================================================
+// 依赖 Config.h / Log.h，提供 ASSERT、CHECK、FG_LOGI/LOGE、EXLOCK/SHAREDLOCK、
+// FG_BIT_OPERATORS、BEGIN_ENUM_CHECKS 等全局宏。
+// 注意：本文件会间接引入 BitMath.h，不要在此处 include Cast.h（循环依赖）。
+// ============================================================================
 
+#include "./Config.h"
 #include "./Log/Log.h"
 
+// --- 参数方向 / 空指针 ---
 #ifndef OUT
 #	define OUT
 #endif
@@ -16,6 +24,7 @@
 #define null nullptr
 #endif
 
+// --- 宏参数工具（用于 FG_LOGI 等可变参数宏）---
 #define FG_PRIVATE_TOSTRING( ... )					#__VA_ARGS__
 
 #define FG_PRIVATE_GETARG_0( _0_, ... ) _0_
@@ -35,6 +44,7 @@
 		std::shared_lock	FG_PRIVATE_UNITE_RAW( __sharedLock, __COUNTER__ ) { _syncObj_ }
 #endif
 
+// --- 日志宏 ---
 #ifndef FG_LOGD
 #ifdef FG_DEBUG
 #define FG_LOGD FG_LOGI
@@ -59,6 +69,7 @@
 
 #define if_likely( ... )		if ( __VA_ARGS__ )
 
+// --- 断言与错误检查 ---
 #ifndef ASSERT
 # ifdef FG_DEBUG
 #	define ASSERT				CHECK
@@ -94,16 +105,14 @@
 #	define FG_PRIVATE_GETRAW( _value_ ) _value_
 #endif
 
+// --- static_assert 包装 ---
 #ifndef STATIC_ASSERT
 #	define STATIC_ASSERT( ... ) \
 		static_assert(	FG_PRIVATE_GETRAW( FG_PRIVATE_GETARG_0( __VA_ARGS__ ) ), \
 						FG_PRIVATE_GETRAW( FG_PRIVATE_GETARG_1( __VA_ARGS__, FG_PRIVATE_TOSTRING(__VA_ARGS__) )))
 #endif
 
-// BitMath after macros; must not include Cast.h (breaks circular include with Defines)
-#include "./Math/BitMath.h"
-#include "./CompileTime/DefaultType.h"
-
+// 为 enum class 生成位运算符（| & ~ ! 等），需配合 ToNearUInt
 #define FG_BIT_OPERATORS( _type_ ) \
 	GND constexpr _type_  operator |  (_type_ lhs, _type_ rhs)	{ return _type_( ToNearUInt(lhs) | ToNearUInt(rhs) ); } \
 	GND constexpr _type_  operator &  (_type_ lhs, _type_ rhs)	{ return _type_( ToNearUInt(lhs) & ToNearUInt(rhs) ); } \
@@ -113,3 +122,36 @@
 	\
 	GND constexpr _type_  operator ~ (_type_ lhs)				{ return _type_(~ToNearUInt(lhs)); } \
 	GND constexpr bool   operator ! (_type_ lhs)				{ return !ToNearUInt(lhs); }
+
+// BitMath 必须在宏定义之后；不可 include Cast.h（与 Defines 循环依赖）
+#include "./Math/BitMath.h"
+#include "./CompileTime/DefaultType.h"
+
+// --- switch 枚举完整性检查（MSVC / Clang）---
+#ifdef COMPILER_MSVC
+#	define BEGIN_ENUM_CHECKS() \
+		__pragma(warning(push)) \
+		__pragma(warning(error:4061)) \
+		__pragma(warning(error:4062)) \
+		__pragma(warning(error:4063))
+#	define END_ENUM_CHECKS() \
+		__pragma(warning(pop))
+#elif defined(COMPILER_CLANG)
+#	define BEGIN_ENUM_CHECKS() \
+		_Pragma("clang diagnostic push") \
+		_Pragma("clang diagnostic error \"-Wswitch\"")
+#	define END_ENUM_CHECKS() \
+		_Pragma("clang diagnostic pop")
+#else
+#	define BEGIN_ENUM_CHECKS()
+#	define END_ENUM_CHECKS()
+#endif
+
+#include <iterator>
+
+// 数组 / 模板参数包元素个数
+template <typename T>
+inline constexpr size_t CountOf(T& value) { return std::size(value); }
+
+template <typename... Types>
+inline constexpr size_t CountOf() { return sizeof...(Types); }

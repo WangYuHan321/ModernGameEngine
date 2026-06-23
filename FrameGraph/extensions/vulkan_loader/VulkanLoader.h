@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include "stl/Common.h"
-#include "stl/Containers/NtStringView.h"
-#include "stl/Math/BitMath.h"
+#include "Common.h"
+#include "Containers/NtStringView.h"
+#include "Math/BitMath.h"
 
 #if not defined(FG_ENABLE_VULKAN) or not defined(FG_VULKAN_TARGET_VERSION)
 #	error 'FG_ENABLE_VULKAN' and 'FG_VULKAN_TARGET_VERSION' must be defined.
@@ -33,7 +33,7 @@
 #endif
 
 
-namespace FGC
+namespace FrameGraph
 {
 
 #	define VKLOADER_STAGE_DECLFNPOINTER
@@ -118,16 +118,16 @@ namespace FGC
 			static void  SetupDeviceBackwardCompatibility (uint version, INOUT VulkanDeviceFnTable &table);
 	};
 
-}	// FGC
+}	// FrameGraph
 
 	
 	// debugger can't show enum names for VkFlags, so use enum instead
 #define VULKAN_ENUM_BIT_OPERATORS( _type_ ) \
-			inline constexpr _type_&  operator |= (_type_ &lhs, _type_ rhs) { return lhs = _type_( FGC::ToNearUInt( lhs ) | FGC::ToNearUInt( rhs )); } \
-		ND_ inline constexpr _type_   operator |  (_type_ lhs, _type_ rhs)	{ return _type_( FGC::ToNearUInt( lhs ) | FGC::ToNearUInt( rhs )); } \
-			inline constexpr _type_&  operator &= (_type_ &lhs, _type_ rhs) { return lhs = _type_( FGC::ToNearUInt( lhs ) & FGC::ToNearUInt( rhs )); } \
-		ND_ inline constexpr _type_   operator &  (_type_ lhs, _type_ rhs)	{ return _type_( FGC::ToNearUInt( lhs ) & FGC::ToNearUInt( rhs )); } \
-		ND_ inline constexpr _type_   operator ~  (_type_ value)			{ return _type_( ~FGC::ToNearUInt( value )); } \
+			inline constexpr _type_&  operator |= (_type_ &lhs, _type_ rhs) { return lhs = _type_( FrameGraph::ToNearUInt( lhs ) | FrameGraph::ToNearUInt( rhs )); } \
+		GND inline constexpr _type_   operator |  (_type_ lhs, _type_ rhs)	{ return _type_( FrameGraph::ToNearUInt( lhs ) | FrameGraph::ToNearUInt( rhs )); } \
+			inline constexpr _type_&  operator &= (_type_ &lhs, _type_ rhs) { return lhs = _type_( FrameGraph::ToNearUInt( lhs ) & FrameGraph::ToNearUInt( rhs )); } \
+		GND inline constexpr _type_   operator &  (_type_ lhs, _type_ rhs)	{ return _type_( FrameGraph::ToNearUInt( lhs ) & FrameGraph::ToNearUInt( rhs )); } \
+		GND inline constexpr _type_   operator ~  (_type_ value)			{ return _type_( ~FrameGraph::ToNearUInt( value )); } \
 
 	VULKAN_ENUM_BIT_OPERATORS( VkPipelineStageFlagBits );
 	VULKAN_ENUM_BIT_OPERATORS( VkAccessFlagBits );

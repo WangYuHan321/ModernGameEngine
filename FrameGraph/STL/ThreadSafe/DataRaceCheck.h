@@ -10,7 +10,7 @@
 //   Release 构建（未定义 FG_ENABLE_DATA_RACE_CHECK）中为空实现，零开销。
 //
 // 【何时启用】
-//   FG_DEBUG 时 stl/Config.h 会自动定义 FG_ENABLE_DATA_RACE_CHECK。
+//   FG_DEBUG 时 STL/Config.h 会自动定义 FG_ENABLE_DATA_RACE_CHECK。
 //
 // 【两种类型】
 //   DataRaceCheck     — 互斥访问（同一时刻只允许一个线程，支持同线程递归）

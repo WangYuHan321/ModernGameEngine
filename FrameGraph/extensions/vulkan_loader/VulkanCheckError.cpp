@@ -1,28 +1,23 @@
-// Copyright (c) 2018-2020,  Zhirnov Andrey. For more information see 'LICENSE'
-
-#include "stl/Algorithms/StringUtils.h"
 #include "VulkanLoader.h"
+#include "VulkanCheckError.h"
+#include "Log/Log.h"
+#include <string>
 
-namespace FGC
+namespace FrameGraph
 {
 
-/*
-=================================================
-	__vk_CheckErrors
-=================================================
-*/
-	bool __vk_CheckErrors (VkResult errCode, const char *vkcall, const char *func, const char *file, int line)
+	bool __vk_CheckErrors(VkResult errCode, const char* vkcall, const char* func, const char* file, int line)
 	{
-		if ( errCode == VK_SUCCESS )
+		if (errCode == VK_SUCCESS)
 			return true;
 
 		#define VK1_CASE_ERR( _code_ ) \
-			case _code_ :	msg += FG_PRIVATE_TOSTRING( _code_ ); break;
-		
-		String	msg( "Vulkan error: " );
+			case _code_ : msg += FG_PRIVATE_TOSTRING( _code_ ); break;
+
+		String msg = "Vulkan error: ";
 
 		BEGIN_ENUM_CHECKS();
-		switch ( errCode )
+		switch (errCode)
 		{
 			VK1_CASE_ERR( VK_NOT_READY )
 			VK1_CASE_ERR( VK_TIMEOUT )
@@ -62,7 +57,7 @@ namespace FGC
 			VK1_CASE_ERR( VK_ERROR_NATIVE_WINDOW_IN_USE_KHR )
 			VK1_CASE_ERR( VK_SUBOPTIMAL_KHR )
 			#endif
-			
+
 			#ifdef VK_KHR_display_swapchain
 			VK1_CASE_ERR( VK_ERROR_INCOMPATIBLE_DISPLAY_KHR )
 			#endif
@@ -70,7 +65,7 @@ namespace FGC
 			#ifdef VK_EXT_global_priority
 			VK1_CASE_ERR( VK_ERROR_NOT_PERMITTED_EXT )
 			#endif
-			
+
 			#ifdef VK_KHR_maintenance1
 			VK1_CASE_ERR( VK_ERROR_OUT_OF_POOL_MEMORY_KHR )
 			#elif defined(VK_VERSION_1_1)
@@ -93,7 +88,7 @@ namespace FGC
 			VK1_CASE_ERR( VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS )
 			#endif
 
-			#ifdef VK_VERSION_1_1 //VK_EXT_full_screen_exclusive
+			#ifdef VK_VERSION_1_1
 			VK1_CASE_ERR( VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT )
 			#endif
 
@@ -120,15 +115,18 @@ namespace FGC
 
 			case VK_SUCCESS :
 			case VK_RESULT_MAX_ENUM :
-			default :	msg = msg + "unknown (" + ToString(int(errCode)) + ')';  break;
+			default : msg += "unknown (" + std::to_string(int(errCode)) + ')'; break;
 		}
 		END_ENUM_CHECKS();
 		#undef VK1_CASE_ERR
-		
-		msg = msg + ", in " + vkcall + ", function: " + func;
 
-		FG_LOGE( msg, file, line );
+		msg += ", in ";
+		msg += vkcall;
+		msg += ", function: ";
+		msg += func;
+
+		FG_LOGE(msg, file, line);
 		return false;
 	}
 
-}	// FGC
+} // FrameGraph
