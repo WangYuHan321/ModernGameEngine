@@ -45,6 +45,16 @@ namespace FrameGraph
 	}
 
 	template <typename T>
+	inline constexpr bool IsPowerOfTwo(const T& x)
+	{
+		static_assert(Local::IsEnum<T> or Local::IsInteger<T>);
+
+		using U = NearUInt<T>;
+		const U val = U(x);
+		return (val != 0) and ((val & (val - U(1))) == U(0));
+	}
+
+	template <typename T>
 	inline int IntLog2(const T& x)
 	{
 		static_assert(Local::IsInteger<T> or Local::IsEnum<T>);

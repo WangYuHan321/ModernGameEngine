@@ -1,207 +1,310 @@
 ﻿#pragma once
 
-
-
 #include "../Public/FrameGraph.h"
-
 #include "../Public/MemoryDesc.h"
-
 #include "../Shared/LocalResourceID.h"
-
 #include "../Shared/ResourceBase.h"
-
 #include "../Buffer/VBuffer.h"
-
 #include "../Memory/VMemoryObj.h"
-
-#include "../STL/Common.h"
-
+#include "../../STL/Containers/ChunkedIndexedPool.h"
+#include "../../STL/Memory/UntypedAllocator.h"
+#include "../../STL/Common.h"
 #include "../Utils/VEnum.h"
-
 #include "../VCommon.h"
 
-
-
 namespace FrameGraph
-
 {
+	class VDevice;
 
 	//
-
 	// Resource Manager
-
 	//
-
-	// 内部资源池：管理 VBuffer / VMemoryObj 的生命周期与 ID 分配。
-
-	// ID = { index, instanceId }，Destroy 后 instanceId 递增，防止悬空句柄。
-
-	// 线程安全：池操作 EXLOCK(_bufferLock / _memoryLock)；
-
-	//           单个资源内部由 VBuffer / VMemoryObj 的 RWDataRaceCheck 保护。
-
+	// GPU 资源（Buffer / MemoryObj …）的统一生命周期管理。
 	//
-
-
+	// 【ID 模型】RawXxxID = { index, instanceId }
+	//   - index：池内槽位，由 ChunkedIndexedPool::Assign 分配/复用
+	//   - instanceId：Destroy 后递增（见 ResourceBase），旧句柄自动失效
+	//
+	// 【池结构】PoolTmpl = ChunkedIndexedPool<ResourceBase<T>, …, Mutex, AtomicPtr>
+	//   - 分块存储，槽位地址稳定（ResourceBase 含不可移动成员）
+	//   - Assign/Unassign 由池内 Mutex 保护
+	//
+	// 【创建流程】_Assign → Replace(槽位) → Create → AddRef
+	// 【释放流程】ReleaseResource → ReleaseRef 归零 → Destroy → Unassign
+	//   注意：仅引用计数归零时才 Unassign，不可每次 Release 都回收槽位
+	//
 
 	class VResourceManager final
-
 	{
+	public:
+		using Index_t = RawBufferID::Index_t;
+		using AssignOpGuard_t = Mutex;
+
+		template <typename T, size_t ChunkSize, size_t MaxChunks>
+		using PoolTmpl = ChunkedIndexedPool<T, Index_t, ChunkSize, MaxChunks, UntypedAlignedAllocator, AssignOpGuard_t, AtomicPtr>;
+
+		static constexpr uint MaxBuffers = 1u << 10;      // 每块 1024，共 32 块 → 最多 32768 个 Buffer
+		static constexpr uint MaxMemoryObjs = 1u << 10;
+
+		using BufferPool_t = PoolTmpl<ResourceBase<VBuffer>, MaxBuffers, 32>;
+		using MemoryPool_t = PoolTmpl<ResourceBase<VMemoryObj>, MaxMemoryObjs, 63>;
 
 	private:
+		VDevice const& _device;
 
-		// 关联的 Vulkan 设备（构造时绑定，生命周期长于 ResourceManager）
+		BufferPool_t _bufferPool;
+		MemoryPool_t _memoryObjPool;
 
-		const VDevice& _device;
-
-
-
-		// Buffer 池：Mutex 保护分配/查询/释放
-
-		mutable Mutex _bufferLock;
-
-		Deque<ResourceBase<VBuffer>> _buffers;  // Deque 避免 vector 扩容移动不可移动的 ResourceBase
-
-		Array<uint> _freeBuffers;               // 已释放槽位索引，供复用
-
-
-
-		// Memory 池：与 Buffer 池独立加锁
-
-		mutable Mutex _memoryLock;
-
-		Deque<ResourceBase<VMemoryObj>> _memory;
-
-		Array<uint> _freeMemory;
-
-
+		// GetDescription 在资源无效时返回的空描述，避免悬空引用
+		const BufferDesc _dummyBufferDesc;
 
 	public:
-
 		explicit VResourceManager(const VDevice& dev);
-
 		~VResourceManager();
 
-
-
 		VResourceManager(const VResourceManager&) = delete;
-
 		VResourceManager& operator = (const VResourceManager&) = delete;
-
-
-
-		// 只读查询：关联设备
-
-		GND const VDevice& GetDevice() const { return _device; }
-
-
-
-		// EXLOCK(_bufferLock + _memoryLock)：内部分配 Buffer + 绑定 Memory
-
-		GND RawBufferID CreateBuffer(const BufferDesc& desc,
-
-									 const MemoryDesc& mem,
-
-									 EQueueFamilyMask queueFamilyMask,
-
-									 StringView name);
-
-
-
-		// EXLOCK(_bufferLock)：包装外部 VkBuffer
-
-		GND RawBufferID CreateBuffer(const VulkanBufferDesc& desc,
-
-									 StringView name,
-
-									 IFrameGraph::OnExternalBufferReleased_t&& onRelease);
-
-
-
-		// EXLOCK(_bufferLock)：按 ID 取 VBuffer 指针（只读）
-
-		GND VBuffer const* GetBuffer(RawBufferID id) const;
-
-
-
-		// EXLOCK(_memoryLock)：按 ID 取 VMemoryObj 指针（只读）
-
-		GND VMemoryObj const* GetMemory(RawMemoryID id) const;
-
-
-
-		// EXLOCK(_bufferLock)：引用计数归零时 Destroy + 回收到 _freeBuffers
-
-		bool ReleaseBuffer(RawBufferID id);
-
-
-
-		// EXLOCK(_memoryLock)：引用计数归零时 Destroy + 回收到 _freeMemory
-
-		bool ReleaseMemory(RawMemoryID id);
-
-
-
-		// EXLOCK(_bufferLock)：校验 ID 的 index + instanceId 是否仍有效
-
-		GND bool IsResourceAlive(RawBufferID id) const;
-
-
-
-		// EXLOCK：销毁所有存活资源并清空池
 
 		void Deinitialize();
 
+		GND RawBufferID CreateBuffer(const BufferDesc& desc,
+									 const MemoryDesc& mem,
+									 EQueueFamilyMask queueFamilyMask,
+									 StringView dbgName);
 
+		GND RawBufferID CreateBuffer(const VulkanBufferDesc& desc,
+									 IFrameGraph::OnExternalBufferReleased_t&& onRelease,
+									 StringView dbgName);
+
+		GND VDevice const& GetDevice() const { return _device; }
+
+		// 通用资源接口（Image / Pipeline 等后续资源类型复用同一套模板）
+		template <typename ID>
+		bool ReleaseResource(ID id, uint refCount = 1);
+
+		template <typename ID>
+		bool AcquireResource(ID id);
+
+		template <typename ID>
+		GND bool IsResourceAlive(ID id) const;
+
+		template <typename ID>
+		GND auto const* GetResource(ID id, bool incRef = false, bool quiet = false) const;
+
+		template <typename ID>
+		GND auto const& GetDescription(ID id) const;
+
+		GND VBuffer const* GetBuffer(RawBufferID id) const;
+		GND VMemoryObj const* GetMemory(RawMemoryID id) const;
+		bool ReleaseBuffer(RawBufferID id);
+		bool ReleaseMemory(RawMemoryID id);
 
 	private:
+		bool _CreateMemory(OUT RawMemoryID& id, OUT ResourceBase<VMemoryObj>*& memPtr,
+						   const MemoryDesc& desc, StringView dbgName);
 
-		// 从池中分配/复用 Buffer 槽位，返回带 instanceId 的 RawBufferID
+		template <typename DataT, size_t CS, size_t MC>
+		bool _ReleaseResource(PoolTmpl<DataT, CS, MC>& pool, DataT& data, Index_t index, uint refCount);
 
-		GND RawBufferID _AssignBuffer(OUT ResourceBase<VBuffer>*& outRes);
+		template <typename DataT, size_t CS, size_t MC>
+		void _DestroyResourcePool(PoolTmpl<DataT, CS, MC>& pool);
 
+		GND auto& _GetResourcePool(const RawBufferID&) { return _bufferPool; }
+		GND auto& _GetResourcePool(const RawMemoryID&) { return _memoryObjPool; }
 
+		// 按 ID 类型分发到对应池（新增资源类型时在此重载）
+		template <typename ID>
+		GND const auto& _GetResourceCPool(const ID& id) const { return const_cast<VResourceManager*>(this)->_GetResourcePool(id); }
 
-		// 从池中分配/复用 Memory 槽位
+		// 从池取空闲 index，组装 RawXxxID{ index, instanceId }
+		template <typename ID>
+		GND bool _Assign(OUT ID& id);
 
-		GND RawMemoryID _AssignMemory(OUT ResourceBase<VMemoryObj>*& outRes);
-
-
-
-		// EXLOCK(_memoryLock)：创建 VMemoryObj 并 AddRef
-
-		bool _CreateMemory(OUT RawMemoryID& memId, OUT ResourceBase<VMemoryObj>*& memObj,
-
-						   const MemoryDesc& mem, StringView dbgName);
-
-
-
-		// 将 index 放回空闲列表（调用方已持锁）
-
-		void _UnassignBuffer(uint index);
-
-		void _UnassignMemory(uint index);
-
-
-
-		// 校验 ID 合法性（调用方已持锁）
-
-		GND bool _IsValid(RawBufferID id) const;
-
-		GND bool _IsValid(RawMemoryID id) const;
-
-
-
-		// 按 ID 取池内 ResourceBase 指针（调用方已持锁）
-
-		GND ResourceBase<VBuffer>* _GetBufferResource(RawBufferID id) const;
-
-		GND ResourceBase<VMemoryObj>* _GetMemoryResource(RawMemoryID id) const;
-
+		// 创建失败时回收 index（不 Destroy，槽位尚未 Create 成功）
+		template <typename ID>
+		void _Unassign(ID id);
 	};
 
+	/*
+	=================================================
+		GetResource
+	---
+		校验 index + instanceId，返回池内资源指针。
+		incRef：调用方需要延长生命周期时置 true。
+		quiet：true 时不触发 ASSERT（用于探测性查询）。
+	=================================================
+	*/
+	template <typename ID>
+	inline auto const* VResourceManager::GetResource(ID id, bool incRef, bool quiet) const
+	{
+		auto& pool = _GetResourceCPool(id);
 
+		using Result_t = typename std::remove_reference_t<decltype(pool)>::Value_t::Resource_t const*;
 
-}
+		if (id.Index() < pool.size())
+		{
+			auto& data = pool[id.Index()];
 
+			if (data.IsCreated() and data.GetInstanceID() == id.InstanceID())
+			{
+				if (incRef)
+					data.AddRef();
+				return &data.Data();
+			}
 
+			ASSERT(quiet or data.IsCreated());
+			ASSERT(quiet or data.GetInstanceID() == id.InstanceID());
+		}
+
+		(void)quiet;
+		if (not quiet)
+			ASSERT(false);
+		return static_cast<Result_t>(null);
+	}
+
+	/*
+	=================================================
+		GetDescription
+	=================================================
+	*/
+	template <>
+	inline auto const& VResourceManager::GetDescription(RawBufferID id) const
+	{
+		auto* res = GetResource(id);
+		return res ? res->Description() : _dummyBufferDesc;
+	}
+
+	/*
+	=================================================
+		IsResourceAlive
+	---
+		只比对 instanceId，不要求 IsCreated（与原版一致）。
+	=================================================
+	*/
+	template <typename ID>
+	inline bool VResourceManager::IsResourceAlive(ID id) const
+	{
+		ASSERT(id);
+		auto& pool = _GetResourceCPool(id);
+
+		return id.Index() < pool.size() and
+			   pool[id.Index()].GetInstanceID() == id.InstanceID();
+	}
+
+	/*
+	=================================================
+		AcquireResource
+	=================================================
+	*/
+	template <typename ID>
+	inline bool VResourceManager::AcquireResource(ID id)
+	{
+		ASSERT(id);
+
+		auto& pool = _GetResourcePool(id);
+
+		if (id.Index() < pool.size())
+		{
+			auto& data = pool[id.Index()];
+
+			if (not data.IsCreated() or data.GetInstanceID() != id.InstanceID())
+				return false;
+
+			data.AddRef();
+			return true;
+		}
+
+		return false;
+	}
+
+	/*
+	=================================================
+		ReleaseResource
+	=================================================
+	*/
+	template <typename ID>
+	inline bool VResourceManager::ReleaseResource(ID id, uint refCount)
+	{
+		ASSERT(id);
+
+		auto& pool = _GetResourcePool(id);
+
+		if (id.Index() >= pool.size())
+			return false;
+
+		auto& data = pool[id.Index()];
+
+		if (data.GetInstanceID() != id.InstanceID())
+			return false;
+
+		return _ReleaseResource(pool, data, id.Index(), refCount);
+	}
+
+	template <typename DataT, size_t CS, size_t MC>
+	inline bool VResourceManager::_ReleaseResource(PoolTmpl<DataT, CS, MC>& pool, DataT& data, Index_t index, uint refCount)
+	{
+		// 仅当引用计数归零且资源仍有效时 Destroy + 回收槽位
+		if (data.ReleaseRef(refCount) and data.IsCreated())
+		{
+			data.Destroy(*this);
+			pool.Unassign(index);
+			return true;
+		}
+		return false;
+	}
+
+	/*
+	=================================================
+		_Assign
+	---
+		从 ChunkedIndexedPool 取空闲 index；
+		id 中的 instanceId 取自槽位当前 generation（可能来自上一次 Destroy）。
+	=================================================
+	*/
+	template <typename ID>
+	inline bool VResourceManager::_Assign(OUT ID& id)
+	{
+		auto& pool = _GetResourcePool(id);
+
+		Index_t index = Index_t(UMax);
+		CHECK_ERR(pool.Assign(OUT index));
+
+		id = ID(index, pool[index].GetInstanceID());
+		return true;
+	}
+
+	/*
+	=================================================
+		_Unassign
+	=================================================
+	*/
+	template <typename ID>
+	inline void VResourceManager::_Unassign(ID id)
+	{
+		ASSERT(id);
+		auto& pool = _GetResourcePool(id);
+		pool.Unassign(id.Index());
+	}
+
+	// 便捷别名（与原版 ReleaseResource / GetResource 等价）
+	inline VBuffer const* VResourceManager::GetBuffer(RawBufferID id) const
+	{
+		return GetResource(id);
+	}
+
+	inline VMemoryObj const* VResourceManager::GetMemory(RawMemoryID id) const
+	{
+		return GetResource(id);
+	}
+
+	inline bool VResourceManager::ReleaseBuffer(RawBufferID id)
+	{
+		return ReleaseResource(id);
+	}
+
+	inline bool VResourceManager::ReleaseMemory(RawMemoryID id)
+	{
+		return ReleaseResource(id);
+	}
+
+} // FrameGraph
