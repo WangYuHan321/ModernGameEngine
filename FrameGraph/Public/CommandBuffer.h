@@ -2,7 +2,9 @@
 
 #include "ResourceEnums.h"
 #include "FrameGraphEnums.h"
+#include "VulkanType.h"
 #include "../STL/Containers/StringView.h"
+#include "../STL/Containers/Union.h"
 
 namespace FrameGraph
 {
@@ -31,10 +33,12 @@ namespace FrameGraph
 	{
 		//types
 	public:
-		using ExternalCmdBatch_t = union MyUnion
-		{
+		using ExternalCmdBatch_t = Union<NullUnion, VulkanCommandBatch> ;
 
-		};
+
+		//interface
+	public:
+
 
 
 	};

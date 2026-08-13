@@ -8,6 +8,7 @@ file(GLOB VULKAN_BUFFER_SRC "./Vulkan/Buffer/*.h" "./Vulkan/Buffer/*.cpp" "./Vul
 file(GLOB VULKAN_MEMORY_SRC "./Vulkan/Memory/*.h" "./Vulkan/Memory/*.cpp" "./Vulkan/Memory/*.hpp")
 file(GLOB VULKAN_UTILS_SRC "./Vulkan/Utils/*.h" "./Vulkan/Utils/*.cpp" "./Vulkan/Utils/*.hpp")
 file(GLOB VULKAN_INSTANCE_SRC "./Vulkan/Instance/*.h" "./Vulkan/Instance/*.cpp" "./Vulkan/Instance/*.hpp")
+file(GLOB VULKAN_COMMANDBUFFER_SRC "./Vulkan/CommandBuffer/*.h" "./Vulkan/CommandBuffer/*.cpp" "./Vulkan/CommandBuffer/*.hpp")
 file(GLOB STL_SRC "./STL/*.h" "./STL/*.cpp" "./STL/*.hpp")
 file(GLOB STL_ALGORITHMS_SRC "./STL/Algorithms/*.h" "./STL/Algorithms/*.cpp" "./STL/Algorithms/*.hpp")
 file(GLOB STL_CONTAINERS_SRC "./STL/Containers/*.h" "./STL/Containers/*.cpp" "./STL/Containers/*.hpp")
@@ -24,6 +25,7 @@ SOURCE_GROUP(Vulkan/Buffer FILES  ${VULKAN_BUFFER_SRC})
 SOURCE_GROUP(Vulkan/Memory FILES  ${VULKAN_MEMORY_SRC})
 SOURCE_GROUP(Vulkan/Utils FILES  ${VULKAN_UTILS_SRC})
 SOURCE_GROUP(Vulkan/Instance FILES  ${VULKAN_INSTANCE_SRC})
+SOURCE_GROUP(Vulkan/CommandBuffer FILES  ${VULKAN_COMMANDBUFFER_SRC})
 SOURCE_GROUP(STL FILES  ${STL_SRC})
 SOURCE_GROUP(STL/Algorithms FILES  ${STL_ALGORITHMS_SRC})
 SOURCE_GROUP(STL/Containers FILES  ${STL_CONTAINERS_SRC})
@@ -117,6 +119,7 @@ set(SRC_FILES
 	${VULKAN_MEMORY_SRC}
 	${VULKAN_UTILS_SRC}
 	${VULKAN_INSTANCE_SRC}
+	${VULKAN_COMMANDBUFFER_SRC}
 	${STL_SRC}
 	${STL_LOG_SRC}
 	${STL_MATH_SRC}
