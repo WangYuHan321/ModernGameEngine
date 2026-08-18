@@ -48,7 +48,7 @@ namespace FrameGraph
 #endif
 
 	//render pass
-	static constexpr unsigned GFG_MaxRenderPassUbpasses = 8;
+	static constexpr unsigned GFG_MaxRenderPassSubpasses = 8;
 
 	// pipeline
 	static constexpr unsigned	GFG_MaxPushConstants = 8;
