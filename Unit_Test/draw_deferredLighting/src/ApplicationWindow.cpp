@@ -3,7 +3,7 @@
 ApplicationWin::ApplicationWin():
 	ApplicationBase()
 {
-	title = " ApplicationComputeShader ";
+	title = " ApplicationDeferredLighting ";
 	m_camera.type = Camera::CameraType::lookat;
 	m_camera.setPosition(glm::vec3(0.0f, 0.0f, -2.0f));
 	m_camera.setRotation(glm::vec3(0.0f));
@@ -12,7 +12,53 @@ ApplicationWin::ApplicationWin():
 
 ApplicationWin::~ApplicationWin()
 {
-	
+	if (m_device) {
+		if (offscreenframeBuffers.deferred)
+		{
+			delete offscreenframeBuffers.deferred;
+		}
+		if (offscreenframeBuffers.shadow)
+		{
+			delete offscreenframeBuffers.shadow;
+		}
+		vkDestroyPipeline(m_device, pipelines.deferred, nullptr);
+		vkDestroyPipeline(m_device, pipelines.offscreen, nullptr);
+		vkDestroyPipeline(m_device, pipelines.shadowpass, nullptr);
+		vkDestroyPipelineLayout(m_device, pipelineLayout, nullptr);
+		vkDestroyDescriptorSetLayout(m_device, descriptorSetLayout, nullptr);
+		for (auto& buffer : uniformBuffers) {
+			buffer.offscreen.Destroy();
+			buffer.composition.Destroy();
+			buffer.shadowGeometryShader.Destroy();
+		}
+		textures.model.colorMap.Destory();
+		textures.model.normalMap.Destory();
+		textures.background.colorMap.Destory();
+		textures.background.normalMap.Destory();
+	}
+}
+
+void ApplicationWin::GetEnabledFeatures()
+{
+	if (m_deviceFeatures.geometryShader)
+		m_enabledFeatures.geometryShader = VK_TRUE;
+	else
+		printf("error dont not support geometry shader !!!\n");
+
+	if (m_deviceFeatures.samplerAnisotropy)
+		m_enabledFeatures.samplerAnisotropy = VK_TRUE;
+
+	// Enable texture compression
+	if (m_deviceFeatures.textureCompressionBC) {
+		m_enabledFeatures.textureCompressionBC = VK_TRUE;
+	}
+	else if (m_deviceFeatures.textureCompressionASTC_LDR) {
+		m_enabledFeatures.textureCompressionASTC_LDR = VK_TRUE;
+	}
+	else if (m_deviceFeatures.textureCompressionETC2) {
+		m_enabledFeatures.textureCompressionETC2 = VK_TRUE;
+	}
+
 }
 
 void ApplicationWin::DrawUI(const VkCommandBuffer cmdBuffer)
@@ -23,142 +69,6 @@ void ApplicationWin::DrawUI(const VkCommandBuffer cmdBuffer)
 	vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 
 	ui.Draw(cmdBuffer);
-}//
-
-void ApplicationWin::CreateQuad()
-{
-	std::vector<Vertex> vertices = {
-		{ {  1.0f,  1.0f, 0.0f }, { 1.0f, 1.0f } },
-		{ { -1.0f,  1.0f, 0.0f }, { 0.0f, 1.0f } },
-		{ { -1.0f, -1.0f, 0.0f }, { 0.0f, 0.0f } },
-		{ {  1.0f, -1.0f, 0.0f }, { 1.0f, 0.0f } }
-	};
-
-	uint32_t vertexBufferSize = static_cast<uint32_t>(vertices.size()) * sizeof(Vertex);
-	std::vector<uint32_t> indexBuffer{ 0, 1, 2, 2,3,0 };
-	m_indexCount = static_cast<uint32_t>(indexBuffer.size());
-	uint32_t indexBufferSize = m_indexCount * sizeof(uint32_t);
-
-	VkMemoryAllocateInfo memAlloc = Render::Vulkan::Initializer::MemoryAllocInfo();
-	VkMemoryRequirements memReqs;
-
-	struct StagingBuffer {
-		VkDeviceMemory memory;
-		VkBuffer buffer;
-	};
-
-	struct {
-		StagingBuffer vertices;
-		StagingBuffer indices;
-	} stagingBuffers{};
-
-	void* data;
-
-	// Vertex buffer
-	VkBufferCreateInfo vertexBufferInfoCI{};
-	vertexBufferInfoCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	vertexBufferInfoCI.size = vertexBufferSize;
-	// Buffer is used as the copy source
-	vertexBufferInfoCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	// Create a host-visible buffer to copy the vertex data to (staging buffer)
-	VK_CHECK_RESULT(vkCreateBuffer(m_device, &vertexBufferInfoCI, nullptr, &stagingBuffers.vertices.buffer));
-	vkGetBufferMemoryRequirements(m_device, stagingBuffers.vertices.buffer, &memReqs);
-	memAlloc.allocationSize = memReqs.size;
-	// Request a host visible memory type that can be used to copy our data to
-	// Also request it to be coherent, so that writes are visible to the GPU right after unmapping the buffer
-	memAlloc.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAlloc, nullptr, &stagingBuffers.vertices.memory));
-	// Map and copy
-	VK_CHECK_RESULT(vkMapMemory(m_device, stagingBuffers.vertices.memory, 0, memAlloc.allocationSize, 0, &data));
-	memcpy(data, vertices.data(), vertexBufferSize);
-	vkUnmapMemory(m_device, stagingBuffers.vertices.memory);
-	VK_CHECK_RESULT(vkBindBufferMemory(m_device, stagingBuffers.vertices.buffer, stagingBuffers.vertices.memory, 0));
-
-	// Create a device local buffer to which the (host local) vertex data will be copied and which will be used for rendering
-	vertexBufferInfoCI.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	VK_CHECK_RESULT(vkCreateBuffer(m_device, &vertexBufferInfoCI, nullptr, &m_vertexBuffer.buffer));
-	vkGetBufferMemoryRequirements(m_device, m_vertexBuffer.buffer, &memReqs);
-	memAlloc.allocationSize = memReqs.size;
-	memAlloc.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAlloc, nullptr, &m_vertexBuffer.memory));
-	VK_CHECK_RESULT(vkBindBufferMemory(m_device, m_vertexBuffer.buffer, m_vertexBuffer.memory, 0));
-
-	// Index buffer
-	VkBufferCreateInfo indexbufferCI{};
-	indexbufferCI.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-	indexbufferCI.size = indexBufferSize;
-	indexbufferCI.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-	// Copy index data to a buffer visible to the host (staging buffer)
-	VK_CHECK_RESULT(vkCreateBuffer(m_device, &indexbufferCI, nullptr, &stagingBuffers.indices.buffer));
-	vkGetBufferMemoryRequirements(m_device, stagingBuffers.indices.buffer, &memReqs);
-	memAlloc.allocationSize = memReqs.size;
-	memAlloc.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-	VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAlloc, nullptr, &stagingBuffers.indices.memory));
-	VK_CHECK_RESULT(vkMapMemory(m_device, stagingBuffers.indices.memory, 0, indexBufferSize, 0, &data));
-	memcpy(data, indexBuffer.data(), indexBufferSize);
-	vkUnmapMemory(m_device, stagingBuffers.indices.memory);
-	VK_CHECK_RESULT(vkBindBufferMemory(m_device, stagingBuffers.indices.buffer, stagingBuffers.indices.memory, 0));
-
-	// Create destination buffer with device only visibility
-	indexbufferCI.usage = VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT;
-	VK_CHECK_RESULT(vkCreateBuffer(m_device, &indexbufferCI, nullptr, &m_indexBuffer.buffer));
-	vkGetBufferMemoryRequirements(m_device, m_indexBuffer.buffer, &memReqs);
-	memAlloc.allocationSize = memReqs.size;
-	memAlloc.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAlloc, nullptr, &m_indexBuffer.memory));
-	VK_CHECK_RESULT(vkBindBufferMemory(m_device, m_indexBuffer.buffer, m_indexBuffer.memory, 0));
-
-	// Buffer copies have to be submitted to a queue, so we need a command buffer for them
-	// Note: Some devices offer a dedicated transfer queue (with only the transfer bit set) that may be faster when doing lots of copies
-	VkCommandBuffer copyCmd;
-
-	VkCommandBufferAllocateInfo cmdBufAllocateInfo{};
-	cmdBufAllocateInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	cmdBufAllocateInfo.commandPool = m_cmdPool;
-	cmdBufAllocateInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	cmdBufAllocateInfo.commandBufferCount = 1;
-	VK_CHECK_RESULT(vkAllocateCommandBuffers(m_device, &cmdBufAllocateInfo, &copyCmd));
-
-	VkCommandBufferBeginInfo cmdBufInfo = Render::Vulkan::Initializer::CommandBufferBeginInfo();
-	VK_CHECK_RESULT(vkBeginCommandBuffer(copyCmd, &cmdBufInfo));
-	// Put buffer region copies into command buffer
-	VkBufferCopy copyRegion{};
-	// Vertex buffer
-	copyRegion.size = vertexBufferSize;
-	vkCmdCopyBuffer(copyCmd, stagingBuffers.vertices.buffer, m_vertexBuffer.buffer, 1, &copyRegion);
-	// Index buffer
-	copyRegion.size = indexBufferSize;
-	vkCmdCopyBuffer(copyCmd, stagingBuffers.indices.buffer, m_indexBuffer.buffer, 1, &copyRegion);
-	VK_CHECK_RESULT(vkEndCommandBuffer(copyCmd));
-
-	// Submit the command buffer to the queue to finish the copy
-	VkSubmitInfo submitInfo{};
-	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.commandBufferCount = 1;
-	submitInfo.pCommandBuffers = &copyCmd;
-
-	// Create fence to ensure that the command buffer has finished executing
-	VkFenceCreateInfo fenceCI{};
-	fenceCI.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-	fenceCI.flags = 0;
-	VkFence fence;
-	VK_CHECK_RESULT(vkCreateFence(m_device, &fenceCI, nullptr, &fence));
-
-	// Submit to the queue
-	VK_CHECK_RESULT(vkQueueSubmit(m_queue, 1, &submitInfo, fence));
-	// Wait for the fence to signal that command buffer has finished executing
-	VK_CHECK_RESULT(vkWaitForFences(m_device, 1, &fence, VK_TRUE, DEFAULT_FENCE_TIMEOUT));
-
-	vkDestroyFence(m_device, fence, nullptr);
-	vkFreeCommandBuffers(m_device, m_cmdPool, 1, &copyCmd);
-
-	// Destroy staging buffers
-	// Note: Staging buffer must not be deleted before the copies have been submitted and executed
-	vkDestroyBuffer(m_device, stagingBuffers.vertices.buffer, nullptr);
-	vkFreeMemory(m_device, stagingBuffers.vertices.memory, nullptr);
-	vkDestroyBuffer(m_device, stagingBuffers.indices.buffer, nullptr);
-	vkFreeMemory(m_device, stagingBuffers.indices.memory, nullptr);
-
 }
 
 void ApplicationWin::CreateDescriptorPool()
@@ -705,7 +615,6 @@ void ApplicationWin::BuildComputeCommandBuffer()
 void ApplicationWin::Prepare() 
 {
 	ApplicationBase::Prepare();
-	CreateQuad();// 加载模型
 	LoadAsset(); // 加载图片
 	PrepareUniformBuffer();
 	CreateDescriptorPool();
@@ -714,12 +623,183 @@ void ApplicationWin::Prepare()
 	prepared = true;
 }
 
-void ApplicationWin::UpdateUniformBuffers()
+
+void ApplicationWin::ShadowSetUp()
 {
-	m_camera.setPerspective(60.0f, (float)width * 0.5f / (float)height, 1.0f, 256.0f);
-	m_graphics.uniformData.projection = m_camera.matrices.perspective;
-	m_graphics.uniformData.modelView = m_camera.matrices.view;
-	memcpy(m_graphics.uniformBuffers[m_currentBuffer].mapped, &m_graphics.uniformData, sizeof(Graphics::UniformData));
+	offscreenframeBuffers.shadow = new VulkanFrameBuffer(vulkanDevice);
+
+#if defined(__ANDROID__)
+	offscreenframeBuffers.shadow->width = 1024;
+	offscreenframeBuffers.shadow->height = 1024;
+#else
+	offscreenframeBuffers.shadow->width = 2048;
+	offscreenframeBuffers.shadow->height = 2048;
+#endif
+
+	VkFormat shadowMapFormat;
+	VkBool32 validShadowMapFormat = Render::Vulkan::Tool::GetSupportedDepthFormat(m_physicalDevice, &shadowMapFormat);
+	assert(validShadowMapFormat);
+
+	Render::Vulkan::AttachmentCreateInfo attachmentInfo = {};
+	attachmentInfo.format = shadowMapFormat;
+	attachmentInfo.width = offscreenframeBuffers.shadow->width;
+	attachmentInfo.height = offscreenframeBuffers.shadow->height;
+	attachmentInfo.layerCount = LIGHT_COUNT;
+	attachmentInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	offscreenframeBuffers.shadow->AddAttachment(attachmentInfo);
+
+	VK_CHECK_RESULT(offscreenframeBuffers.shadow->CreateSampler(VK_FILTER_LINEAR, VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE));
+
+	VK_CHECK_RESULT(offscreenframeBuffers.shadow->CreateRenderPass());
+}
+
+void ApplicationWin::DeferredSetUp()
+{
+	offscreenframeBuffers.deferred = new VulkanFrameBuffer(vulkanDevice);
+
+#if defined(__ANDROID__)
+	offscreenframeBuffers.deferred->width = 1024;
+	offscreenframeBuffers.deferred->height = 1024;
+#else
+	offscreenframeBuffers.deferred->width = 2048;
+	offscreenframeBuffers.deferred->height = 2048;
+#endif
+
+	// 3 color buffer 1 depth buffer
+	Render::Vulkan::AttachmentCreateInfo attachmentInfo = {};
+	attachmentInfo.width = offscreenframeBuffers.deferred->width;
+	attachmentInfo.height = offscreenframeBuffers.deferred->height;
+	attachmentInfo.layerCount = 1;
+	attachmentInfo.usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
+	
+	//Attachment 0 Postion
+	attachmentInfo.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+	offscreenframeBuffers.deferred->AddAttachment(attachmentInfo);
+
+	//Attachemnt 1 Normal
+	attachmentInfo.format = VK_FORMAT_R16G16B16A16_SFLOAT;
+	offscreenframeBuffers.deferred->AddAttachment(attachmentInfo);
+
+	//Attachment 2 Albedo 这里可能不正确 UNORM是把RGB当成线性数据了
+	attachmentInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+	offscreenframeBuffers.deferred->AddAttachment(attachmentInfo);
+
+	// Create sampler to sample from the color attachments
+	VK_CHECK_RESULT(offscreenframeBuffers.deferred->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE));
+
+	// Create default renderpass for the framebuffer
+	VK_CHECK_RESULT(offscreenframeBuffers.deferred->CreateRenderPass());
+}
+
+void ApplicationWin::SetupDescriptors()
+{
+	//Pool
+	std::vector<VkDescriptorPoolSize>poolSize = {
+		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_FRAMES_IN_FLIGHT * 8),
+		Render::Vulkan::Initializer::DescriptorPoolSize(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_FRAMES_IN_FLIGHT * 16)
+	};
+
+	VkDescriptorPoolCreateInfo descriptorPoolInfo = Render::Vulkan::Initializer::DescriptorPoolCreateInfo(poolSize, MAX_FRAMES_IN_FLIGHT * 4);
+	VK_CHECK_RESULT(vkCreateDescriptorPool(m_device, &descriptorPoolInfo, nullptr, &m_descriptorPool));
+
+	std::vector<VkDescriptorSetLayoutBinding> setLayoutBindings = {
+		// Binding 0: Vertex shader uniform buffer
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_GEOMETRY_BIT, 0),
+		// Binding 1: Position texture
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 1),
+		// Binding 2: Normals texture
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 2),
+		// Binding 3: Albedo texture
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 3),
+		// Binding 4: Fragment shader uniform buffer
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_FRAGMENT_BIT, 4),
+		// Binding 5: Shadow map
+		Render::Vulkan::Initializer::DescriptorSetLayoutBinding(VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT, 5),
+	};
+
+	VkDescriptorSetLayoutCreateInfo descriptorLayout = Render::Vulkan::Initializer::DescriptorSetLayoutCreateInfo(setLayoutBindings);
+	VK_CHECK_RESULT(vkCreateDescriptorSetLayout(m_device, &descriptorLayout, nullptr, &descriptorSetLayout));
+
+	VkDescriptorImageInfo descriptorPosition = Render::Vulkan::Initializer::DescriptorImageInfo(offscreenframeBuffers.
+		deferred->sampler, offscreenframeBuffers.deferred->attachments[0].imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	VkDescriptorImageInfo descriptorNormal = Render::Vulkan::Initializer::DescriptorImageInfo(offscreenframeBuffers.
+		deferred->sampler, offscreenframeBuffers.deferred->attachments[1].imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	VkDescriptorImageInfo descriptorAlbedo = Render::Vulkan::Initializer::DescriptorImageInfo(offscreenframeBuffers.
+		deferred->sampler, offscreenframeBuffers.deferred->attachments[2].imageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	VkDescriptorImageInfo descriptorShadowMap = Render::Vulkan::Initializer::DescriptorImageInfo(offscreenframeBuffers.
+		shadow->sampler, offscreenframeBuffers.shadow->attachments[0].imageView, VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL);
+
+	VkDescriptorSetAllocateInfo allocInfo = Render::Vulkan::Initializer::DescriptorSetAllocateInfo(m_descriptorPool, 
+		&descriptorSetLayout, 1);
+
+	for (auto i = 0; i < uniformBuffers.size();i++)
+	{
+		std::vector<VkWriteDescriptorSet> writeDescriptorSets;
+		// Deferred composition
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &descriptorSets[i].composition));
+
+		writeDescriptorSets = {
+			// Binding 1: World space position texture
+				Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &descriptorPosition),
+				// Binding 2: World space normals texture
+				Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &descriptorNormal),
+				// Binding 3: Albedo texture
+				Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 3, &descriptorAlbedo),
+				// Binding 4: Fragment shader uniform buffer
+				Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].composition, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 4, &uniformBuffers[i].composition.descriptor),
+				// Binding 5: Shadow map
+				Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].composition, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 5, &descriptorShadowMap),
+		};
+
+		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+
+
+
+		// Offscreen (scene)
+
+		// Model
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &descriptorSets[i].model));
+		writeDescriptorSets = {
+			// Binding 0: Vertex shader uniform buffer
+			Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].model, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers[i].offscreen.descriptor),
+			// Binding 1: Color map
+			Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].model, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textures.model.colorMap.descirptor),
+			// Binding 2: Normal map
+			Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].model, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &textures.model.normalMap.descirptor)
+		};
+		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+
+		// Background
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &descriptorSets[i].background));
+		writeDescriptorSets = {
+			// Binding 0: Vertex shader uniform buffer
+			Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].background, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers[i].offscreen.descriptor),
+			// Binding 1: Color map
+			Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].background, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, &textures.background.colorMap.descirptor),
+			// Binding 2: Normal map
+			Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].background, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2, &textures.background.normalMap.descirptor)
+		};
+		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+
+		// Shadow mapping
+		VK_CHECK_RESULT(vkAllocateDescriptorSets(m_device, &allocInfo, &descriptorSets[i].shadow));
+		writeDescriptorSets = {
+			// Binding 0: Vertex shader uniform buffer
+			Render::Vulkan::Initializer::WriteDescriptorSet(descriptorSets[i].shadow, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 0, &uniformBuffers[i].shadowGeometryShader.descriptor),
+		};
+
+		vkUpdateDescriptorSets(m_device, static_cast<uint32_t>(writeDescriptorSets.size()), writeDescriptorSets.data(), 0, nullptr);
+	}
+
+}
+
+void ApplicationWin::PreparePipelines()
+{
+	// Layout
+	VkPipelineLayoutCreateInfo pipelineLayoutCreateInfo = Render::Vulkan::Initializer::PipelineLayoutCreateInfo(&descriptorSetLayout, 1);
+	VK_CHECK_RESULT(vkCreatePipelineLayout(m_device, &pipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+
+
 }
 
 void ApplicationWin::Render()
@@ -761,89 +841,27 @@ void ApplicationWin::Render()
 void ApplicationWin::LoadAsset()
 {
 	const VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
+	const uint32_t glTFLoadingFlags = VkModel::FileLoadingFlags::PreTransformVertices
+		| VkModel::FileLoadingFlags::PreMultiplyVertexColors | VkModel::FileLoadingFlags::FlipY;
 
 #if defined(__ANDROID__)
 	m_textureColorMap.LoadFromFile("texture/lena.jpg", format, vulkanDevice, m_queue,
 		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
 #else
-	m_textureColorMap.LoadFromFile("./Asset/texture/lena.jpg", format, vulkanDevice, m_queue,
+
+	models.model.LoadFromFile("./Asset/model/armor/armor.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
+	models.background.LoadFromFile("./Asset/model/deferred_box.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
+	
+	textures.model.colorMap.LoadFromFile("./Asset/texture/armor/colormap_rgba.ktx", format, vulkanDevice, m_queue,
 		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+	textures.model.normalMap.LoadFromFile("./Asset/texture/armor/normalmap_rgba.ktx", format, vulkanDevice, m_queue,
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+	textures.model.colorMap.LoadFromFile("./Asset/texture/stonefloor02_color_rgba.ktx", format, vulkanDevice, m_queue,
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+	textures.model.normalMap.LoadFromFile("./Asset/texture/stonefloor02_normal_rgba.ktx", format, vulkanDevice, m_queue,
+		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+
+
 #endif
 
-
-	VkFormatProperties formatProperties;
-	vkGetPhysicalDeviceFormatProperties(m_physicalDevice, format, &formatProperties);
-	assert(formatProperties.optimalTilingFeatures & VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT);
-
-	m_storageImage.width = m_textureColorMap.width;
-	m_storageImage.height = m_textureColorMap.height;
-
-	VkImageCreateInfo imageCreateInfo = Render::Vulkan::Initializer::ImageCreateInfo();
-	imageCreateInfo.imageType = VK_IMAGE_TYPE_2D;
-	imageCreateInfo.format = format;
-	imageCreateInfo.extent = { m_storageImage.width, m_storageImage.height, 1 };
-	imageCreateInfo.mipLevels = 1;
-	imageCreateInfo.arrayLayers = 1;
-	imageCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	imageCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	imageCreateInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-	imageCreateInfo.flags = 0;
-
-
-	std::vector<uint32_t> queueFamilyIndices;
-	if (vulkanDevice->queueFamilyIndices.graphics != vulkanDevice->queueFamilyIndices.compute) {
-		queueFamilyIndices = {
-			vulkanDevice->queueFamilyIndices.graphics,
-			vulkanDevice->queueFamilyIndices.compute
-		};
-		imageCreateInfo.sharingMode = VK_SHARING_MODE_CONCURRENT;
-		imageCreateInfo.queueFamilyIndexCount = 2;
-		imageCreateInfo.pQueueFamilyIndices = queueFamilyIndices.data();
-	}
-	VK_CHECK_RESULT(vkCreateImage(m_device, &imageCreateInfo, nullptr, &m_storageImage.image));
-
-	VkMemoryAllocateInfo memAllocInfo = Render::Vulkan::Initializer::MemoryAllocInfo();
-	VkMemoryRequirements memReqs;
-	vkGetImageMemoryRequirements(m_device, m_storageImage.image, &memReqs);
-	memAllocInfo.allocationSize = memReqs.size;
-	memAllocInfo.memoryTypeIndex = vulkanDevice->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	VK_CHECK_RESULT(vkAllocateMemory(m_device, &memAllocInfo, nullptr, &m_storageImage.deviceMemory));
-	VK_CHECK_RESULT(vkBindImageMemory(m_device, m_storageImage.image, m_storageImage.deviceMemory, 0));
-
-	// Transition image to the general layout, so we can use it as a storage image in the compute shader
-	VkCommandBuffer layoutCmd = vulkanDevice->CreateCommandBuffer(VK_COMMAND_BUFFER_LEVEL_PRIMARY, true);
-	m_storageImage.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-	Render::Vulkan::Tool::SetImageLayout(layoutCmd, m_storageImage.image, VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_LAYOUT_UNDEFINED, m_storageImage.imageLayout);
-	vulkanDevice->FlushCommandBuffer(layoutCmd, m_queue, true);
-
-	// Create sampler
-	VkSamplerCreateInfo sampler = Render::Vulkan::Initializer::SamplerCreateInfo();
-	sampler.magFilter = VK_FILTER_LINEAR;
-	sampler.minFilter = VK_FILTER_LINEAR;
-	sampler.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	sampler.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
-	sampler.addressModeV = sampler.addressModeU;
-	sampler.addressModeW = sampler.addressModeU;
-	sampler.mipLodBias = 0.0f;
-	sampler.maxAnisotropy = 1.0f;
-	sampler.compareOp = VK_COMPARE_OP_NEVER;
-	sampler.minLod = 0.0f;
-	sampler.maxLod = 1.0f;
-	sampler.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-	VK_CHECK_RESULT(vkCreateSampler(m_device, &sampler, nullptr, &m_storageImage.sampler));
-
-	// Create image view
-	VkImageViewCreateInfo view = Render::Vulkan::Initializer::ImageViewCreateInfo();
-	view.image = VK_NULL_HANDLE;
-	view.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	view.format = format;
-	view.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-	view.image = m_storageImage.image;
-	VK_CHECK_RESULT(vkCreateImageView(m_device, &view, nullptr, &m_storageImage.imageView));
-
-	// Initialize a descriptor for later use
-	m_storageImage.descirptor.imageLayout = m_storageImage.imageLayout;
-	m_storageImage.descirptor.imageView = m_storageImage.imageView;
-	m_storageImage.descirptor.sampler = m_storageImage.sampler;
-	m_storageImage.device = vulkanDevice;
 }
