@@ -774,6 +774,13 @@ void Render::Vulkan::VkModel::LoadNode(Render::Vulkan::VkModel::Node* parent, co
 	linearNodes.push_back(newNode);
 }
 
+void Render::Vulkan::VkModel::BindBuffers(VkCommandBuffer commandBuffer)
+{
+	const VkDeviceSize offsets[1] = { 0 };
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertices.buffer, offsets);
+	vkCmdBindIndexBuffer(commandBuffer, indices.buffer, 0, VK_INDEX_TYPE_UINT32);
+}
+
 void Render::Vulkan::VkModel::Draw(VkCommandBuffer commandBuffer, uint32_t renderFlags, VkPipelineLayout pipelineLayout, uint32_t bindImageSet)
 {
 	if (!buffersBound) {

@@ -356,6 +356,8 @@ namespace Render
 			void LoadNode(Render::Vulkan::VkModel::Node* parent, const tinygltf::Node& node, uint32_t nodeIndex,
 				const tinygltf::Model& model, std::vector<uint32_t>& indexBuffer, std::vector<Vertex>& vertexBuffer, float globalscale);
 
+			void BindBuffers(VkCommandBuffer commandBuffer);
+
 			void Draw(VkCommandBuffer commandBuffer, uint32_t renderFlags = 0, VkPipelineLayout pipelineLayout = VK_NULL_HANDLE, uint32_t bindImageSet = 1);
 			void DrawNode(Node* node, VkCommandBuffer commandBuffer, uint32_t renderFlags = 0, VkPipelineLayout pipelineLayout = VK_NULL_HANDLE, uint32_t bindImageSet = 1);
 		};
