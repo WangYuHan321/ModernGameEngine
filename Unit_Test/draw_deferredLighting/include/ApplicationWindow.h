@@ -2,6 +2,14 @@
 
 #define LIGHT_COUNT 3
 
+struct Light
+{
+	glm::vec4 position;
+	glm::vec4 target;
+	glm::vec4 color;
+	glm::mat4 viewMatrix;
+};
+
 class ApplicationWin : public ApplicationBase
 {
 public:
@@ -9,7 +17,7 @@ public:
 	int32_t debugDisplayTarget{ 0 };
 	bool enableShadows = true;
 
-	float zBear = 0.1f;
+	float zNear = 0.1f;
 	float zFar = 64.0f;
 	float lightFOV = 100.0f;
 
@@ -52,18 +60,10 @@ public:
 		glm::vec4 instancePos[3];
 	} uniformDataShadows;
 
-	struct Light
-	{
-		glm::vec4 position;
-		glm::vec4 target;
-		glm::vec4 color;
-		glm::mat4 viewMatrix;
-	};
-
 	struct UniformDataComposition
 	{
 		glm::vec4 viewPos;
-		Light light[LIGHT_COUNT];
+		Light lights[LIGHT_COUNT];
 		uint32_t useShadows = 1;
 		int32_t debugDisplayTarget = 0;
 	} uniformDataComposition;
@@ -109,6 +109,8 @@ public:
 
 public:
 
+	VkPipelineVertexInputStateCreateInfo* GetPipelineVertexInputState();
+
 	virtual void GetEnabledFeatures() override;
 
 	void DrawUI(const VkCommandBuffer cmdBuffer);
@@ -119,15 +121,14 @@ public:
 	void DeferredSetUp();
 	void SetupDescriptors();
 	void PreparePipelines();
-
+	void PrepareUniformBuffers();
+	void InitLights();
+	void UpdateUniformBufferDeferred();
+	void UpdateUniformBufferOffscreen();
+	void BuildCommandBuffer();
+	void RenderScene(VkCommandBuffer cmdBuffer, bool useDynamicRendering = false);
 	
 	VkShaderModule LoadSPIRVShader(const std::string& filename);
-
-	void PrepareGraphicsPipeline();
-	void PrepareComputePipeline();
-	void PrepareUniformBuffer();
-	void BuildGraphicsCommandBuffer();
-	void BuildComputeCommandBuffer();
 
 	void Prepare() override;
 	void Render();
