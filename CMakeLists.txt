@@ -53,6 +53,7 @@ add_subdirectory(Unit_Test/draw_rayShadow)
 add_subdirectory(Unit_Test/draw_compute)
 add_subdirectory(Unit_Test/draw_texture)
 add_subdirectory(Unit_Test/draw_triangle)
+add_subdirectory(Unit_Test/draw_deferredLighting)
 add_subdirectory(Unit_Test/ResourceManager)
 
 if(WIN32)

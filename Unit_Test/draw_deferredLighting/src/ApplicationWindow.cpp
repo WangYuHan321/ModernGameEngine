@@ -1,5 +1,7 @@
 ﻿#include "ApplicationWindow.h"
 
+#include <chrono>
+
 ApplicationWin::ApplicationWin():
 	ApplicationBase()
 {
@@ -219,6 +221,14 @@ void ApplicationWin::DeferredSetUp()
 	attachmentInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
 	offscreenframeBuffers.deferred->AddAttachment(attachmentInfo);
 
+	// Attachment 3 Depth
+	VkFormat attDepthFormat;
+	VkBool32 validDepthFormat = Render::Vulkan::Tool::GetSupportedDepthFormat(m_physicalDevice, &attDepthFormat);
+	assert(validDepthFormat);
+	attachmentInfo.format = attDepthFormat;
+	attachmentInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+	offscreenframeBuffers.deferred->AddAttachment(attachmentInfo);
+
 	// Create sampler to sample from the color attachments
 	VK_CHECK_RESULT(offscreenframeBuffers.deferred->CreateSampler(VK_FILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE));
 
@@ -328,56 +338,6 @@ void ApplicationWin::SetupDescriptors()
 
 }
 
-struct VertexT {
-	glm::vec3 position;
-	glm::vec2 uv;
-	glm::vec4 color;
-	glm::vec3 normal;
-	glm::vec4 tangent;
-};
-static std::array<VkVertexInputAttributeDescription, 5> GetTAttributeDescriptions() {
-	std::array<VkVertexInputAttributeDescription, 5> attributeDescriptions{};
-
-	attributeDescriptions[0].binding = VERTEX_BUFFER_BIND_ID;
-	attributeDescriptions[0].location = 0;
-	attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[0].offset = offsetof(VertexT, position);
-
-	attributeDescriptions[1].binding = VERTEX_BUFFER_BIND_ID;
-	attributeDescriptions[1].location = 1;
-	attributeDescriptions[1].format = VK_FORMAT_R32G32_SFLOAT;
-	attributeDescriptions[1].offset = offsetof(VertexT, uv);
-
-	attributeDescriptions[2].binding = VERTEX_BUFFER_BIND_ID;
-	attributeDescriptions[2].location = 2;
-	attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[2].offset = offsetof(VertexT, color);
-
-	attributeDescriptions[3].binding = VERTEX_BUFFER_BIND_ID;
-	attributeDescriptions[3].location = 3;
-	attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
-	attributeDescriptions[3].offset = offsetof(VertexT, normal);
-
-	attributeDescriptions[4].binding = VERTEX_BUFFER_BIND_ID;
-	attributeDescriptions[4].location = 4;
-	attributeDescriptions[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
-	attributeDescriptions[4].offset = offsetof(VertexT, tangent);
-
-	return attributeDescriptions;
-}
-
-VkPipelineVertexInputStateCreateInfo* ApplicationWin::GetPipelineVertexInputState() 
-{
-	VkVertexInputBindingDescription VertexInputBindingDescription({ 0, sizeof(VertexT), VK_VERTEX_INPUT_RATE_VERTEX });
-	VkPipelineVertexInputStateCreateInfo pipelineVertexInputStateCreateInfo = Render::Vulkan::Initializer::PipelineVertexInputStateCreateInfo();
-	pipelineVertexInputStateCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	pipelineVertexInputStateCreateInfo.vertexBindingDescriptionCount = 1;
-	pipelineVertexInputStateCreateInfo.pVertexBindingDescriptions = &VertexInputBindingDescription;
-	pipelineVertexInputStateCreateInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(GetTAttributeDescriptions().size());
-	pipelineVertexInputStateCreateInfo.pVertexAttributeDescriptions = GetTAttributeDescriptions().data();
-	return &pipelineVertexInputStateCreateInfo;
-}
-
 void ApplicationWin::PreparePipelines()
 {
 	// Layout
@@ -411,12 +371,45 @@ void ApplicationWin::PreparePipelines()
 	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/deferred.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/deferred.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
 
-	VkPipelineVertexInputStateCreateInfo emptyInputState = Render::Vulkan::Initializer::PipelineVertexInputStateCreateInfo();
+	VkPipelineVertexInputStateCreateInfo emptyInputState{};
+	emptyInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
 	pipelineCI.pVertexInputState = &emptyInputState;
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCI, nullptr, &pipelines.deferred));
 
+	VkVertexInputBindingDescription vertexInputBinding{};
+	vertexInputBinding.binding = 0;
+	vertexInputBinding.stride = sizeof(VkModel::Vertex);
+	vertexInputBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	pipelineCI.pVertexInputState = GetPipelineVertexInputState();//vkglTF::Vertex::GetPipelineVertexInputState({ GlTFModel::Vertex::pos, vkglTF::VertexComponent::UV, vkglTF::VertexComponent::Color, vkglTF::VertexComponent::Normal, vkglTF::VertexComponent::Tangent });
+	std::array<VkVertexInputAttributeDescription, 5> vertexInputAttrs{};
+	vertexInputAttrs[0].binding = 0;
+	vertexInputAttrs[0].location = 0;
+	vertexInputAttrs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttrs[0].offset = offsetof(VkModel::Vertex, pos);
+	vertexInputAttrs[1].binding = 0;
+	vertexInputAttrs[1].location = 1;
+	vertexInputAttrs[1].format = VK_FORMAT_R32G32_SFLOAT;
+	vertexInputAttrs[1].offset = offsetof(VkModel::Vertex, uv);
+	vertexInputAttrs[2].binding = 0;
+	vertexInputAttrs[2].location = 2;
+	vertexInputAttrs[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttrs[2].offset = offsetof(VkModel::Vertex, color);
+	vertexInputAttrs[3].binding = 0;
+	vertexInputAttrs[3].location = 3;
+	vertexInputAttrs[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+	vertexInputAttrs[3].offset = offsetof(VkModel::Vertex, normal);
+	vertexInputAttrs[4].binding = 0;
+	vertexInputAttrs[4].location = 4;
+	vertexInputAttrs[4].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+	vertexInputAttrs[4].offset = offsetof(VkModel::Vertex, tangent);
+
+	VkPipelineVertexInputStateCreateInfo vertexInputState{};
+	vertexInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputState.vertexBindingDescriptionCount = 1;
+	vertexInputState.pVertexBindingDescriptions = &vertexInputBinding;
+	vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexInputAttrs.size());
+	vertexInputState.pVertexAttributeDescriptions = vertexInputAttrs.data();
+	pipelineCI.pVertexInputState = &vertexInputState;
 	rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
 
 	// Offscreen pipeline
@@ -507,15 +500,22 @@ void ApplicationWin::InitLights()
 // Update deferred composition fragment shader light position and parameters uniform block
 void ApplicationWin::UpdateUniformBufferDeferred()
 {
-	// Animate
-	uniformDataComposition.lights[0].position.x = -14.0f + std::abs(sin(glm::radians(_time32(0) * 360.0f)) * 20.0f);
-	uniformDataComposition.lights[0].position.z = 15.0f + cos(glm::radians(_time32(0) * 360.0f)) * 1.0f;
+	// Move the lights slowly around their initial positions.
+	static const auto startTime = std::chrono::steady_clock::now();
+	const float elapsedSeconds = std::chrono::duration<float>(
+		std::chrono::steady_clock::now() - startTime).count();
+	const float angle = elapsedSeconds * glm::radians(10.0f);
 
-	uniformDataComposition.lights[1].position.x = 14.0f - std::abs(sin(glm::radians(_time32(0) * 360.0f)) * 2.5f);
-	uniformDataComposition.lights[1].position.z = 13.0f + cos(glm::radians(_time32(0) * 360.0f)) * 4.0f;
+	uniformDataComposition.lights[0].position.x = -14.0f + std::sin(angle) * 6.0f;
+	uniformDataComposition.lights[0].position.z = 15.0f + std::cos(angle) * 3.0f;
 
-	uniformDataComposition.lights[2].position.x = 0.0f + sin(glm::radians(_time32(0) * 360.0f)) * 4.0f;
-	uniformDataComposition.lights[2].position.z = 4.0f + cos(glm::radians(_time32(0) * 360.0f)) * 2.0f;
+	const float light1Angle = angle * 0.8f + glm::radians(180.0f);
+	uniformDataComposition.lights[1].position.x = 14.0f + std::sin(light1Angle) * 4.0f;
+	uniformDataComposition.lights[1].position.z = 12.0f + std::cos(light1Angle) * 4.0f;
+
+	const float light2Angle = angle * 0.6f;
+	uniformDataComposition.lights[2].position.x = std::sin(light2Angle) * 4.0f;
+	uniformDataComposition.lights[2].position.z = 4.0f + std::cos(light2Angle) * 2.0f;
 
 	for (uint32_t i = 0; i < LIGHT_COUNT; i++) {
 		// mvp from light's pov (for shadows)
@@ -547,6 +547,7 @@ void ApplicationWin::BuildCommandBuffer()
 {
 	VkCommandBuffer cmdBuffer = m_drawCmdBuffers[m_currentBuffer];
 	VkCommandBufferBeginInfo cmdBufInfo = Render::Vulkan::Initializer::CommandBufferBeginInfo();
+	VK_CHECK_RESULT(vkBeginCommandBuffer(cmdBuffer, &cmdBufInfo));
 
 	//First render pass : shadow map generation
 	{
@@ -560,13 +561,13 @@ void ApplicationWin::BuildCommandBuffer()
 		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 		renderPassBeginInfo.pClearValues = clearValues.data();
 
+		vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 		VkViewport viewport = Render::Vulkan::Initializer::Viewport((float)offscreenframeBuffers.shadow->width, (float)offscreenframeBuffers.shadow->height, 0.0f, 1.0f);
 		vkCmdSetViewport(cmdBuffer, 0, 1, &viewport);
 		VkRect2D scissor = Render::Vulkan::Initializer::Rect2D(offscreenframeBuffers.shadow->width, offscreenframeBuffers.shadow->height, 0, 0);
 		vkCmdSetScissor(cmdBuffer, 0, 1, &scissor);
 		// Set depth bias to avoid shadow artefacts from self-shadowing (aka "Polygon offset")
 		vkCmdSetDepthBias(cmdBuffer, depthBiasConstant, 0.0f, depthBiasSlope);
-		vkCmdBeginRenderPass(cmdBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
 		vkCmdBindPipeline(cmdBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines.shadowpass);
 		RenderScene(cmdBuffer, true);
 		vkCmdEndRenderPass(cmdBuffer);

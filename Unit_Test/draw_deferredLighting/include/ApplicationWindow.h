@@ -109,8 +109,6 @@ public:
 
 public:
 
-	VkPipelineVertexInputStateCreateInfo* GetPipelineVertexInputState();
-
 	virtual void GetEnabledFeatures() override;
 
 	void DrawUI(const VkCommandBuffer cmdBuffer);
