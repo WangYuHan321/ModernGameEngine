@@ -368,8 +368,14 @@ void ApplicationWin::PreparePipelines()
 	pipelineCI.pStages = shaderStages.data();
 
 	rasterizationState.cullMode = VK_CULL_MODE_FRONT_BIT;
-	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/deferred.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+
+#if defined (__ANDROID__)
+    shaderStages[0] = LoadShader("shaders/glsl/draw_deferredLighting/deferred.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shaderStages[1] = LoadShader("shaders/glsl/draw_deferredLighting/deferred.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
+    shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/deferred.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/deferred.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#endif
 
 	VkPipelineVertexInputStateCreateInfo emptyInputState{};
 	emptyInputState.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -428,8 +434,13 @@ void ApplicationWin::PreparePipelines()
 	colorBlendState.attachmentCount = static_cast<uint32_t>(blendAttachmentStates.size());
 	colorBlendState.pAttachments = blendAttachmentStates.data();
 
-	shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/gbuffer.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+#if defined (__ANDROID__)
+    shaderStages[0] = LoadShader("shaders/glsl/draw_deferredLighting/gbuffer.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shaderStages[1] = LoadShader("shaders/glsl/draw_deferredLighting/gbuffer.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#else
+    shaderStages[0] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/gbuffer.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shaderStages[1] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/gbuffer.frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT);
+#endif
 
 
 	VK_CHECK_RESULT(vkCreateGraphicsPipelines(m_device, m_pipelineCache, 1, &pipelineCI, nullptr, &pipelines.offscreen));
@@ -438,8 +449,13 @@ void ApplicationWin::PreparePipelines()
 	// The shadow mapping pipeline uses geometry shader instancing (invocations layout modifier) to output
 	// shadow maps for multiple lights sources into the different shadow map layers in one single render pass
 	std::array<VkPipelineShaderStageCreateInfo, 2> shadowStages{};
-	shadowStages[0] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+#if defined (__ANDROID__)
+    shadowStages[0] = LoadShader("shaders/glsl/draw_deferredLighting/shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
+    shadowStages[1] = LoadShader("shaders/glsl/draw_deferredLighting/shadow.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
+#else
+    shadowStages[0] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/shadow.vert.spv", VK_SHADER_STAGE_VERTEX_BIT);
 	shadowStages[1] = LoadShader("./Asset/shader/glsl/draw_deferredLighting/shadow.geom.spv", VK_SHADER_STAGE_GEOMETRY_BIT);
+#endif
 
 	pipelineCI.pStages = shadowStages.data();
 	pipelineCI.stageCount = static_cast<uint32_t>(shadowStages.size());
@@ -682,8 +698,19 @@ void ApplicationWin::LoadAsset()
 		| VkModel::FileLoadingFlags::PreMultiplyVertexColors | VkModel::FileLoadingFlags::FlipY;
 
 #if defined(__ANDROID__)
-	m_textureColorMap.LoadFromFile("texture/lena.jpg", format, vulkanDevice, m_queue,
-		VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT, VK_IMAGE_LAYOUT_GENERAL);
+
+    models.model.LoadFromFile("mesh/armor/armor.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
+    models.background.LoadFromFile("mesh/armor/deferred_box.gltf", vulkanDevice, m_queue, glTFLoadingFlags);
+
+    textures.model.colorMap.LoadFromFile("texture/floor.png", format, vulkanDevice, m_queue,
+                                         VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_GENERAL);
+    textures.model.normalMap.LoadFromFile("texture/floor.png", format, vulkanDevice, m_queue,
+                                          VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_GENERAL);
+    textures.background.colorMap.LoadFromFile("texture/floor.png", format, vulkanDevice, m_queue,
+                                              VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_GENERAL);
+    textures.background.normalMap.LoadFromFile("texture/floor.png", format, vulkanDevice, m_queue,
+                                               VK_IMAGE_USAGE_SAMPLED_BIT, VK_IMAGE_LAYOUT_GENERAL);
+
 #else
 
 	models.model.LoadFromFile("./Asset/mesh/armor/armor.gltf", vulkanDevice, m_queue, glTFLoadingFlags);

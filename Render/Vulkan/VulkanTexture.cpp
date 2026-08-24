@@ -30,6 +30,7 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 	VkImageUsageFlags  imageUsageFlags,
 	VkImageLayout      imageLayout)
 {
+	this->device = device;
     int texWidth, texHeight, texChannels;
 #if defined (__ANDROID__)
     // Load shader from compressed asset
@@ -109,10 +110,6 @@ void Render::Vulkan::VulkanTexture2D::LoadFromFile(
 	memAlloc.memoryTypeIndex = device->GetMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 	VK_CHECK_RESULT(vkAllocateMemory(device->logicalDevice, &memAlloc, nullptr, &deviceMemory));
 	VK_CHECK_RESULT(vkBindImageMemory(device->logicalDevice, image, deviceMemory, 0));
-
-
-
-
 
 
 
