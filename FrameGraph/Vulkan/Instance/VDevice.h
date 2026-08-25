@@ -11,7 +11,6 @@
 #include "../Utils/VEnum.h"
 
 #include "../VCommon.h"
-#include "vulkan_loader/VulkanLoader.h"
 
 #include "../STL/ThreadSafe/DataRaceCheck.h"
 
@@ -115,7 +114,7 @@ namespace FrameGraph
 
 
 
-	class VDevice final : public VulkanDeviceFn
+	class VDevice final
 
 	{
 

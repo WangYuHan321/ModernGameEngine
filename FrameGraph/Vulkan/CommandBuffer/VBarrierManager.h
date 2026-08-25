@@ -21,6 +21,7 @@
 namespace FrameGraph
 
 {
+	class VDevice;
 	//
 	// Vulkan Barrier Manager
 	//
@@ -54,13 +55,13 @@ namespace FrameGraph
 			_memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
 		}
 
-		void Commit(const VDevice& dev, VkCommandBuffer cmdBuffer)
+		void Commit(const VDevice&, VkCommandBuffer cmdBuffer)
 		{
 			const uint mem_count = !!(_memoryBarrier.srcAccessMask | _memoryBarrier.dstAccessMask);
 
 			if (mem_count or _bufferBarriers.size() or _imageBarriers.size())
 			{
-				dev.vkCmdPipelineBarrier(cmdBuffer, _srcStageMask, _dstStageMask, _dependencyFlags,
+				vkCmdPipelineBarrier(cmdBuffer, _srcStageMask, _dstStageMask, _dependencyFlags,
 					mem_count, &_memoryBarrier,
 					uint(_bufferBarriers.size()),
 					_bufferBarriers.data(),

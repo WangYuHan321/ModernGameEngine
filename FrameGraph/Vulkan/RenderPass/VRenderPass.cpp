@@ -1,2 +1,1 @@
-﻿#pragma once
-#include "VPipelineLayout.h"
+﻿#include "VRenderPass.h"
