@@ -25,8 +25,8 @@ namespace FrameGraph
 
 		using DescriptorSets_t = FixedMap<DescriptorSetID, DescSetLayout, MaxDescSets>;
 		using PushConstants_t = PipelineDescription::PushConstants_t;
-		using VkDescriptorSetLayout_t = StaticArray<VkDescriptorSetLayout, MaxDescSets>;
-		using VkPushConstantRange_t = FixedArray<VkDescriptorSetLayout, GFG_MaxPushConstants>;
+		using VkDescriptorSetLayouts_t = StaticArray<VkDescriptorSetLayout, MaxDescSets>;
+		using VkPushConstantRanges_t = FixedArray<VkDescriptorSetLayout, GFG_MaxPushConstants>;
 		using DSLayoutArray_t = ArrayView<Pair<RawDescriptorSetLayoutID, ResourceBase<VkDescriptorSetLayout>*>>;
 
 
