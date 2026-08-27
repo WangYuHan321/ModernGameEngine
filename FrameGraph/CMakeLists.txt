@@ -7,8 +7,10 @@ file(GLOB VULKAN_SRC "./Vulkan/*.h" "./Vulkan/*.cpp" "./Vulkan/*.hpp")
 file(GLOB VULKAN_BUFFER_SRC "./Vulkan/Buffer/*.h" "./Vulkan/Buffer/*.cpp" "./Vulkan/Buffer/*.hpp")
 file(GLOB VULKAN_MEMORY_SRC "./Vulkan/Memory/*.h" "./Vulkan/Memory/*.cpp" "./Vulkan/Memory/*.hpp")
 file(GLOB VULKAN_UTILS_SRC "./Vulkan/Utils/*.h" "./Vulkan/Utils/*.cpp" "./Vulkan/Utils/*.hpp")
+file(GLOB VULKAN_IMAGE_SRC "./Vulkan/Image/*.h" "./Vulkan/Image/*.cpp" "./Vulkan/Image/*.hpp")
 file(GLOB VULKAN_INSTANCE_SRC "./Vulkan/Instance/*.h" "./Vulkan/Instance/*.cpp" "./Vulkan/Instance/*.hpp")
 file(GLOB VULKAN_PIPELINE_SRC "./Vulkan/Pipeline/*.h" "./Vulkan/Pipeline/*.cpp" "./Vulkan/Pipeline/*.hpp")
+file(GLOB VULKAN_SWAPCHAIN_SRC "./Vulkan/Swapchain/*.h" "./Vulkan/Swapchain/*.cpp" "./Vulkan/Swapchain/*.hpp")
 file(GLOB VULKAN_RENDERPASS_SRC "./Vulkan/RenderPass/*.h" "./Vulkan/RenderPass/*.cpp" "./Vulkan/RenderPass/*.hpp")
 file(GLOB VULKAN_COMMANDBUFFER_SRC "./Vulkan/CommandBuffer/*.h" "./Vulkan/CommandBuffer/*.cpp" "./Vulkan/CommandBuffer/*.hpp")
 file(GLOB STL_SRC "./STL/*.h" "./STL/*.cpp" "./STL/*.hpp")
@@ -26,8 +28,10 @@ SOURCE_GROUP(Vulkan FILES  ${VULKAN_SRC})
 SOURCE_GROUP(Vulkan/Buffer FILES  ${VULKAN_BUFFER_SRC})
 SOURCE_GROUP(Vulkan/Memory FILES  ${VULKAN_MEMORY_SRC})
 SOURCE_GROUP(Vulkan/Utils FILES  ${VULKAN_UTILS_SRC})
+SOURCE_GROUP(Vulkan/Image FILES  ${VULKAN_IMAGE_SRC})
 SOURCE_GROUP(Vulkan/Instance FILES  ${VULKAN_INSTANCE_SRC})
 SOURCE_GROUP(Vulkan/Pipeline FILES  ${VULKAN_PIPELINE_SRC})
+SOURCE_GROUP(Vulkan/Swapchain FILES  ${VULKAN_SWAPCHAIN_SRC})
 SOURCE_GROUP(Vulkan/RenderPass FILES  ${VULKAN_RENDERPASS_SRC})
 SOURCE_GROUP(Vulkan/CommandBuffer FILES  ${VULKAN_COMMANDBUFFER_SRC})
 SOURCE_GROUP(STL FILES  ${STL_SRC})
@@ -122,8 +126,10 @@ set(SRC_FILES
 	${VULKAN_BUFFER_SRC}
 	${VULKAN_MEMORY_SRC}
 	${VULKAN_UTILS_SRC}
+	${VULKAN_IMAGE_SRC}
 	${VULKAN_INSTANCE_SRC}
 	${VULKAN_PIPELINE_SRC}
+	${VULKAN_SWAPCHAIN_SRC}
 	${VULKAN_RENDERPASS_SRC}
 	${VULKAN_COMMANDBUFFER_SRC}
 	${STL_SRC}
