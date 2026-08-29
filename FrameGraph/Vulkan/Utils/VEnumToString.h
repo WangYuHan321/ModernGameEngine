@@ -47,6 +47,22 @@ namespace FrameGraph
 	}
 
 
+	GND inline StringView  VkFilter_ToString(const VkFilter value)
+	{
+		BEGIN_ENUM_CHECKS();
+		switch (value)
+		{
+		case VK_FILTER_NEAREST:		return "Nearest";
+		case VK_FILTER_LINEAR:			return "Linear";
+		case VK_FILTER_CUBIC_IMG:		return "CubicImg";
+#ifndef VK_VERSION_1_2
+		case VK_FILTER_RANGE_SIZE:
+#endif
+		case VK_FILTER_MAX_ENUM:		break;
+		}
+		END_ENUM_CHECKS();
+		return StringView("unknown filter type!");
+	}
 
 }
 
