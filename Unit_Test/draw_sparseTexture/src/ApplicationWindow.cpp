@@ -1,4 +1,53 @@
-﻿#include "ApplicationWindow.h"
+#include "ApplicationWindow.h"
+
+VirtualTexturePage::VirtualTexturePage()
+{
+	imageMemoryBind.memory = VK_NULL_HANDLE;
+}
+
+bool VirtualTexturePage::resident()
+{
+	return (imageMemoryBind.memory != VK_NULL_HANDLE);
+}
+
+bool VirtualTexturePage::allocate(VkDevice device, uint32_t memoryTypeIndex)
+{
+	if (imageMemoryBind.memory != VK_NULL_HANDLE)
+	{
+		return false;
+	};
+
+	imageMemoryBind = {};
+
+	VkMemoryAllocateInfo allocInfo = Render::Vulkan::Initializer::MemoryAllocInfo();
+	allocInfo.allocationSize = size;
+	allocInfo.memoryTypeIndex = memoryTypeIndex;
+	VK_CHECK_RESULT(vkAllocateMemory(device, &allocInfo, nullptr, &imageMemoryBind.memory));
+
+	VkImageSubresource subResource{};
+	subResource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subResource.mipLevel = mipLevel;
+	subResource.arrayLayer = layer;
+
+	// Sparse image memory binding
+	imageMemoryBind.subresource = subResource;
+	imageMemoryBind.extent = extent;
+	imageMemoryBind.offset = offset;
+	return true;
+}
+
+bool VirtualTexturePage::release(VkDevice device)
+{
+	del = false;
+	if(imageMemoryBind.memory != VK_NULL_HANDLE)
+	{
+		vkFreeMemory(device, imageMemoryBind.memory, nullptr);
+		imageMemoryBind.memory = VK_NULL_HANDLE;
+		return true;
+	}
+	return false;
+}
+
 
 ApplicationWin::ApplicationWin():
 	ApplicationBase()
