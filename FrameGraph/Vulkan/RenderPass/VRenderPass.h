@@ -22,6 +22,17 @@ namespace FrameGraph
 		using SubPasses_t = FixedArray<VkSubpassDescription, maxSubPass>;
 		using Dependencies_t = FixedArray<VkSubpassDependency, maxDependencies>;
 
+		//variables
+	private:
+		VkRenderPass _renderPass = VK_NULL_HANDLE;
+		HashVal _hash;
+
+
+		//method
+	public:
+		VRenderPass() {}
+		VRenderPass(VRenderPass&&) = delete;
+		VRenderPass(const VRenderPass&) = delete;
 
 
 
