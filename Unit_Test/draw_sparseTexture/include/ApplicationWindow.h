@@ -43,7 +43,7 @@ struct VirtualTexture
 	VkImage image;
 	VkBindSparseInfo bindSparseInfo;
 	std::vector<VirtualTexturePage> pages;
-	std::vector<VkSparseImageMemory>
+	std::vector<VkSparseMemoryBind> sparseMemoryBinds;
 
 
 };
