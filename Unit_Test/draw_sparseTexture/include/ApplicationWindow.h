@@ -46,6 +46,7 @@ struct VirtualTexture
 	std::vector<VkSparseMemoryBind> sparseMemoryBinds;
 
 
+
 };
 
 class ApplicationWin : public ApplicationBase
