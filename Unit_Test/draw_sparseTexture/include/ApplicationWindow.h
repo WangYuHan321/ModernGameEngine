@@ -1,5 +1,49 @@
 #include "Render/Vulkan/ApplicationBase.h"
 
+
+/*
+ * Important note : This sample is work-in-progress and works basically, but it's not finished
+ *
+ * =============================================================================
+ * 为什么这个例子要拆这么多层结构？（新手必读）
+ * =============================================================================
+ *
+ * 普通纹理：vkCreateImage + vkAllocateMemory + vkBindImageMemory
+ *   → 整张图一次性占满显存。4096×4096 全 mip 大约几十 MB，开销还能接受；
+ *     但游戏里 16k / 32k 虚拟贴图如果也整张常驻，显存立刻爆掉。
+ *
+ * Sparse residency（稀疏驻留）像操作系统的虚拟内存：
+ *   1. 先创建一张“逻辑上很大”的 VkImage，但此时几乎不占显存。
+ *   2. 把图像按 GPU 规定的粒度切成很多 page（页 / 图块）。
+ *   3. 只给当前真正用到的 page 分配 VkDeviceMemory，再通过
+ *      vkQueueBindSparse 把这块内存“贴”到图像的对应区域。
+ *   4. 不需要时把绑定解开、把内存释放。着色器读到未驻留区域会走
+ *      sparseResidency 的 fallback（本例用随机色块演示）。
+ *
+ * Vulkan 的 sparse 绑定 API 本身就是层层嵌套的，所以本文件也必须
+ * 有对应的结构，并不是重复造轮子：
+ *
+ *   vkQueueBindSparse(queue, 1, &bindSparseInfo, fence)
+ *     └── VkBindSparseInfo                         一次提交的总包裹
+ *           ├── pImageBinds
+ *           │     └── VkSparseImageMemoryBindInfo  “可按页拆开绑定”的那部分
+ *           │           └── pBinds[] = VkSparseImageMemoryBind
+ *           │                 （每一页：绑哪块区域、用哪块内存）
+ *           └── pImageOpaqueBinds
+ *                 └── VkSparseImageOpaqueMemoryBindInfo  mip tail（不能按页拆）
+ *                       └── pBinds[] = VkSparseMemoryBind
+ *
+ * 本例对应关系：
+ *   VirtualTexturePage  = 我们自己的“一页”：位置 + 显存 + 是否已驻留
+ *   VirtualTexture      = 整张虚拟图 + 上面那一整套 Vulkan 绑定结构
+ *   SparseTexture       = VirtualTexture + sampler / imageView / descriptor
+ *                         （普通纹理采样也需要这些，和 sparse 无关）
+ *
+ * 另外还有 mip tail：很小的那几级 mip（比如 4×4、2×2、1×1）往往小于
+ * GPU 的 page 粒度，无法单独驻留，驱动会把它们捆成一块不透明内存
+ * （opaque bind）。所以 image bind 和 opaque bind 两套结构都要有。
+ */
+
 // 虚拟纹理的一页（tile / page）
 //
 // 稀疏图创建后只是一个“地址空间”，这一页是其中一块矩形区域。
